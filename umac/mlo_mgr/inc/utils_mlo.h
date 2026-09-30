@@ -581,6 +581,66 @@ util_get_bvmlie_persta_partner_info(uint8_t *mlieseq,
 				    struct mlo_partner_info *partner_info,
 				    uint8_t subtype);
 
+#ifdef WLAN_FEATURE_11BN
+/**
+ * util_get_bvmlie_persta_uhr_cap() - Get UHR capabilities from a per-STA
+ * profile in a Basic Multi-Link element.
+ * @mlieseq: Starting address of the Basic Multi-Link element sequence
+ * @mlieseqlen: Total length of the Multi-Link element sequence
+ * @link_id: Link ID of the requested per-STA profile
+ * @uhr_cap: Output UHR capability payload. The caller owns the allocated
+ * buffer and must free uhr_cap->ptr with qdf_mem_free().
+ *
+ * Return: QDF_STATUS_SUCCESS if the UHR Capabilities IE is found, an error
+ * status otherwise.
+ */
+QDF_STATUS
+util_get_bvmlie_persta_uhr_cap(uint8_t *mlieseq, qdf_size_t mlieseqlen,
+			       uint8_t link_id, struct element_info *uhr_cap);
+
+/**
+ * util_get_bvmlie_persta_uhr_op() - Get UHR operation from a per-STA profile
+ * in a Basic Multi-Link element.
+ * @mlieseq: Starting address of the Basic Multi-Link element sequence
+ * @mlieseqlen: Total length of the Multi-Link element sequence
+ * @link_id: Link ID of the requested per-STA profile
+ * @uhr_op: Output UHR operation payload. The caller owns the allocated buffer
+ * and must free uhr_op->ptr with qdf_mem_free().
+ *
+ * Return: QDF_STATUS_SUCCESS if the UHR Operation IE is found, an error
+ * status otherwise.
+ */
+QDF_STATUS
+util_get_bvmlie_persta_uhr_op(uint8_t *mlieseq, qdf_size_t mlieseqlen,
+			      uint8_t link_id, struct element_info *uhr_op);
+
+/**
+ * util_get_bvmlie_persta_profile_buf() - Locate and defragment the per-STA
+ * profile for a given link ID in a Basic Multi-Link element, for direct
+ * lookup of multiple Capability/Operation elements against it.
+ * @mlieseq: Starting address of the Basic Multi-Link element sequence
+ * @mlieseqlen: Total length of the Multi-Link element sequence
+ * @link_id: Link ID of the requested per-STA profile
+ * @payload_copy: Output; set to an allocated buffer holding the
+ * defragmented ML IE payload on success. *sta_prof points inside this
+ * buffer, so the caller must keep it alive for as long as *sta_prof is
+ * read, and must free it with qdf_mem_free() exactly once when done.
+ * @sta_prof: Output; set to the start of the per-STA profile's STA Profile
+ * field, suitable for wlan_get_ie_ptr_from_eid()/
+ * wlan_get_ext_ie_ptr_from_ext_id() lookups.
+ * @sta_prof_len: Output; length of *sta_prof.
+ *
+ * Return: QDF_STATUS_SUCCESS if the per-STA profile for @link_id was found,
+ * an error status otherwise (in which case *payload_copy is left NULL and
+ * nothing needs to be freed).
+ */
+QDF_STATUS
+util_get_bvmlie_persta_profile_buf(uint8_t *mlieseq, qdf_size_t mlieseqlen,
+				   uint8_t link_id, uint8_t **payload_copy,
+				   uint8_t **sta_prof,
+				   qdf_size_t *sta_prof_len);
+#endif /* WLAN_FEATURE_11BN */
+
 /**
  * util_get_prvmlie_mldid - Get the MLD ID from a given Probe Request
  * variant Multi-Link element , of the STA that transmits ML Probe Request

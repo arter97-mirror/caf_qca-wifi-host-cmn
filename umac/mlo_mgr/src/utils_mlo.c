@@ -2121,6 +2121,230 @@ util_find_bvmlie_persta_prof_for_linkid(uint8_t req_link_id,
 	return QDF_STATUS_E_PROTO;
 }
 
+#ifdef WLAN_FEATURE_11BN
+/**
+ * util_get_bvmlie_persta_profile() - locate and defragment the per-STA
+ * profile for a given link ID in a Basic Multi-Link element.
+ * @mlieseq: Starting address of the Basic Multi-Link element sequence
+ * @mlieseqlen: Total length of the Multi-Link element sequence
+ * @link_id: Link ID of the requested per-STA profile
+ * @payload_copy: Output; set to an allocated buffer holding the
+ * defragmented ML IE payload. *sta_prof points inside this buffer, so the
+ * caller must keep it alive for as long as *sta_prof is read, and must
+ * qdf_mem_free() it exactly once when done (on success only; left
+ * untouched/NULL on error).
+ * @sta_prof: Output; set to the start of the per-STA profile's STA Profile
+ * field (the IE sequence to search for Capability/Operation elements).
+ * @sta_prof_len: Output; length of *sta_prof.
+ *
+ * Return: QDF_STATUS_SUCCESS if the per-STA profile for @link_id was found,
+ * an error status otherwise.
+ */
+static QDF_STATUS
+util_get_bvmlie_persta_profile(uint8_t *mlieseq, qdf_size_t mlieseqlen,
+			       uint8_t link_id, uint8_t **payload_copy,
+			       uint8_t **sta_prof, qdf_size_t *sta_prof_len)
+{
+	uint8_t *mlieseqpayload_copy = NULL;
+	uint8_t *link_info = NULL;
+	uint8_t *persta_prof = NULL;
+	qdf_size_t mlieseqpayloadlen;
+	qdf_size_t link_info_len;
+	qdf_size_t persta_prof_len;
+	qdf_size_t defragpayload_len;
+	qdf_size_t tmplen;
+	enum wlan_ml_variant variant;
+	bool is_elemfragseq;
+	QDF_STATUS status;
+
+	if (!mlieseq || !mlieseqlen || !payload_copy || !sta_prof ||
+	    !sta_prof_len)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	*payload_copy = NULL;
+	*sta_prof = NULL;
+	*sta_prof_len = 0;
+
+	status = util_get_mlie_variant(mlieseq, mlieseqlen,
+				       (int *)&variant);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	if (variant != WLAN_ML_VARIANT_BASIC)
+		return QDF_STATUS_E_NOSUPPORT;
+
+	status = wlan_get_elem_fragseq_info(mlieseq, mlieseqlen,
+					    &is_elemfragseq, &tmplen,
+					    &mlieseqpayloadlen);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	if (is_elemfragseq && tmplen != mlieseqlen)
+		return QDF_STATUS_E_FAILURE;
+
+	if (is_elemfragseq) {
+		if (!mlieseqpayloadlen)
+			return QDF_STATUS_E_PROTO;
+	} else {
+		if (mlieseqlen > (sizeof(struct ie_header) + WLAN_MAX_IE_LEN))
+			return QDF_STATUS_E_FAILURE;
+
+		/* wlan_get_elem_fragseq_info() reports zero payload for a
+		 * non-fragmented element; derive the payload excluding the IE
+		 * header and the Multi-Link extension ID.
+		 * */
+		mlieseqpayloadlen = mlieseqlen -
+			(sizeof(struct ie_header) + 1);
+		if (!mlieseqpayloadlen)
+			return QDF_STATUS_E_PROTO;
+	}
+
+	mlieseqpayload_copy = qdf_mem_malloc(mlieseqpayloadlen);
+	if (!mlieseqpayload_copy)
+		return QDF_STATUS_E_NOMEM;
+
+	if (is_elemfragseq) {
+		status = wlan_defrag_elem_fragseq(false, mlieseq, mlieseqlen,
+						  mlieseqpayload_copy,
+						  mlieseqpayloadlen,
+						  &defragpayload_len);
+		if (QDF_IS_STATUS_ERROR(status))
+			goto err_free;
+
+		if (defragpayload_len != mlieseqpayloadlen) {
+			status = QDF_STATUS_E_FAILURE;
+			goto err_free;
+		}
+	} else {
+		qdf_mem_copy(mlieseqpayload_copy,
+			     mlieseq + sizeof(struct ie_header) + 1,
+			     mlieseqpayloadlen);
+	}
+
+	link_info = NULL;
+	link_info_len = 0;
+	status = util_parse_multi_link_ctrl(mlieseqpayload_copy,
+					    mlieseqpayloadlen, &link_info,
+					    &link_info_len);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto err_free;
+
+	if (!link_info) {
+		status = QDF_STATUS_E_PROTO;
+		goto err_free;
+	}
+
+	persta_prof_len = 0;
+	status = util_find_bvmlie_persta_prof_for_linkid(
+			link_id, link_info, link_info_len, &persta_prof,
+			&persta_prof_len);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto err_free;
+
+	status = util_parse_bvmlie_perstaprofile_stactrl(
+			persta_prof + sizeof(struct subelem_header),
+			persta_prof_len, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+			NULL, true, sta_prof, sta_prof_len, NULL, NULL, NULL,
+			NULL);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto err_free;
+
+	*payload_copy = mlieseqpayload_copy;
+
+	return QDF_STATUS_SUCCESS;
+
+err_free:
+	qdf_mem_free(mlieseqpayload_copy);
+	*sta_prof = NULL;
+	*sta_prof_len = 0;
+
+	return status;
+}
+
+QDF_STATUS
+util_get_bvmlie_persta_profile_buf(uint8_t *mlieseq, qdf_size_t mlieseqlen,
+				   uint8_t link_id, uint8_t **payload_copy,
+				   uint8_t **sta_prof, qdf_size_t *sta_prof_len)
+{
+	return util_get_bvmlie_persta_profile(mlieseq, mlieseqlen, link_id,
+					      payload_copy, sta_prof,
+					      sta_prof_len);
+}
+
+static QDF_STATUS
+util_get_bvmlie_persta_uhr_ie(uint8_t *mlieseq, qdf_size_t mlieseqlen,
+			      uint8_t link_id, uint8_t ext_id,
+			      struct element_info *uhr_ie)
+{
+	uint8_t *payload_copy = NULL;
+	uint8_t *sta_prof = NULL;
+	qdf_size_t sta_prof_len = 0;
+	const uint8_t *ie_ptr;
+	uint8_t ie_len;
+	QDF_STATUS status;
+
+	if (!uhr_ie)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	qdf_mem_zero(uhr_ie, sizeof(*uhr_ie));
+
+	status = util_get_bvmlie_persta_profile(mlieseq, mlieseqlen, link_id,
+						&payload_copy, &sta_prof,
+						&sta_prof_len);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	ie_ptr = wlan_get_ext_ie_ptr_from_ext_id(&ext_id, 1, sta_prof,
+						 sta_prof_len);
+	if (!ie_ptr || ie_ptr[1] < 1) {
+		status = QDF_STATUS_E_NOSUPPORT;
+		goto out;
+	}
+
+	ie_len = ie_ptr[1] - 1;
+	if (!ie_len) {
+		status = QDF_STATUS_E_PROTO;
+		goto out;
+	}
+
+	uhr_ie->ptr = qdf_mem_malloc(ie_len);
+	if (!uhr_ie->ptr) {
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	qdf_mem_copy(uhr_ie->ptr, ie_ptr + 3, ie_len);
+	uhr_ie->len = ie_len;
+	status = QDF_STATUS_SUCCESS;
+
+out:
+	qdf_mem_free(payload_copy);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		qdf_mem_free(uhr_ie->ptr);
+		uhr_ie->ptr = NULL;
+		uhr_ie->len = 0;
+	}
+
+	return status;
+}
+
+QDF_STATUS
+util_get_bvmlie_persta_uhr_cap(uint8_t *mlieseq, qdf_size_t mlieseqlen,
+			       uint8_t link_id, struct element_info *uhr_cap)
+{
+	return util_get_bvmlie_persta_uhr_ie(mlieseq, mlieseqlen, link_id,
+					     WLAN_EXTN_ELEMID_UHRCAP, uhr_cap);
+}
+
+QDF_STATUS
+util_get_bvmlie_persta_uhr_op(uint8_t *mlieseq, qdf_size_t mlieseqlen,
+			      uint8_t link_id, struct element_info *uhr_op)
+{
+	return util_get_bvmlie_persta_uhr_ie(mlieseq, mlieseqlen, link_id,
+					     WLAN_EXTN_ELEMID_UHROP, uhr_op);
+}
+#endif /* WLAN_FEATURE_11BN */
+
 static
 QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 				    uint8_t subtype,

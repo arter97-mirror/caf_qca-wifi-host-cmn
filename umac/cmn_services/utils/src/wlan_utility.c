@@ -2653,6 +2653,18 @@ smd_construct_link_assoc_rsp(struct smd_target_ap_link_caps *link_cap,
 		remaining_len -= (2 + link_cap->ht_cap.len);
 	}
 
+	/* Add HT Information IE (if present) */
+	if (link_cap->ht_info_present && link_cap->ht_info.ptr &&
+	    link_cap->ht_info.len > 0) {
+		if (remaining_len < (2 + link_cap->ht_info.len))
+			return QDF_STATUS_E_NOMEM;
+		*ptr++ = WLAN_ELEMID_HTINFO_ANA;
+		*ptr++ = link_cap->ht_info.len;
+		qdf_mem_copy(ptr, link_cap->ht_info.ptr, link_cap->ht_info.len);
+		ptr += link_cap->ht_info.len;
+		remaining_len -= (2 + link_cap->ht_info.len);
+	}
+
 	/* Add VHT Cap IE (if present) */
 	if (link_cap->vht_cap_present && link_cap->vht_cap.ptr &&
 	    link_cap->vht_cap.len > 0) {
@@ -2663,6 +2675,18 @@ smd_construct_link_assoc_rsp(struct smd_target_ap_link_caps *link_cap,
 		qdf_mem_copy(ptr, link_cap->vht_cap.ptr, link_cap->vht_cap.len);
 		ptr += link_cap->vht_cap.len;
 		remaining_len -= (2 + link_cap->vht_cap.len);
+	}
+
+	/* Add VHT Operation IE (if present) */
+	if (link_cap->vht_op_present && link_cap->vht_op.ptr &&
+	    link_cap->vht_op.len > 0) {
+		if (remaining_len < (2 + link_cap->vht_op.len))
+			return QDF_STATUS_E_NOMEM;
+		*ptr++ = WLAN_ELEMID_VHTOP;
+		*ptr++ = link_cap->vht_op.len;
+		qdf_mem_copy(ptr, link_cap->vht_op.ptr, link_cap->vht_op.len);
+		ptr += link_cap->vht_op.len;
+		remaining_len -= (2 + link_cap->vht_op.len);
 	}
 
 	/* Add HE Cap IE (if present) */
@@ -2678,6 +2702,19 @@ smd_construct_link_assoc_rsp(struct smd_target_ap_link_caps *link_cap,
 		remaining_len -= (3 + link_cap->he_cap.len);
 	}
 
+	/* Add HE Operation IE (if present) */
+	if (link_cap->he_op_present && link_cap->he_op.ptr &&
+	    link_cap->he_op.len > 0) {
+		if (remaining_len < (3 + link_cap->he_op.len))
+			return QDF_STATUS_E_NOMEM;
+		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
+		*ptr++ = link_cap->he_op.len + 1;
+		*ptr++ = WLAN_EXTN_ELEMID_HEOP;
+		qdf_mem_copy(ptr, link_cap->he_op.ptr, link_cap->he_op.len);
+		ptr += link_cap->he_op.len;
+		remaining_len -= (3 + link_cap->he_op.len);
+	}
+
 	/* Add EHT Cap IE (if present) */
 	if (link_cap->eht_cap_present && link_cap->eht_cap.ptr &&
 	    link_cap->eht_cap.len > 0) {
@@ -2691,6 +2728,19 @@ smd_construct_link_assoc_rsp(struct smd_target_ap_link_caps *link_cap,
 		remaining_len -= (3 + link_cap->eht_cap.len);
 	}
 
+	/* Add EHT Operation IE (if present) */
+	if (link_cap->eht_op_present && link_cap->eht_op.ptr &&
+	    link_cap->eht_op.len > 0) {
+		if (remaining_len < (3 + link_cap->eht_op.len))
+			return QDF_STATUS_E_NOMEM;
+		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
+		*ptr++ = link_cap->eht_op.len + 1;
+		*ptr++ = WLAN_EXTN_ELEMID_EHTOP;
+		qdf_mem_copy(ptr, link_cap->eht_op.ptr, link_cap->eht_op.len);
+		ptr += link_cap->eht_op.len;
+		remaining_len -= (3 + link_cap->eht_op.len);
+	}
+
 	/* Add UHR Cap IE (if present) */
 	if (link_cap->uhr_cap_present && link_cap->uhr_cap.ptr &&
 	    link_cap->uhr_cap.len > 0) {
@@ -2702,6 +2752,19 @@ smd_construct_link_assoc_rsp(struct smd_target_ap_link_caps *link_cap,
 		qdf_mem_copy(ptr, link_cap->uhr_cap.ptr, link_cap->uhr_cap.len);
 		ptr += link_cap->uhr_cap.len;
 		remaining_len -= (3 + link_cap->uhr_cap.len);
+	}
+
+	/* Add UHR Operation IE (if present) */
+	if (link_cap->uhr_op_present && link_cap->uhr_op.ptr &&
+	    link_cap->uhr_op.len > 0) {
+		if (remaining_len < (3 + link_cap->uhr_op.len))
+			return QDF_STATUS_E_NOMEM;
+		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
+		*ptr++ = link_cap->uhr_op.len + 1;
+		*ptr++ = WLAN_EXTN_ELEMID_UHROP;
+		qdf_mem_copy(ptr, link_cap->uhr_op.ptr, link_cap->uhr_op.len);
+		ptr += link_cap->uhr_op.len;
+		remaining_len -= (3 + link_cap->uhr_op.len);
 	}
 
 	/* Add Extended Capabilities IE (if present) */
