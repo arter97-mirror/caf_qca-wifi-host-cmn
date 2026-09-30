@@ -2439,8 +2439,10 @@ static inline void dp_process_htt_stat_msg(struct htt_stats_context *htt_stats,
 								  tlv_type,
 								  tlv_start);
 
-				if (cookie_msb &
-				    DBG_STATS_HTT_COOKIE_RX_TID_PDEV_RX)
+				if ((cookie_msb &
+				     DBG_STATS_HTT_COOKIE_RX_TID_PDEV_RX) &&
+				    tlv_type ==
+				    HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TAG)
 					dp_htt_set_rx_tid_pdev_rx_stats(
 						pdev, tlv_type, tlv_start);
 
