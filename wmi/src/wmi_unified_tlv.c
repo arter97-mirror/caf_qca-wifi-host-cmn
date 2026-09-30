@@ -10582,6 +10582,10 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	wmi_copy_latency_flowq_support(resource_cfg, tgt_res_cfg);
 	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
 	wmi_copy_mgmt_rx_srng_support(resource_cfg, tgt_res_cfg);
+	if (tgt_res_cfg->apfv6_offload_disabled != 0) {
+		WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_SET(
+				resource_cfg->apf_data_ofload_enable__word, 1);
+	}
 
 	if (tgt_res_cfg->enable_bcn_rssi_history_report)
 		WMI_RSRC_CFG_FLAGS2_RECV_BCN_STATS_ENABLED_SET(
@@ -23154,6 +23158,9 @@ struct wmi_ops tlv_ops =  {
 				wmi_send_apf_read_work_memory_cmd_tlv,
 	.extract_apf_read_memory_resp_event =
 				wmi_extract_apf_read_memory_resp_event_tlv,
+	.send_set_apf_supported_offload_bitmap_cmd =
+			wmi_send_set_apf_supported_offload_bitmap_cmd_tlv,
+	.send_set_apf_mode_bitmap_cmd = wmi_send_set_apf_mode_bitmap_cmd_tlv,
 #endif /* FEATURE_WLAN_APF */
 	.init_cmd_send = init_cmd_send_tlv,
 	.send_vdev_set_custom_aggr_size_cmd =
@@ -24496,6 +24503,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 			WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL;
 	wmi_service[wmi_service_csa_beacon_template] =
 			WMI_SERVICE_CSA_BEACON_TEMPLATE;
+	wmi_service[wmi_service_apf_data_offload_support_enabled] =
+			WMI_SERVICE_APF_DATA_OFFLOAD_SUPPORT_ENABLED;
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 	wmi_service[wmi_service_rtt_11az_ntb_support] =
 			WMI_SERVICE_RTT_11AZ_NTB_SUPPORT;
