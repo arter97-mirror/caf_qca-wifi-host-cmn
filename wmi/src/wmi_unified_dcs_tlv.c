@@ -283,6 +283,37 @@ extract_dcs_awgn_info_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_SUCCESS;
 }
 
+/*
+ * extract_dcs_cw_int_tlv() - extract DCS CW interference from event
+ * @wmi_handle: wmi handle
+ * @param evt_buf: pointer to event buffer
+ * @param cw_int: Pointer to hold cw interference
+ *
+ * Return: QDF_STATUS_SUCCESS for success or QDF_STATUS_E_* for error
+ */
+static QDF_STATUS
+extract_dcs_cw_int_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+		       struct wlan_host_dcs_cw_int *cw_int)
+{
+	WMI_DCS_INTERFERENCE_EVENTID_param_tlvs *param_buf;
+	wlan_dcs_cw_int *ev;
+
+	param_buf = evt_buf;
+	if (!param_buf)
+		return QDF_STATUS_E_INVAL;
+
+	ev = param_buf->cw_int;
+	if (!ev) {
+		wmi_err("Invalid cw interference info");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	cw_int->chan_freq = ev->channel;
+	wmi_debug("chan_freq: %u", cw_int->chan_freq);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 void wmi_dcs_attach_tlv(wmi_unified_t wmi_handle)
 {
 	struct wmi_ops *ops = wmi_handle->ops;
@@ -293,5 +324,6 @@ void wmi_dcs_attach_tlv(wmi_unified_t wmi_handle)
 					extract_dcs_im_tgt_stats_count_tlv;
 	ops->extract_dcs_im_tgt_stats_idx = extract_dcs_im_tgt_stats_idx_tlv;
 	ops->extract_dcs_awgn_info = extract_dcs_awgn_info_tlv;
+	ops->extract_dcs_cw_int = extract_dcs_cw_int_tlv;
 }
 
