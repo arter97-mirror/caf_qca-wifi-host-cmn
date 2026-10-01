@@ -3082,7 +3082,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 		rsno = true;
 
 	if (cm_skip_mlo_score(psoc, entry, ml_flag, bss_mlo_type))
-		mlme_nofl_debug("%s("QDF_MAC_ADDR_FMT" freq %d): rssi %d HT %d VHT %d HE %d EHT %d su_bfer %d phy %d atf %d qbss %d cong_pct %d NSS %d ap_tx_pwr %d oce_subnet %d sae_pk_cap %d prorated_pcnt %d keymgmt 0x%x mlo type %d 11bi %d rsno %d rsnxo %d",
+		mlme_nofl_debug("%s("QDF_MAC_ADDR_FMT" freq %d): rssi %d HT %d VHT %d HE %d EHT %d UHR %d su_bfer %d phy %d atf %d qbss %d cong_pct %d NSS %d ap_tx_pwr %d oce_subnet %d sae_pk_cap %d prorated_pcnt %d keymgmt 0x%x mlo type %d 11bi %d rsno %d rsnxo %d",
 				IS_ASSOC_LINK(ml_flag) ? "Candidate" : "Partner",
 				QDF_MAC_ADDR_REF(entry->bssid.bytes),
 				entry->channel.chan_freq,
@@ -3091,6 +3091,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 				util_scan_entry_vhtcap(entry) ? 1 : 0,
 				util_scan_entry_hecap(entry) ? 1 : 0,
 				util_scan_entry_ehtcap(entry) ? 1 : 0,
+				util_scan_entry_uhrop(entry) ? 1 : 0,
 				ap_su_beam_former,
 				entry->phy_mode, entry->air_time_fraction,
 				entry->qbss_chan_load, congestion_pct,
@@ -3100,15 +3101,15 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 				bss_mlo_type, edp_11bi_cap_present, rsno,
 				util_scan_entry_rsnxo(entry) ? 1 : 0);
 
-	mlme_nofl_debug("%s score("QDF_MAC_ADDR_FMT" freq %d): rssi %d pcl %d ht %d vht %d he %d bfee %d bw %d band %d cong %d nss %d oce_wan %d oce_ap_pwr %d oce_subnet %d sae_pk %d eht %d security %d ml %d 11bi %d TOTAL %d",
+	mlme_nofl_debug("%s score("QDF_MAC_ADDR_FMT" freq %d): rssi %d pcl %d ht %d vht %d he %d bfee %d bw %d band %d cong %d nss %d oce_wan %d oce_ap_pwr %d oce_subnet %d sae_pk %d eht %d uhr %d security %d ml %d 11bi %d TOTAL %d",
 			IS_LINK_SCORE(ml_flag) ? "Link" : "Candidate",
 			QDF_MAC_ADDR_REF(entry->bssid.bytes),
 			entry->channel.chan_freq,
 			rssi_score, pcl_score, ht_score,
 			vht_score, he_score, beamformee_score, bandwidth_score,
 			band_score, congestion_score, nss_score, oce_wan_score,
-			oce_ap_tx_pwr_score, oce_subnet_id_score,
-			sae_pk_score, eht_score, security_score, ml_score,
+			oce_ap_tx_pwr_score, oce_subnet_id_score, sae_pk_score,
+			eht_score, uhr_score, security_score, ml_score,
 			edp_11bi_score,
 			score);
 
@@ -4079,9 +4080,9 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 	score_config = &mlme_psoc_obj->psoc_cfg.score_config;
 	config = &mlme_psoc_obj->psoc_cfg.phy_config;
 	qdf_copy_macaddr(&bssid_hint, &filter->bssid_hint);
-	mlme_nofl_debug("Self caps: HT %d VHT %d HE %d EHT %d VHT_24Ghz %d BF cap %d bw_above_20_24ghz %d bw_above_20_5ghz %d 2.4G NSS %d 5G NSS %d",
-			config->ht_cap, config->vht_cap,
-			config->he_cap, config->eht_cap, config->vht_24G_cap,
+	mlme_nofl_debug("Self caps: HT %d VHT %d HE %d EHT %d UHR %d VHT_24Ghz %d BF cap %d bw_above_20_24ghz %d bw_above_20_5ghz %d 2.4G NSS %d 5G NSS %d",
+			config->ht_cap, config->vht_cap, config->he_cap,
+			config->eht_cap, config->uhr_cap, config->vht_24G_cap,
 			config->beamformee_cap, config->bw_above_20_24ghz,
 			config->bw_above_20_5ghz, config->vdev_nss_24g,
 			config->vdev_nss_5g);
