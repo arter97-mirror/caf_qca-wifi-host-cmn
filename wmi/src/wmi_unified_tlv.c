@@ -26742,6 +26742,7 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 			WMI_NAN_PEER_PARAMS_CNF_EVENTID;
 	event_ids[wmi_nan_dfs_channel_availability_ind_event_id] =
 				WMI_NAN_DFS_CHANNEL_AVAILABILITY_IND_EVENTID;
+	event_ids[wmi_ndp_channel_info_event_id] = WMI_NDP_CHANNEL_INFO_EVENTID;
 #endif
 #ifdef CONFIG_NO_QMI
 	event_ids[wmi_athdiag_read_write_eventid] =

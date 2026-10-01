@@ -416,6 +416,17 @@ wmi_extract_nan_peer_params_cnf(wmi_unified_t wmi_handle, uint8_t *data,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS wmi_extract_ndp_channel_info(wmi_unified_t wmi_handle,
+				uint8_t *data,
+				struct nan_ndp_channel_info_event *ev)
+{
+	if (wmi_handle->ops->extract_ndp_channel_info)
+		return wmi_handle->ops->extract_ndp_channel_info(wmi_handle,
+							  data, ev);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
 
 #if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)

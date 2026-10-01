@@ -2833,6 +2833,71 @@ static void wmi_nan_attach_schedule_ops_tlv(struct wmi_ops *ops)
 	ops->send_nan_peer_params_cmd = nan_peer_params_cmd_tlv;
 	ops->extract_nan_peer_params_cnf = extract_nan_peer_params_cnf_tlv;
 }
+
+static QDF_STATUS extract_ndp_channel_info_tlv(wmi_unified_t wmi_handle,
+		uint8_t *data, struct nan_ndp_channel_info_event *ev)
+{
+	uint8_t i;
+	WMI_HOST_WLAN_PHY_MODE ch_mode;
+	WMI_NDP_CHANNEL_INFO_EVENTID_param_tlvs *event;
+	wmi_ndp_channel_info_event_fixed_param *fixed_params;
+
+	event = (WMI_NDP_CHANNEL_INFO_EVENTID_param_tlvs *)data;
+	if (!event) {
+		wmi_err("Invalid NDP channel info event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_params = event->fixed_param;
+	if (!fixed_params) {
+		wmi_err("Invalid NDP channel info fixed params");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wmi_debug("WMI_NDP_CHANNEL_INFO_EVENTID received. vdev %d, num_ch: %d",
+		  fixed_params->vdev_id, fixed_params->num_ndp_channels);
+
+	if (fixed_params->num_ndp_channels > event->num_channel_list ||
+	    fixed_params->num_ndp_channels > event->num_nss_list) {
+		wmi_err("NDP Ch count %d greater than Ch list TLV len(%d) or NSS list TLV len(%d)",
+			fixed_params->num_ndp_channels,
+			event->num_channel_list,
+			event->num_nss_list);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	ev->vdev =
+		wlan_objmgr_get_vdev_by_id_from_psoc(wmi_handle->soc->wmi_psoc,
+						     fixed_params->vdev_id,
+						     WLAN_NAN_ID);
+	if (!ev->vdev) {
+		wmi_err("vdev is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	WMI_MAC_ADDR_TO_CHAR_ARRAY(&fixed_params->peer_ndi_macaddr,
+				   ev->peer_ndi_mac_addr.bytes);
+
+	ev->num_channels = fixed_params->num_ndp_channels;
+	if (ev->num_channels > NAN_CH_INFO_MAX_CHANNELS) {
+		wmi_err("too many channels");
+		ev->num_channels = NAN_CH_INFO_MAX_CHANNELS;
+	}
+
+	for (i = 0; i < ev->num_channels; i++) {
+		ev->ch[i].freq = event->channel_list[i].mhz;
+		ev->ch[i].nss = event->nss_list[i];
+		ch_mode = WMI_GET_CHANNEL_MODE(&event->channel_list[i]);
+		ev->ch[i].phymode = ch_mode;
+		ev->ch[i].ch_width = wmi_get_ch_width_from_phy_mode(wmi_handle,
+							     ch_mode);
+		wmi_debug("Freq: %d, ch_mode: %d, nss: %d",
+			  ev->ch[i].freq, ev->ch[i].ch_width,
+			  ev->ch[i].nss);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
 #else
 /**
  * wmi_nan_attach_schedule_ops_tlv() - Stub for NAN schedule ops
@@ -2866,6 +2931,13 @@ void wmi_nan_attach_cluster_info_tlv(wmi_unified_t wmi_handle)
 	ops->extract_nan_cluster_event = extract_nan_cluster_event_tlv;
 }
 
+static void wmi_nan_attach_ndp_channel_info_tlv(wmi_unified_t wmi_handle)
+{
+	struct wmi_ops *ops = wmi_handle->ops;
+
+	ops->extract_ndp_channel_info = extract_ndp_channel_info_tlv;
+}
+
 static void wmi_nan_standard_mode_event_ops(struct wmi_ops *ops)
 {
 	ops->extract_nan_disable_rsp_event = extract_nan_disable_rsp_event_tlv;
@@ -2882,6 +2954,10 @@ void wmi_nan_attach_dw_info_tlv(wmi_unified_t wmi_handle)
 
 static inline
 void wmi_nan_attach_cluster_info_tlv(wmi_unified_t wmi_handle)
+{}
+
+static inline
+void wmi_nan_attach_ndp_channel_info_tlv(wmi_unified_t wmi_handle)
 {}
 
 static inline void wmi_nan_standard_mode_event_ops(struct wmi_ops *ops)
@@ -2913,6 +2989,7 @@ void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 	ops->extract_ndp_host_event = extract_ndp_host_event_tlv;
 	wmi_nan_attach_dw_info_tlv(wmi_handle);
 	wmi_nan_attach_cluster_info_tlv(wmi_handle);
+	wmi_nan_attach_ndp_channel_info_tlv(wmi_handle);
 	wmi_nan_attach_schedule_ops_tlv(ops);
 	wmi_nan_attach_add_func_tlv(wmi_handle);
 }
