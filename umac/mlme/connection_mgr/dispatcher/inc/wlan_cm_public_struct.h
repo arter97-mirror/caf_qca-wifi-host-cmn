@@ -333,6 +333,11 @@ struct wlan_cm_vdev_connect_req {
 	uint8_t rsno_gen_used;
 };
 
+/* Max number of channels for OOQ roam invoke channel list */
+#ifndef CM_ROAM_MAX_CHAN_LIST_LEN
+#define CM_ROAM_MAX_CHAN_LIST_LEN 100
+#endif
+
 /**
  * struct wlan_cm_roam_req - roam req from requester
  * @forced_roaming: Roaming to be done without giving bssid, and channel.
@@ -342,6 +347,10 @@ struct wlan_cm_vdev_connect_req {
  * @prev_bssid: prev AP bssid, given in case supplican want to roam to new BSSID
  * @chan_freq: channel of the AP
  * @crypto: crypto related info
+ * @num_chan: number of channels in chan_freq_list for OOQ roam invoke,
+ *            0 for FASTREASSOC
+ * @chan_freq_list: channel frequency list for OOQ roam invoke,
+ *                 unused when num_chan is 0
  */
 struct wlan_cm_roam_req {
 	uint8_t forced_roaming:1;
@@ -351,6 +360,8 @@ struct wlan_cm_roam_req {
 	struct qdf_mac_addr prev_bssid;
 	uint32_t chan_freq;
 	struct wlan_cm_connect_crypto_info crypto;
+	uint8_t num_chan;
+	qdf_freq_t chan_freq_list[CM_ROAM_MAX_CHAN_LIST_LEN];
 };
 
 /**
