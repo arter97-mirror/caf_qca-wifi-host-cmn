@@ -6590,7 +6590,9 @@ enum qca_wlan_vendor_attr_config {
 	 * the LDPC TX will be updated with this configuration immediately,
 	 * while the LDPC RX configuration update will take place starting from
 	 * the subsequent association attempt.
-	 * 1-Enable, 0-Disable.
+	 * 0 - Disable LDPC (BCC Coding)
+	 * 1 - Enable LDPC (LDPC Coding)
+	 * 2 - Enable 2x LDPC coding (2xLDPC Coding)
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_LDPC = 67,
 
