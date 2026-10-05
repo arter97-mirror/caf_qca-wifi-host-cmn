@@ -74,8 +74,7 @@ dp_tx_mon_flush_ppdu_wq(struct dp_pdev *pdev, struct dp_vdev *vdev)
 		if (!tx_mon_be->post_ppdu_workqueue)
 			continue;
 
-		qdf_cancel_work(&tx_mon_be->post_ppdu_work);
-		qdf_flush_workqueue(0, tx_mon_be->post_ppdu_workqueue);
+		qdf_cancel_work_nosync(&tx_mon_be->post_ppdu_work);
 	}
 }
 #else
