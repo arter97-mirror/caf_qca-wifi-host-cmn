@@ -480,7 +480,8 @@ enum phy_ch_width get_next_lower_bandwidth(enum phy_ch_width ch_width)
 		[CH_WIDTH_5MHZ] = CH_WIDTH_INVALID
 	};
 
-	if (ch_width >= CH_WIDTH_20MHZ && ch_width <= CH_WIDTH_320MHZ)
+	if (ch_width >= CH_WIDTH_20MHZ &&
+	    ch_width < QDF_ARRAY_SIZE(get_next_lower_bw))
 	    return get_next_lower_bw[ch_width];
 	else
 	    return CH_WIDTH_INVALID;
