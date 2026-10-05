@@ -458,7 +458,8 @@ static const enum phy_ch_width next_higher_bw[] = {
 
 enum phy_ch_width reg_get_next_higher_bandwidth(enum phy_ch_width ch_width)
 {
-	if (ch_width >= CH_WIDTH_20MHZ && ch_width <= CH_WIDTH_320MHZ)
+	if (ch_width >= CH_WIDTH_20MHZ &&
+	    ch_width < QDF_ARRAY_SIZE(next_higher_bw))
 	    return next_higher_bw[ch_width];
 	else
 	    return CH_WIDTH_INVALID;
