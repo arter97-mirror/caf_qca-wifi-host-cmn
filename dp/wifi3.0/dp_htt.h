@@ -166,6 +166,18 @@ void htt_htc_pkt_pool_free(struct htt_soc *soc);
 #define HTT_VDEV_STATS_TLV_TX_TQM_BYPASS_PKT_CNT_OFFSET  22
 #define HTT_VDEV_STATS_TLV_TX_TQM_BYPASS_BYTE_CNT_OFFSET 24
 
+/* 4-word fixed header preceding the TLV area */
+#define HTT_VDEV_TXRX_STATS_COMMON_HDR_SIZE 16
+/* Min TLV size (including 4-byte TLV header) required to safely read
+ * all fixed offsets in each tag handler. The +2 accounts for reading a
+ * 64-bit value (2 consecutive uint32_t words) at the highest offset.
+ */
+#define HTT_VDEV_TXRX_STATS_SOC_TLV_MIN_SIZE \
+	((HTT_VDEV_STATS_TLV_SOC_DROP_CNT_OFFSET + 2) * sizeof(uint32_t))
+#define HTT_VDEV_TXRX_STATS_HW_TLV_MIN_SIZE \
+	((HTT_VDEV_STATS_TLV_TX_TQM_BYPASS_BYTE_CNT_OFFSET + 2) * \
+	 sizeof(uint32_t))
+
 #define HTT_VDEV_STATS_GET_INDEX(index) \
 	HTT_VDEV_STATS_TLV_##index##_OFFSET
 

@@ -491,6 +491,21 @@ static inline void hal_tx_ext_desc_set_ip_id(void *desc,
 	HAL_SET_FLD(desc, HAL_TX_MSDU_EXTENSION, IP_IDENTIFICATION) |=
 		((HAL_TX_SM(HAL_TX_MSDU_EXTENSION, IP_IDENTIFICATION, id)));
 }
+
+/**
+ * hal_tx_ext_desc_set_udp_len() - Set UDP length field
+ * @desc: Handle to Tx MSDU Extension Descriptor
+ * @udp_len: UDP length field for the msdu, if uso is enabled
+ *
+ * Return: none
+ */
+static inline void hal_tx_ext_desc_set_udp_len(void *desc,
+					       uint16_t udp_len)
+{
+	HAL_SET_FLD(desc, HAL_TX_MSDU_EXTENSION, UDP_LENGTH) |=
+		((HAL_TX_SM(HAL_TX_MSDU_EXTENSION, UDP_LENGTH, udp_len)));
+}
+
 /**
  * hal_tx_ext_desc_set_buffer() - Set Buffer Pointer and Length for a fragment
  * @desc: Handle to Tx MSDU Extension Descriptor

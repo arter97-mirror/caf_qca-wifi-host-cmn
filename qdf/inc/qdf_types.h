@@ -1415,12 +1415,14 @@ struct qdf_tso_frag_t {
  * @tcp_ipv4_checksum_en: Enable/Disable tcp ipv4 checksum
  * @tcp_ipv6_checksum_en: Enable/Disable tcp ipv6 checksum
  * @partial_checksum_en: Enable/Disable partial checksum
+ * @is_udp: flag to indicate if udp
  * @reserved_3a: rsvd
  * @checksum_offset: checksum offset
  * @reserved_4a: rsvd
  * @payload_start_offset: payload start offset
  * @reserved_4b: rsvd
  * @payload_end_offset: payload end offset
+ * @eit_hdr_len: total length for L2/L3/L4 header
  * @reserved_5: rsvd
  * @tcp_flags_mask: Tcp_flag is inserted into the header based
  * on the mask
@@ -1459,7 +1461,8 @@ struct qdf_tso_flags_t {
 			tcp_ipv4_checksum_en:1,
 			tcp_ipv6_checksum_en:1,
 			partial_checksum_en:1,
-			reserved_3a:10;
+			is_udp:1,
+			reserved_3a:9;
 
 	uint32_t checksum_offset:14,
 			reserved_4a:2,
@@ -1467,7 +1470,8 @@ struct qdf_tso_flags_t {
 			reserved_4b:2;
 
 	uint32_t payload_end_offset:14,
-			reserved_5:18;
+			eit_hdr_len:16,
+			reserved_5:2;
 };
 
 /**

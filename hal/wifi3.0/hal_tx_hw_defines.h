@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -46,6 +47,10 @@
 #define HAL_TX_MSDU_EXTENSION_IP_IDENTIFICATION_OFFSET	0x0000000c
 #define HAL_TX_MSDU_EXTENSION_IP_IDENTIFICATION_LSB	0
 #define HAL_TX_MSDU_EXTENSION_IP_IDENTIFICATION_MASK	0x0000ffff
+
+#define HAL_TX_MSDU_EXTENSION_UDP_LENGTH_OFFSET         0x0000000c
+#define HAL_TX_MSDU_EXTENSION_UDP_LENGTH_LSB            16
+#define HAL_TX_MSDU_EXTENSION_UDP_LENGTH_MASK           0xffff0000
 
 #define HAL_TX_MSDU_EXTENSION_BUF0_PTR_31_0_OFFSET	0x00000018
 #define HAL_TX_MSDU_EXTENSION_BUF0_PTR_31_0_LSB		0

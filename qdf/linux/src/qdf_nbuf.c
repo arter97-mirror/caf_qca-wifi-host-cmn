@@ -4173,31 +4173,39 @@ qdf_export_symbol(__qdf_nbuf_alloc_ppe_ds);
  *
  * @ethproto: ethernet type of the msdu
  * @ip_tcp_hdr_len: ip + tcp length for the msdu
+ * @ip_udp_hdr_len: ip + udp length for the msdu
  * @l2_len: L2 length for the msdu
  * @eit_hdr: pointer to EIT header
  * @eit_hdr_len: EIT header length for the msdu
  * @eit_hdr_dma_map_addr: dma addr for EIT header
  * @tcphdr: pointer to tcp header
+ * @udphdr: pointer to udp header
  * @ipv4_csum_en: ipv4 checksum enable
  * @tcp_ipv4_csum_en: TCP ipv4 checksum enable
  * @tcp_ipv6_csum_en: TCP ipv6 checksum enable
+ * @udp_ipv4_csum_en: UDP ipv4 checksum enable
+ * @udp_ipv6_csum_en: UDP ipv6 checksum enable
  * @ip_id: IP id
  * @tcp_seq_num: TCP sequence number
  *
  * This structure holds the TSO common info that is common
- * across all the TCP segments of the jumbo packet.
+ * across all the TCP/UDP segments of the jumbo packet.
  */
 struct qdf_tso_cmn_seg_info_t {
 	uint16_t ethproto;
 	uint16_t ip_tcp_hdr_len;
+	uint16_t ip_udp_hdr_len;
 	uint16_t l2_len;
 	uint8_t *eit_hdr;
 	uint32_t eit_hdr_len;
 	qdf_dma_addr_t eit_hdr_dma_map_addr;
 	struct tcphdr *tcphdr;
+	struct udphdr *udphdr;
 	uint16_t ipv4_csum_en;
 	uint16_t tcp_ipv4_csum_en;
 	uint16_t tcp_ipv6_csum_en;
+	uint16_t udp_ipv4_csum_en;
+	uint16_t udp_ipv6_csum_en;
 	uint16_t ip_id;
 	uint32_t tcp_seq_num;
 };
@@ -4307,6 +4315,41 @@ static inline void qdf_nbuf_tso_unmap_frag(
 }
 
 /**
+ * __qdf_nbuf_update_uso_ip_id() - Update IP ID for UDP IPv4 GSO packets
+ * @skb: skb buffer
+ * @ip_id: pointer to IP ID to be updated
+ * @num_segs: number of segments
+ *
+ * Update the IP ID for UDP IPv4 GSO packets using ip_select_ident_segs
+ *
+ * Return: None
+ */
+static void __qdf_nbuf_update_uso_ip_id(struct sk_buff *skb,
+					uint16_t *ip_id,
+					uint32_t num_segs)
+{
+	struct iphdr *iph;
+	uint16_t ethproto;
+
+	/* Get ethernet protocol using vlan_get_protocol */
+	ethproto = vlan_get_protocol(skb);
+
+	/* Only update for UDP IPv4 packets */
+	if (ethproto != htons(ETH_P_IP))
+		return;
+
+	iph = ip_hdr(skb);
+	if (!iph)
+		return;
+
+	/* Use ip_select_ident_segs to update IP ID */
+	ip_select_ident_segs(dev_net(skb->dev), skb, NULL, num_segs);
+
+	/* Update the IP ID via pointer */
+	*ip_id = ntohs(iph->id);
+}
+
+/**
  * __qdf_nbuf_get_tso_cmn_seg_info() - get TSO common
  * information
  * @osdev: qdf device handle
@@ -4382,6 +4425,119 @@ static uint8_t __qdf_nbuf_get_tso_cmn_seg_info(qdf_device_t osdev,
 	return 0;
 }
 
+/**
+ * __qdf_nbuf_get_uso_cmn_seg_info() - get USO common
+ * information
+ * @osdev: qdf device handle
+ * @skb: skb buffer
+ * @tso_info: Parameters common to all segments
+ *
+ * Get the USO information that is common across all the UDP
+ * segments of the jumbo packet
+ *
+ * Return: 0 - success 1 - failure
+ */
+static uint8_t __qdf_nbuf_get_uso_cmn_seg_info(
+			qdf_device_t osdev,
+			struct sk_buff *skb,
+			struct qdf_tso_cmn_seg_info_t *tso_info)
+{
+	/* Get ethernet type and ethernet header length */
+	tso_info->ethproto = vlan_get_protocol(skb);
+
+	/* Determine whether this is an IPv4 or IPv6 packet */
+	if (tso_info->ethproto == htons(ETH_P_IP)) { /* IPv4 */
+		/* for IPv4, get the IP ID and enable UDP and IP csum */
+		struct iphdr *ipv4_hdr = ip_hdr(skb);
+
+		tso_info->ip_id = ntohs(ipv4_hdr->id);
+		tso_info->ipv4_csum_en = 1;
+		tso_info->udp_ipv4_csum_en = 1;
+	} else if (tso_info->ethproto == htons(ETH_P_IPV6)) { /* IPv6 */
+		/* for IPv6, enable UDP csum. No IP ID or IP csum */
+		tso_info->udp_ipv6_csum_en = 1;
+	} else {
+		qdf_err("USO: ethertype 0x%x is not supported!",
+			tso_info->ethproto);
+		return 1;
+	}
+	tso_info->l2_len = (skb_network_header(skb) - skb_mac_header(skb));
+	/* get pointer to the ethernet + IP + UDP header and their length */
+	tso_info->eit_hdr = skb->data;
+	tso_info->udphdr = udp_hdr(skb);
+	tso_info->eit_hdr_len = (skb_transport_header(skb)
+			 - skb_mac_header(skb)) + sizeof(struct udphdr);
+	tso_info->eit_hdr_dma_map_addr = qdf_nbuf_tso_map_frag(
+						osdev, tso_info->eit_hdr,
+						tso_info->eit_hdr_len,
+						QDF_DMA_TO_DEVICE);
+	if (qdf_unlikely(!tso_info->eit_hdr_dma_map_addr))
+		return 1;
+
+	if (tso_info->ethproto == htons(ETH_P_IP)) {
+		/* include IPv4 header length for IPV4 (total length) */
+		tso_info->ip_udp_hdr_len =
+			tso_info->eit_hdr_len - tso_info->l2_len;
+	} else if (tso_info->ethproto == htons(ETH_P_IPV6)) {
+		/* exclude IPv6 header length for IPv6 (payload length) */
+		tso_info->ip_udp_hdr_len = sizeof(struct udphdr);
+	}
+
+	TSO_DEBUG("%s eit hdr len %u l2 len %u  skb len %u\n", __func__,
+		  tso_info->eit_hdr_len,
+		  tso_info->l2_len,
+		  skb->len);
+	return 0;
+}
+
+/**
+ * __qdf_nbuf_fill_uso_cmn_seg_info - Init function for each USO nbuf segment
+ *
+ * @curr_seg: Segment whose contents are initialized
+ * @tso_cmn_info: Parameters common to all segments
+ *
+ * Return: None
+ */
+static inline void __qdf_nbuf_fill_uso_cmn_seg_info(
+				struct qdf_tso_seg_elem_t *curr_seg,
+				struct qdf_tso_cmn_seg_info_t *tso_cmn_info)
+{
+	/* Initialize the flags to 0 */
+	memset(&curr_seg->seg, 0x0, sizeof(curr_seg->seg));
+
+	/*
+	 * The following fields remain the same across all segments of
+	 * a jumbo packet
+	 */
+	curr_seg->seg.tso_flags.tso_enable = 1;
+	curr_seg->seg.tso_flags.is_udp = 1;
+	curr_seg->seg.tso_flags.eit_hdr_len =
+						tso_cmn_info->eit_hdr_len;
+	curr_seg->seg.tso_flags.ipv4_checksum_en =
+		tso_cmn_info->ipv4_csum_en;
+	curr_seg->seg.tso_flags.udp_ipv6_checksum_en =
+		tso_cmn_info->udp_ipv6_csum_en;
+	curr_seg->seg.tso_flags.udp_ipv4_checksum_en =
+		tso_cmn_info->udp_ipv4_csum_en;
+
+	curr_seg->seg.tso_flags.ip_id = tso_cmn_info->ip_id;
+	tso_cmn_info->ip_id++;
+
+	/*
+	 * First fragment for each segment always contains the ethernet,
+	 * IP and TCP header
+	 */
+	curr_seg->seg.tso_frags[0].vaddr = tso_cmn_info->eit_hdr;
+	curr_seg->seg.tso_frags[0].length = tso_cmn_info->eit_hdr_len;
+	curr_seg->seg.total_len = curr_seg->seg.tso_frags[0].length;
+	curr_seg->seg.tso_frags[0].paddr = tso_cmn_info->eit_hdr_dma_map_addr;
+
+	TSO_DEBUG("%s %d eit hdr %pK eit_hdr_len %d tso_info->total_len %u\n",
+		  __func__, __LINE__, tso_cmn_info->eit_hdr,
+		  tso_cmn_info->eit_hdr_len,
+		  curr_seg->seg.total_len);
+	qdf_tso_seg_dbg_record(curr_seg, TSOSEG_LOC_FILLCMNSEG);
+}
 
 /**
  * __qdf_nbuf_fill_tso_cmn_seg_info() - Init function for each TSO nbuf segment
@@ -4459,18 +4615,33 @@ uint32_t __qdf_nbuf_get_tso_info(qdf_device_t osdev, struct sk_buff *skb,
 	uint32_t tso_seg_size = skb_shinfo(skb)->gso_size;
 	int j = 0; /* skb fragment index */
 	uint8_t byte_8_align_offset;
+	bool is_uso = false;
 
 	memset(&tso_cmn_info, 0x0, sizeof(tso_cmn_info));
 	total_num_seg = tso_info->tso_num_seg_list;
 	curr_seg = tso_info->tso_seg_list;
 	total_num_seg->num_seg.tso_cmn_num_seg = 0;
 
+	/* Check if this is UDP GSO */
+	is_uso = skb_shinfo(skb)->gso_type & SKB_GSO_UDP_L4;
+
 	byte_8_align_offset = qdf_nbuf_adj_tso_frag(skb);
 
-	if (qdf_unlikely(__qdf_nbuf_get_tso_cmn_seg_info(osdev,
-						skb, &tso_cmn_info))) {
-		qdf_warn("TSO: error getting common segment info");
-		return 0;
+	if (is_uso) {
+		if (qdf_unlikely(__qdf_nbuf_get_uso_cmn_seg_info(
+					osdev, skb, &tso_cmn_info))) {
+			qdf_warn("USO: error getting common segment info");
+			return 0;
+		}
+		/* Update IP ID for UDP IPv4 GSO packets */
+		__qdf_nbuf_update_uso_ip_id(skb, &tso_cmn_info.ip_id,
+					    tso_info->num_segs);
+	} else {
+		if (qdf_unlikely(__qdf_nbuf_get_tso_cmn_seg_info(
+					osdev, skb, &tso_cmn_info))) {
+			qdf_warn("TSO: error getting common segment info");
+			return 0;
+		}
 	}
 
 	/* length of the first chunk of data in the skb */
@@ -4510,17 +4681,23 @@ uint32_t __qdf_nbuf_get_tso_info(qdf_device_t osdev, struct sk_buff *skb,
 		tso_info->num_segs++;
 		total_num_seg->num_seg.tso_cmn_num_seg++;
 
-		__qdf_nbuf_fill_tso_cmn_seg_info(curr_seg,
-						 &tso_cmn_info);
+		if (is_uso)
+			__qdf_nbuf_fill_uso_cmn_seg_info(curr_seg,
+							 &tso_cmn_info);
+		else
+			__qdf_nbuf_fill_tso_cmn_seg_info(curr_seg,
+							 &tso_cmn_info);
 
 		/* If TCP PSH flag is set, set it in the last or only segment */
-		if (num_seg == 1)
+		if (!is_uso && num_seg == 1)
 			curr_seg->seg.tso_flags.psh = tso_cmn_info.tcphdr->psh;
 
 		if (unlikely(skb_proc == 0))
 			return tso_info->num_segs;
 
-		curr_seg->seg.tso_flags.ip_len = tso_cmn_info.ip_tcp_hdr_len;
+		curr_seg->seg.tso_flags.ip_len =
+				is_uso ? tso_cmn_info.ip_udp_hdr_len :
+					 tso_cmn_info.ip_tcp_hdr_len;
 		curr_seg->seg.tso_flags.l2_len = tso_cmn_info.l2_len;
 		/* frag len is added to ip_len in while loop below*/
 
@@ -4537,9 +4714,10 @@ uint32_t __qdf_nbuf_get_tso_info(qdf_device_t osdev, struct sk_buff *skb,
 				curr_seg->seg.num_frags++;
 				skb_proc = skb_proc - tso_frag_len;
 
-				/* increment the TCP sequence number */
+				if (!is_uso)
+					tso_cmn_info.tcp_seq_num +=
+								tso_frag_len;
 
-				tso_cmn_info.tcp_seq_num += tso_frag_len;
 				curr_seg->seg.tso_frags[i].paddr =
 					tso_frag_paddr;
 
@@ -4631,7 +4809,7 @@ uint32_t __qdf_nbuf_get_tso_info(qdf_device_t osdev, struct sk_buff *skb,
 				curr_seg->seg.tso_flags.tcp_seq_num);
 		num_seg--;
 		/* if TCP FIN flag was set, set it in the last segment */
-		if (!num_seg)
+		if (!is_uso && !num_seg)
 			curr_seg->seg.tso_flags.fin = tso_cmn_info.tcphdr->fin;
 
 		qdf_tso_seg_dbg_record(curr_seg, TSOSEG_LOC_GETINFO);
@@ -4723,11 +4901,17 @@ uint32_t __qdf_nbuf_get_tso_num_seg(struct sk_buff *skb)
 	uint8_t skb_nr_frags = skb_shinfo(skb)->nr_frags;
 	uint8_t frags_per_tso = 0;
 	uint32_t skb_frag_len = 0;
-	uint32_t eit_hdr_len = (skb_transport_header(skb)
-			 - skb_mac_header(skb)) + tcp_hdrlen(skb);
+	uint32_t eit_hdr_len = 0;
+	uint16_t l4_hdr_len = 0;
 	skb_frag_t *frag = NULL;
 	int j = 0;
 	uint32_t temp_num_seg = 0;
+
+	/* Check if this is UDP or TCP packet */
+	l4_hdr_len = skb_shinfo(skb)->gso_type & SKB_GSO_UDP_L4 ?
+			sizeof(struct udphdr) : tcp_hdrlen(skb);
+	eit_hdr_len = (skb_transport_header(skb) - skb_mac_header(skb))
+			+ l4_hdr_len;
 
 	/* length of the first chunk of data in the skb minus eit header*/
 	skb_frag_len = skb_headlen(skb) - eit_hdr_len;
@@ -4812,6 +4996,7 @@ uint32_t __qdf_nbuf_get_tso_num_seg(struct sk_buff *skb)
 {
 	uint32_t i, gso_size, tmp_len, num_segs = 0;
 	skb_frag_t *frag = NULL;
+	uint16_t l4_hdr_len = 0;
 
 	/*
 	 * Check if the head SKB or any of frags are allocated in < 0x50000000
@@ -4835,10 +5020,12 @@ uint32_t __qdf_nbuf_get_tso_num_seg(struct sk_buff *skb)
 			goto fail;
 	}
 
-
+	/* Check if this is UDP or TCP packet */
+	l4_hdr_len = skb_shinfo(skb)->gso_type & SKB_GSO_UDP_L4 ?
+			sizeof(struct udphdr) : tcp_hdrlen(skb);
 	gso_size = skb_shinfo(skb)->gso_size;
 	tmp_len = skb->len - ((skb_transport_header(skb) - skb_mac_header(skb))
-			+ tcp_hdrlen(skb));
+			+ l4_hdr_len);
 	while (tmp_len) {
 		num_segs++;
 		if (tmp_len > gso_size)
@@ -4864,6 +5051,7 @@ uint32_t __qdf_nbuf_get_tso_num_seg(struct sk_buff *skb)
 {
 	uint32_t i, gso_size, tmp_len, num_segs = 0;
 	skb_frag_t *frag = NULL;
+	uint16_t l4_hdr_len = 0;
 
 	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
 		frag = &skb_shinfo(skb)->frags[i];
@@ -4872,9 +5060,13 @@ uint32_t __qdf_nbuf_get_tso_num_seg(struct sk_buff *skb)
 			goto fail;
 	}
 
+	/* Check if this is UDP or TCP packet */
+	l4_hdr_len = skb_shinfo(skb)->gso_type & SKB_GSO_UDP_L4 ?
+			sizeof(struct udphdr) : tcp_hdrlen(skb);
+
 	gso_size = skb_shinfo(skb)->gso_size;
 	tmp_len = skb->len - ((skb_transport_header(skb) - skb_mac_header(skb))
-			+ tcp_hdrlen(skb));
+			+ l4_hdr_len);
 	while (tmp_len) {
 		num_segs++;
 		if (tmp_len > gso_size)

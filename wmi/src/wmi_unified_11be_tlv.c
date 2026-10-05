@@ -2867,8 +2867,10 @@ extract_peer_entry_ptqm_migrate_evt_param_tlv(
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (index > param_buf->num_primary_link_peer_migration_status) {
-		wmi_err_rl("Index greater than total peer entries");
+	if (index >= param_buf->num_primary_link_peer_migration_status) {
+		wmi_err_rl("Index %u >= total peer entries %u",
+			   index,
+			   param_buf->num_primary_link_peer_migration_status);
 		return QDF_STATUS_E_FAILURE;
 	}
 

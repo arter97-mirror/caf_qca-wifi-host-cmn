@@ -4581,6 +4581,8 @@ void dp_soc_cfg_attach(struct dp_soc *soc)
 			wlan_cfg_num_tx_comp_rings(soc->wlan_cfg_ctx);
 		soc->num_tcl_data_rings =
 			wlan_cfg_num_tcl_data_rings(soc->wlan_cfg_ctx);
+		soc->num_embedded_tx_paths =
+			soc->wlan_cfg_ctx->num_embedded_tx_paths;
 		soc->num_reo_dest_rings =
 			wlan_cfg_num_reo_dest_rings(soc->wlan_cfg_ctx);
 	}
