@@ -3504,6 +3504,75 @@ err:
 	return status;
 }
 
+static bool
+reg_is_nan_usable_chan_freq_allowed(struct wlan_objmgr_pdev *pdev,
+				    uint32_t freq,
+				    bool allow_sta_peer_scc)
+{
+	struct wlan_objmgr_psoc *psoc;
+	uint32_t sta_freq_list[MAX_NUMBER_OF_CONC_CONNECTIONS] = {0};
+	uint8_t sta_count;
+	uint8_t i;
+
+	if (!wlan_reg_is_dfs_for_freq(pdev, freq))
+		return wlan_is_nan_allowed_on_freq(pdev, freq,
+						   allow_sta_peer_scc);
+
+	if (!allow_sta_peer_scc)
+		return false;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc)
+		return false;
+
+	sta_count = policy_mgr_get_mode_specific_conn_info(
+				psoc, sta_freq_list, NULL, PM_STA_MODE);
+
+	for (i = 0; i < sta_count; i++) {
+		if (sta_freq_list[i] == freq)
+			return wlan_is_nan_allowed_on_freq(
+					pdev, freq, allow_sta_peer_scc);
+	}
+
+	return false;
+}
+
+static QDF_STATUS
+reg_update_nan_usable_chan_list(struct wlan_objmgr_pdev *pdev,
+				struct get_usable_chan_res_params *res_msg,
+				uint32_t band_mask,
+				uint32_t *count,
+				enum supported_6g_pwr_types in_6g_pwr_mode)
+{
+	struct regulatory_channel *chan_list;
+	uint32_t *nan_channels;
+	uint32_t channel_count, nan_count = 0;
+	uint32_t i;
+
+	chan_list = qdf_mem_malloc(NUM_CHANNELS * sizeof(*chan_list));
+	nan_channels = qdf_mem_malloc(NUM_CHANNELS * sizeof(*nan_channels));
+	if (!chan_list || !nan_channels) {
+		qdf_mem_free(chan_list);
+		qdf_mem_free(nan_channels);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	channel_count = reg_get_band_channel_list(pdev, band_mask, chan_list);
+	for (i = 0; i < channel_count; i++) {
+		if (reg_is_nan_usable_chan_freq_allowed(
+				pdev, chan_list[i].center_freq, true))
+			nan_channels[nan_count++] = chan_list[i].center_freq;
+	}
+
+	reg_update_usable_chan_resp(pdev, res_msg, nan_channels,
+				    nan_count, IFTYPE_NAN, band_mask,
+				    count, in_6g_pwr_mode);
+	qdf_mem_free(chan_list);
+	qdf_mem_free(nan_channels);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /**
  * reg_get_usable_channel_con_filter() - Get usable channel with con filter mask
  * @pdev: Pointer to pdev
@@ -3554,11 +3623,9 @@ reg_get_usable_channel_con_filter(struct wlan_objmgr_pdev *pdev,
 						  in_6g_pwr_mode);
 			iface_mode_mask &= ~(1 << IFTYPE_P2P_CLIENT);
 		} else if (iface_mode_mask & 1 << IFTYPE_NAN) {
-			status =
-			reg_update_conn_chan_list(pdev, res_msg,
-						  PM_NAN_DISC_MODE, IFTYPE_NAN,
-						  req_msg.band_mask, count,
-						  in_6g_pwr_mode);
+			status = reg_update_nan_usable_chan_list(pdev, res_msg,
+								 req_msg.band_mask,
+								 count, in_6g_pwr_mode);
 			iface_mode_mask &= ~(1 << IFTYPE_NAN);
 		} else {
 			reg_err("invalid mode");
@@ -3795,8 +3862,8 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 		for (chan_enum = 0; chan_enum < *no_usable_channels;
 		     chan_enum++) {
 			if (iface_mode_mask & (1 << IFTYPE_NAN)) {
-				if (!wlan_is_nan_allowed_on_freq(pdev,
-				     res_msg[chan_enum].freq))
+				if (!reg_is_nan_usable_chan_freq_allowed(pdev,
+				     res_msg[chan_enum].freq, false))
 					res_msg[chan_enum].iface_mode_mask &=
 						~(iface_mode);
 				if (!res_msg[chan_enum].iface_mode_mask)
