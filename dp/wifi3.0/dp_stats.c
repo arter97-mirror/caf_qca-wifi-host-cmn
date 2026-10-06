@@ -8521,6 +8521,12 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 			       pdev->soc->stats.tx.tx_invalid_peer.num);
 		DP_PRINT_STATS("Tx desc freed in non-completion path: %u",
 			       pdev->soc->stats.tx.tx_comp_exception);
+		DP_PRINT_STATS("Tx desc duplicate: %u",
+			       pdev->soc->stats.tx.tx_desc_duplicate);
+		DP_PRINT_STATS("Tx desc unused: %u",
+			       pdev->soc->stats.tx.tx_desc_unused);
+		DP_PRINT_STATS("Tx desc when pdev is down: %u",
+			       pdev->soc->stats.tx.tx_desc_pdev_down);
 		DP_PRINT_STATS("Tx desc force freed: %u",
 			       pdev->soc->stats.tx.tx_comp_force_freed);
 		DP_PRINT_STATS("SW tso pkt cnt: %u",
@@ -11673,7 +11679,8 @@ void dp_tx_update_proto_stats(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	uint8_t field = 0;
 
 	if (!vdev->dp_proto_stats ||
-			qdf_unlikely(qdf_nbuf_is_nonlinear((nbuf))))
+	    vdev->opmode == wlan_op_mode_passthru ||
+	    qdf_unlikely(qdf_nbuf_is_nonlinear((nbuf))))
 		return;
 
 	field = dp_get_l3_protocol_type(NULL, nbuf, NULL, 0);

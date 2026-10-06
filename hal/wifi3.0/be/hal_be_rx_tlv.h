@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -227,6 +227,11 @@ struct rx_pkt_tlvs {
 
 #define HAL_RX_TLV_GET_FLOW_ID_TOEPLITZ(_rx_pkt_tlv) \
 	HAL_RX_MSDU_END(_rx_pkt_tlv).flow_id_toeplitz
+
+#ifdef DRIVER_PASSTHRU_MODE
+#define HAL_RX_TLV_GET_PPDU_START_TS_31_0(_rx_pkt_tlv) \
+	HAL_RX_MSDU_END(_rx_pkt_tlv).ppdu_start_timestamp_31_0
+#endif
 
 #define HAL_RX_TLV_MSDU_LEN_GET(_rx_pkt_tlv)		\
 	HAL_RX_MSDU_END(_rx_pkt_tlv).msdu_length
@@ -944,6 +949,23 @@ static inline uint32_t hal_rx_tlv_get_rssi_be(uint8_t *buf)
 	return rssi;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * hal_rx_tlv_get_ppdu_start_ts_be() - API to get ppdu start timestamp from
+ *  msdu end tlv
+ * @rx_tlv_hdr: pointer to the start of RX PKT TLV header
+ *
+ * Return: lsb 32 bits of ppdu start timestamp
+ */
+
+static inline uint32_t hal_rx_tlv_get_ppdu_start_ts_be(uint8_t *rx_tlv_hdr)
+{
+	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)rx_tlv_hdr;
+
+	return HAL_RX_TLV_GET_PPDU_START_TS_31_0(rx_pkt_tlvs);
+}
+#endif
+
 /**
  * hal_rx_tlv_get_pkt_type_be() - API to get the pkt type from
  *                                rx_msdu_start
@@ -1274,6 +1296,22 @@ static inline uint32_t hal_rx_desc_is_first_msdu_be(void *hw_desc_addr)
 				(struct rx_pkt_tlvs *)hw_desc_addr;
 
 	return HAL_RX_TLV_FIRST_MSDU_GET(rx_pkt_tlvs);
+}
+
+/**
+ * hal_rx_tlv_l3_hdr_padding_set_be() - API to set the l3_header padding
+ *					from rx_msdu_end TLV
+ * @buf: pointer to the start of RX PKT TLV headers
+ * @l3_hdr_pad: L3 header padding value to set in tlvs
+ *
+ * Return: number of l3 header padding bytes
+ */
+static inline void hal_rx_tlv_l3_hdr_padding_set_be(uint8_t *buf,
+						    uint32_t l3_hdr_pad)
+{
+	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
+
+	HAL_RX_TLV_L3_HEADER_PADDING_GET(rx_pkt_tlvs) = l3_hdr_pad;
 }
 
 /**

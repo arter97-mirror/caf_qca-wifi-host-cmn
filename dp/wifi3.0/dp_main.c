@@ -5101,8 +5101,14 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	vdev->tx_encap_type = wlan_cfg_pkt_type(soc->wlan_cfg_ctx);
-	vdev->rx_decap_type = wlan_cfg_pkt_type(soc->wlan_cfg_ctx);
+	if (vdev->opmode != wlan_op_mode_passthru) {
+		vdev->tx_encap_type = wlan_cfg_pkt_type(soc->wlan_cfg_ctx);
+		vdev->rx_decap_type = wlan_cfg_pkt_type(soc->wlan_cfg_ctx);
+	} else {
+		vdev->tx_encap_type = htt_cmn_pkt_type_raw;
+		vdev->rx_decap_type = htt_cmn_pkt_type_raw;
+	}
+
 	vdev->dscp_tid_map_id = 0;
 	vdev->mcast_enhancement_en = 0;
 	vdev->igmp_mcast_enhanc_en = 0;
@@ -5178,6 +5184,9 @@ static inline void dp_vdev_fetch_tx_handler(struct dp_vdev *vdev,
 		 (vdev->opmode == wlan_op_mode_ap)) {
 		ctx->tx = dp_tx_send_vdev_id_check;
 		ctx->tx_fast = dp_tx_send_vdev_id_check;
+	} else if (vdev->opmode == wlan_op_mode_passthru) {
+		ctx->tx = dp_tx_send_passthru;
+		ctx->tx_fast = soc->arch_ops.dp_tx_send_fast;
 	} else {
 		ctx->tx = dp_tx_send;
 		ctx->tx_fast = soc->arch_ops.dp_tx_send_fast;
@@ -6091,6 +6100,7 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 
 	/* initialize the peer_id */
 	peer->peer_id = HTT_INVALID_PEER;
+	peer->ast_idx = CDP_INVALID_PEER_AST_IDX;
 
 	qdf_mem_copy(
 		&peer->mac_addr.raw[0], peer_mac_addr, QDF_MAC_ADDR_SIZE);
@@ -8804,6 +8814,19 @@ dp_set_peer_freq(struct cdp_soc_t *cdp_soc,  uint8_t vdev_id,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline
+void dp_peer_set_assoc_state(struct dp_peer *peer, bool peer_param_assoc_done)
+{
+	peer->is_peer_assoc_done = peer_param_assoc_done;
+}
+#else
+static inline
+void dp_peer_set_assoc_state(struct dp_peer *peer, bool peer_param_assoc_done)
+{
+}
+#endif
+
 /**
  * dp_set_peer_param: function to set parameters in peer
  * @cdp_soc: DP soc handle
@@ -8854,6 +8877,9 @@ static QDF_STATUS dp_set_peer_param(struct cdp_soc_t *cdp_soc,  uint8_t vdev_id,
 		break;
 	case CDP_CONFIG_PEER_DMS:
 		txrx_peer->is_dms = val.cdp_peer_param_dms;
+		break;
+	case CDP_CONFIG_PEER_ASSOC_STATE:
+		dp_peer_set_assoc_state(peer, val.cdp_peer_param_assoc_done);
 		break;
 	default:
 		break;
@@ -9349,6 +9375,19 @@ static QDF_STATUS dp_get_vdev_param(struct cdp_soc_t *cdp_soc, uint8_t vdev_id,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline
+void dp_set_passthru_vdev_freq(struct dp_vdev *vdev, qdf_freq_t freq)
+{
+	vdev->passthru_freq = freq;
+}
+#else
+static inline
+void dp_set_passthru_vdev_freq(struct dp_vdev *vdev, qdf_freq_t freq)
+{
+}
+#endif
+
 /**
  * dp_set_vdev_param() - function to set parameters in vdev
  * @cdp_soc: DP soc handle
@@ -9543,6 +9582,11 @@ dp_set_vdev_param(struct cdp_soc_t *cdp_soc, uint8_t vdev_id,
 		vdev->eapol_over_control_port_disable =
 				val.cdp_eapol_over_control_port_disable;
 		break;
+	case CDP_VDEV_SET_PASSTHRU_FREQ:
+		if (vdev->opmode == wlan_op_mode_passthru)
+			dp_set_passthru_vdev_freq(vdev,
+						  val.cdp_passthru_vdev_freq);
+		break;
 	default:
 		break;
 	}
@@ -9694,6 +9738,18 @@ dp_rx_peer_metadata_ver_update(struct dp_soc *soc, uint8_t peer_md_ver)
 				HTT_RX_PEER_META_DATA_V1A_ML_PEER_VALID_S;
 		soc->htt_mld_peer_valid_m =
 				HTT_RX_PEER_META_DATA_V1A_ML_PEER_VALID_M;
+		soc->htt_logical_link_id_s =
+				HTT_RX_PEER_META_DATA_V1A_LOGICAL_LINK_ID_S;
+		soc->htt_logical_link_id_m =
+				HTT_RX_PEER_META_DATA_V1A_LOGICAL_LINK_ID_M;
+		soc->htt_opt_dp_ctrl_refill_s =
+				HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_S;
+		soc->htt_opt_dp_ctrl_refill_m =
+				HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_M;
+		soc->htt_passthru_pkt_s =
+				HTT_RX_PEER_META_DATA_V1A_PASSTHRU_PKT_S;
+		soc->htt_passthru_pkt_m =
+				HTT_RX_PEER_META_DATA_V1A_PASSTHRU_PKT_M;
 		break;
 	case 3: /* htt_rx_peer_metadata_v1b */
 		soc->htt_peer_id_s = HTT_RX_PEER_META_DATA_V1B_PEER_ID_S;
@@ -9712,6 +9768,19 @@ dp_rx_peer_metadata_ver_update(struct dp_soc *soc, uint8_t peer_md_ver)
 
 	soc->rx_peer_metadata_ver = peer_md_ver;
 }
+
+#ifdef DRIVER_PASSTHRU_MODE
+static void dp_set_passthru_ampdu_feature(struct dp_soc *soc,
+					  bool passthru_ampdu_support)
+{
+	soc->features.passthru_ampdu_support = passthru_ampdu_support;
+}
+#else
+static inline void dp_set_passthru_ampdu_feature(struct dp_soc *soc,
+						 bool passthru_ampdu_support)
+{
+}
+#endif
 
 /**
  * dp_set_psoc_param: function to set parameters in psoc
@@ -9866,6 +9935,10 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 			val.cdp_dyn_resource_mgr_support;
 		dp_info("Dynamic resource manager support: %u",
 			soc->features.dyn_resource_mgr_support);
+		break;
+	case CDP_CFG_PASSTHRU_AMPDU_SUPPORT:
+		dp_set_passthru_ampdu_feature(soc,
+					      val.cdp_passthru_ampdu_support);
 		break;
 	default:
 		break;

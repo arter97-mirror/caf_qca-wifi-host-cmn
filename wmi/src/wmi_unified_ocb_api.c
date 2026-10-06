@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -48,16 +49,6 @@ QDF_STATUS wmi_unified_ocb_set_utc_time_cmd(struct wmi_unified *wmi_hdl,
 {
 	if (wmi_hdl->ops->send_ocb_set_utc_time_cmd)
 		return wmi_hdl->ops->send_ocb_set_utc_time_cmd(wmi_hdl, utc);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_ocb_get_tsf_timer(struct wmi_unified *wmi_hdl,
-					 struct ocb_get_tsf_timer_param *req)
-{
-	if (wmi_hdl->ops->send_ocb_get_tsf_timer_cmd)
-		return wmi_hdl->ops->send_ocb_get_tsf_timer_cmd(wmi_hdl,
-								req->vdev_id);
 
 	return QDF_STATUS_E_FAILURE;
 }

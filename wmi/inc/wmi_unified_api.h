@@ -47,7 +47,7 @@
 #ifdef WLAN_SUPPORT_GREEN_AP
 #include "wlan_green_ap_api.h"
 #endif
-#ifdef WLAN_FEATURE_DSRC
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
 #include "wlan_ocb_public_structs.h"
 #endif
 #ifdef WLAN_SUPPORT_TWT
@@ -5434,5 +5434,78 @@ QDF_STATUS wmi_unified_cached_scan_report_cmd_send(wmi_unified_t wmi_handle);
 void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
 					       void *ev_data,
 					       uint32_t data_len);
+#endif
+
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * wmi_unified_send_vdev_ch_hop_sched_cmd() - send channel hopping schedule req
+ * @wmi_handle: pointer to the wmi handle
+ * @params: request parameters
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
+				       struct vdev_ch_hop_sched_params *params);
+
+/**
+ * wmi_unified_vdev_get_chan_hop_status() - Send channel hop status request
+ * @wmi_handle: wmi handle
+ * @req: Request parameters containing vdev_id
+ *
+ * Send WMI command to request channel hopping status from firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS
+wmi_unified_vdev_get_chan_hop_status(struct wmi_unified *wmi_handle,
+				     struct vdev_chan_hop_status_req *req);
+
+/**
+ * wmi_extract_vdev_chan_hop_status() - extract vdev channel hop status
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @response: pointer to hold channel hop status response
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_vdev_chan_hop_status(struct wmi_unified *wmi_handle,
+				 void *evt_buf,
+				 struct vdev_chan_hop_status_response *response);
+#else
+static inline QDF_STATUS
+wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
+				       struct vdev_ch_hop_sched_params *params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wmi_unified_vdev_get_chan_hop_status(struct wmi_unified *wmi_handle,
+				     struct vdev_chan_hop_status_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wmi_extract_vdev_chan_hop_status(struct wmi_unified *wmi_handle,
+				 void *evt_buf,
+				 struct vdev_chan_hop_status_response *response)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
+
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
+/**
+ * wmi_unified_ocb_get_tsf_timer() - get ocb tsf timer val
+ * @wmi_handle: pointer to the wmi handle
+ * @req: request for tsf timer
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_ocb_get_tsf_timer(struct wmi_unified *wmi_handle,
+					 struct ocb_get_tsf_timer_param *req);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

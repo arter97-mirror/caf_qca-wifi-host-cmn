@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -74,6 +74,8 @@
 
 /* METADATA used for wakeup triggers, specifically for Standby modes */
 #define CDP_STANDBY_METADATA 5588
+
+#define CDP_INVALID_PEER_AST_IDX 0xFFFF
 
 /* Options for Dump Statistics */
 #define CDP_HDD_STATS               0
@@ -542,12 +544,18 @@ enum ol_txrx_peer_state {
  * @peer_id: Peer ID
  * @state: peer state
  * @mld_peer: whether is mld peer
+ * @is_peer_assoc_done: peer assoc state
+ * @ast_idx: peer ast index
  */
 struct cdp_peer_output_param {
 	uint8_t vdev_id;
 	uint16_t peer_id;
 	enum ol_txrx_peer_state state;
 	bool mld_peer;
+#ifdef DRIVER_PASSTHRU_MODE
+	uint8_t is_peer_assoc_done;
+	uint16_t ast_idx;
+#endif
 };
 
 /**
@@ -771,6 +779,7 @@ struct cdp_tx_exception_metadata {
  * @wlan_op_mode_monitor: Monitor mode
  * @wlan_op_mode_ocb: OCB mode
  * @wlan_op_mode_ndi: NDI mode
+ * @wlan_op_mode_passthru: Passthrough mode
  */
 enum wlan_op_mode {
 	wlan_op_mode_unknown,
@@ -780,6 +789,7 @@ enum wlan_op_mode {
 	wlan_op_mode_monitor,
 	wlan_op_mode_ocb,
 	wlan_op_mode_ndi,
+	wlan_op_mode_passthru,
 };
 
 /**
@@ -1370,6 +1380,7 @@ struct cdp_soc_t {
  * @CDP_CONFIG_PEER_DMS: Dms capability of peer
  * @CDP_CONFIG_TX_PKT_INFO: TX packet count
  * @CDP_CONFIG_RX_PKT_INFO: RX packet count
+ * @CDP_CONFIG_PEER_ASSOC_STATE: set peer assoc state
  */
 enum cdp_peer_param_type {
 	CDP_CONFIG_NAWDS,
@@ -1381,6 +1392,7 @@ enum cdp_peer_param_type {
 	CDP_CONFIG_PEER_DMS,
 	CDP_CONFIG_TX_PKT_INFO,
 	CDP_CONFIG_RX_PKT_INFO,
+	CDP_CONFIG_PEER_ASSOC_STATE,
 };
 
 /**
@@ -1468,6 +1480,7 @@ enum cdp_pdev_param_type {
  * @cdp_peer_param_in_twt: in TWT session or not
  * @cdp_peer_param_nac: Enable nac
  * @cdp_peer_param_freq: Peer frequency
+ * @cdp_peer_param_assoc_done: peer assoc param
  *
  * @cdp_vdev_param_nawds: set nawds enable/disable
  * @cdp_vdev_param_mcast_en: enable/disable multicast enhancement
@@ -1496,6 +1509,7 @@ enum cdp_pdev_param_type {
  * @cdp_vdev_param_mon_freq: set monitor frequency
  * @cdp_vdev_param_monitor_chan: monitor channel
  * @cdp_vdev_paran_wds_ext_ap_bridge: enable/disable ap_bridge for wds_ext peers
+ * @cdp_passthru_vdev_freq: passthru vdev frequency
  *
  * @cdp_pdev_param_dbg_snf: Enable debug sniffer feature
  * @cdp_pdev_param_bpr_enable: Enable bcast probe feature
@@ -1568,6 +1582,7 @@ enum cdp_pdev_param_type {
  * @cdp_tx_vdev_nss_support: Vdev Tx NSS report support
  * @pkt_info.peer_id: ID of the peer
  * @pkt_info.pkts: packet count
+ * @cdp_passthru_ampdu_support: passthru ampdu support
  */
 typedef union cdp_config_param_t {
 	/* peer params */
@@ -1577,6 +1592,7 @@ typedef union cdp_config_param_t {
 	uint8_t cdp_peer_param_nac;
 	bool cdp_peer_param_in_twt;
 	uint32_t cdp_peer_param_freq;
+	uint8_t cdp_peer_param_assoc_done;
 
 	/* vdev params */
 	bool cdp_vdev_param_wds;
@@ -1611,6 +1627,7 @@ typedef union cdp_config_param_t {
 	qdf_freq_t cdp_vdev_param_mon_freq;
 	int cdp_vdev_param_monitor_chan;
 	bool cdp_vdev_paran_wds_ext_ap_bridge;
+	qdf_freq_t cdp_passthru_vdev_freq;
 
 	/* pdev params */
 	bool cdp_pdev_param_cptr_latcy;
@@ -1701,6 +1718,7 @@ typedef union cdp_config_param_t {
 		struct cdp_pkt_info pkts;
 	} pkt_info;
 	bool cdp_dyn_resource_mgr_support;
+	bool cdp_passthru_ampdu_support;
 } cdp_config_param_type;
 
 /**
@@ -1798,6 +1816,7 @@ enum cdp_pdev_bpr_param {
  * @CDP_MONITOR_CHANNEL: monitor channel
  * @CDP_MONITOR_FREQUENCY: monitor frequency
  * @CDP_EAPOL_OVER_CONTROL_PORT_DISABLE: Disable eapol over control port
+ * @CDP_VDEV_SET_PASSTHRU_FREQ: set passthru vdev frequency
  */
 enum cdp_vdev_param_type {
 	CDP_ENABLE_NAWDS,
@@ -1853,6 +1872,7 @@ enum cdp_vdev_param_type {
 	CDP_MONITOR_CHANNEL,
 	CDP_MONITOR_FREQUENCY,
 	CDP_EAPOL_OVER_CONTROL_PORT_DISABLE,
+	CDP_VDEV_SET_PASSTHRU_FREQ,
 };
 
 /**
@@ -1891,6 +1911,7 @@ enum cdp_vdev_param_type {
  * @CDP_SAWF_MSDUQ_RECLAIM_SUPPORT: To initiate msduq reclaim related functions
  * @CDP_VDEV_TX_NSS_SUPPORT: FW Support vdev Tx NSS command
  * @CDP_DYN_RESOURCE_MGR_SUPPORT: Dynamic RX buffer allocation support
+ * @CDP_CFG_PASSTHRU_AMPDU_SUPPORT: Passthru ampdu support
  */
 enum cdp_psoc_param_type {
 	CDP_ENABLE_RATE_STATS,
@@ -1930,6 +1951,7 @@ enum cdp_psoc_param_type {
 #endif
 	CDP_VDEV_TX_NSS_SUPPORT,
 	CDP_DYN_RESOURCE_MGR_SUPPORT,
+	CDP_CFG_PASSTHRU_AMPDU_SUPPORT,
 };
 
 #ifdef CONFIG_AP_PLATFORM
@@ -2137,6 +2159,16 @@ enum cdp_stat_update_type {
 	UPDATE_VDEV_STATS = 1,
 	UPDATE_PDEV_STATS = 2,
 	UPDATE_VDEV_STATS_MLD = 3,
+};
+
+/**
+ * enum cdp_haps_state - Different HAPS states
+ * @STATE_UNPAUSE: unpause state
+ * @STATE_PAUSE: pause state
+ */
+enum cdp_haps_state {
+	STATE_UNPAUSE = 0,
+	STATE_PAUSE
 };
 
 /**

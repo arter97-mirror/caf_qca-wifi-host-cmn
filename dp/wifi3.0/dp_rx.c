@@ -1170,9 +1170,56 @@ free_descs:
 
 qdf_export_symbol(__dp_rx_buffers_replenish);
 
+#ifdef DRIVER_PASSTHRU_MODE
+#define DP_NORMALIZED_NOISE_FLOOR (-96)
+#define DP_PPDU_START_TS_LSHIFT_VAL 10
+#define DP_PPDU_START_TS_CLK_HZ 960
+
+int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf,
+			       uint8_t *rx_pkt_tlvs)
+{
+	struct mon_rx_status rx_status = {0};
+	struct cdp_tid_rx_stats tid_stats;
+
+	rx_status.tsft = hal_rx_tlv_get_ppdu_start_ts(soc->hal_soc,
+						      rx_pkt_tlvs);
+	rx_status.tsft = (rx_status.tsft << DP_PPDU_START_TS_LSHIFT_VAL) /
+			 DP_PPDU_START_TS_CLK_HZ;
+	rx_status.rs_fcs_err = hal_rx_tlv_mpdu_fcs_err_get(soc->hal_soc,
+							   rx_pkt_tlvs);
+	rx_status.mon_fcs_cap = 1;
+	rx_status.rssi_comb = hal_rx_tlv_get_user_rssi(soc->hal_soc,
+						       rx_pkt_tlvs);
+	rx_status.chan_noise_floor = DP_NORMALIZED_NOISE_FLOOR;
+	rx_status.nr_ant = hal_rx_msdu_start_nss_get(soc->hal_soc,
+						     rx_pkt_tlvs);
+	rx_status.chan_freq = vdev->passthru_freq;
+
+	rx_status.preamble_type = hal_rx_tlv_get_pkt_type(soc->hal_soc,
+							  rx_pkt_tlvs);
+	if (rx_status.preamble_type != HAL_DOT11B)
+		rx_status.ofdm_flag = 1;
+	else
+		rx_status.cck_flag = 1;
+
+	qdf_nbuf_update_radiotap(&rx_status, nbuf, qdf_nbuf_headroom(nbuf));
+
+	if (txrx_peer)
+		dp_rx_msdu_stats_update(soc, nbuf, rx_pkt_tlvs, txrx_peer, 0,
+					&tid_stats, 0);
+
+	if (vdev->osif_rx)
+		vdev->osif_rx(vdev->osif_vdev, nbuf);
+
+	return 0;
+}
+#endif
+
 void
 dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
-		  struct dp_txrx_peer *txrx_peer, uint8_t link_id)
+		  struct dp_txrx_peer *txrx_peer, uint8_t link_id,
+		  uint8_t *rx_pkt_tlvs)
 {
 	qdf_nbuf_t deliver_list_head = NULL;
 	qdf_nbuf_t deliver_list_tail = NULL;
@@ -1182,12 +1229,27 @@ dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
 	while (nbuf) {
 		qdf_nbuf_t next = qdf_nbuf_next(nbuf);
 
+		if (vdev->opmode == wlan_op_mode_passthru) {
+			if (next)
+				qdf_nbuf_set_next(nbuf, NULL);
+
+			dp_rx_deliver_raw_passthru(vdev->pdev->soc, vdev,
+						   txrx_peer, nbuf,
+						   rx_pkt_tlvs);
+
+			if (next)
+				goto next_nbuf;
+
+			return;
+		}
+
 		DP_RX_LIST_APPEND(deliver_list_head, deliver_list_tail, nbuf);
 
 		DP_STATS_INC(vdev->pdev, rx_raw_pkts, 1);
 		DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.raw, 1,
 					      qdf_nbuf_len(nbuf), link_id);
 
+next_nbuf:
 		nbuf = next;
 	}
 
@@ -1686,12 +1748,6 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 
 	wh = (struct ieee80211_frame *)rx_pkt_hdr;
 
-	if (!DP_FRAME_IS_DATA(wh)) {
-		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_DP,
-				   "only for data frames");
-		goto free;
-	}
-
 	nbuf_len = qdf_nbuf_len(mpdu);
 	if (nbuf_len < sizeof(struct ieee80211_frame)) {
 		dp_rx_info_rl("%pK: Invalid nbuf length: %u", soc, nbuf_len);
@@ -1706,10 +1762,26 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 
 	qdf_spin_lock_bh(&pdev->vdev_list_lock);
 	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
-		if (qdf_mem_cmp(wh->i_addr1, vdev->mac_addr.raw,
+		if (vdev->opmode != wlan_op_mode_passthru &&
+		    qdf_mem_cmp(wh->i_addr1, vdev->mac_addr.raw,
 				QDF_MAC_ADDR_SIZE) == 0) {
 			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 			goto out;
+		} else if (vdev->opmode == wlan_op_mode_passthru) {
+			uint32_t l3_hdr_pad;
+
+			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
+
+			l3_hdr_pad =
+				hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc,
+								   rx_tlv_hdr);
+
+			dp_rx_skip_tlvs(soc, mpdu, l3_hdr_pad);
+			if (dp_rx_deliver_raw_passthru(soc, vdev, NULL, mpdu,
+						       rx_tlv_hdr))
+				goto free;
+			else
+				return 0;
 		}
 	}
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
@@ -1720,6 +1792,12 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 	}
 
 out:
+	if (!DP_FRAME_IS_DATA(wh)) {
+		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_DP,
+				   "only for data frames");
+		goto free;
+	}
+
 	if (vdev->opmode == wlan_op_mode_ap) {
 		peer = dp_peer_find_hash_find(soc, wh->i_addr2, 0,
 					      vdev->vdev_id,
@@ -1890,26 +1968,20 @@ static inline uint32_t dp_get_l3_hdr_pad_len(struct dp_soc *soc,
 	return l3_hdr_pad;
 }
 
-qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
+qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs)
 {
 	qdf_nbuf_t parent, frag_list, frag_tail, next = NULL;
 	uint16_t frag_list_len = 0;
 	uint16_t mpdu_len;
 	bool last_nbuf;
 	uint32_t l3_hdr_pad_offset = 0;
-
-	/*
-	 * Use msdu len got from REO entry descriptor instead since
-	 * there is case the RX PKT TLV is corrupted while msdu_len
-	 * from REO descriptor is right for non-raw RX scatter msdu.
-	 */
-	mpdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
+	uint8_t *parent_tlvs;
 
 	/*
 	 * If MSDU length of the first fragment is zero, need to
 	 * use the length of the last fragment to overwrite.
 	 */
-	if (!mpdu_len) {
+	if (!QDF_NBUF_CB_RX_PKT_LEN(nbuf)) {
 		frag_tail = nbuf;
 		while (frag_tail && qdf_nbuf_is_rx_chfrag_cont(frag_tail))
 			frag_tail = frag_tail->next;
@@ -1918,6 +1990,7 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 			QDF_NBUF_CB_RX_PKT_LEN(nbuf) =
 			    QDF_NBUF_CB_RX_PKT_LEN(frag_tail);
 	}
+	mpdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
 	/*
 	 * this is a case where the complete msdu fits in one single nbuf.
 	 * in this case HW sets both start and end bit and we only need to
@@ -1944,6 +2017,18 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	nbuf = nbuf->next;
 
 	/*
+	 * Delivering packet via invalid peer path uses parent nbuf tlvs
+	 * to find the l3_hdr_pad value. Since the MSDU_END tlv is valid
+	 * only for the last msdu, set the correct value in the parent
+	 * nbuf tlvs for referencing later.
+	 */
+	if (!skip_tlvs) {
+		parent_tlvs = qdf_nbuf_data(parent);
+		hal_rx_msdu_end_l3_hdr_padding_set(soc->hal_soc, parent_tlvs,
+						   l3_hdr_pad_offset);
+	}
+
+	/*
 	 * set the start bit in the first nbuf we encounter with continuation
 	 * bit set. This has the proper mpdu length set as it is the first
 	 * msdu of the mpdu. this becomes the parent nbuf and the subsequent
@@ -1965,8 +2050,10 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	 */
 	if (last_nbuf) {
 		DP_STATS_INC(soc, rx.err.msdu_continuation_err, 1);
-		qdf_nbuf_pull_head(parent,
-				   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
+		if (skip_tlvs)
+			qdf_nbuf_pull_head(parent,
+					   soc->rx_pkt_tlv_size +
+					   l3_hdr_pad_offset);
 		return parent;
 	}
 
@@ -1996,9 +2083,39 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	qdf_nbuf_append_ext_list(parent, frag_list, frag_list_len);
 	parent->next = next;
 
-	qdf_nbuf_pull_head(parent,
-			   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
+	if (skip_tlvs)
+		qdf_nbuf_pull_head(parent,
+				   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
 	return parent;
+}
+
+/**
+ * dp_rx_get_last_msdu_tlv() - get rx_pkt_tlvs pointer of the last fragment
+ *                             of a (possibly scatter-gathered) MSDU
+ * @soc: datapath soc handle
+ * @parent: head nbuf as returned by dp_rx_sg_create(), or a non-SG nbuf
+ * @first_tlv: rx_pkt_tlvs pointer of @parent (the first/head fragment)
+ *
+ * dp_rx_sg_create() pulls each inner fragment's TLV header off via
+ * qdf_nbuf_pull_head() while building the frag_list, so by the time it
+ * returns, qdf_nbuf_data() on those fragments no longer points at their
+ * TLVs. Reconstruct the last fragment's TLV pointer by walking the ext
+ * list and backing up over the pulled header -- the underlying buffer
+ * memory itself was not moved or freed.
+ *
+ * Return: rx_pkt_tlvs pointer of the last fragment, or @first_tlv if
+ *         @parent is not scatter-gathered
+ */
+static inline uint8_t *
+dp_rx_get_last_msdu_tlv(struct dp_soc *soc, qdf_nbuf_t parent,
+			uint8_t *first_tlv)
+{
+	qdf_nbuf_t last = qdf_nbuf_get_ext_list(parent);
+
+	while (qdf_nbuf_next(last))
+		last = qdf_nbuf_next(last);
+
+	return qdf_nbuf_data(last) - soc->rx_pkt_tlv_size;
 }
 
 #ifdef DP_RX_SG_FRAME_SUPPORT
@@ -2634,7 +2751,10 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
  *
  * @soc: datapath soc handle
  * @nbuf: received msdu buffer
- * @rx_tlv_hdr: rx tlv header
+ * @mpdu_tlv_hdr: rx tlv header of the first (head) fragment -- always
+ *                valid for mpdu_start derived fields (e.g. ampdu_flag)
+ * @stats_tlv_hdr: rx tlv header resolved via hal_rx_msdu_stats_tlv_resolve()
+ *                 -- valid for msdu_start/msdu_end derived stats fields
  * @txrx_peer: datapath txrx_peer handle
  * @link_id: link id on which the packet is received
  *
@@ -2642,7 +2762,8 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
  */
 static inline
 void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
-				  uint8_t *rx_tlv_hdr,
+				  uint8_t *mpdu_tlv_hdr,
+				  uint8_t *stats_tlv_hdr,
 				  struct dp_txrx_peer *txrx_peer,
 				  uint8_t link_id)
 {
@@ -2654,19 +2775,19 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	 * TODO - For KIWI this field is present in ring_desc
 	 * Try to use ring desc instead of tlv.
 	 */
-	is_ampdu = hal_rx_mpdu_info_ampdu_flag_get(soc->hal_soc, rx_tlv_hdr);
+	is_ampdu = hal_rx_mpdu_info_ampdu_flag_get(soc->hal_soc, mpdu_tlv_hdr);
 	DP_PEER_EXTD_STATS_INCC(txrx_peer, rx.ampdu_cnt, 1, is_ampdu, link_id);
 	DP_PEER_EXTD_STATS_INCC(txrx_peer, rx.non_ampdu_cnt, 1, !(is_ampdu),
 				link_id);
 
-	sgi = hal_rx_tlv_sgi_get(soc->hal_soc, rx_tlv_hdr);
-	mcs = hal_rx_tlv_rate_mcs_get(soc->hal_soc, rx_tlv_hdr);
+	sgi = hal_rx_tlv_sgi_get(soc->hal_soc, stats_tlv_hdr);
+	mcs = hal_rx_tlv_rate_mcs_get(soc->hal_soc, stats_tlv_hdr);
 	tid = qdf_nbuf_get_tid_val(nbuf);
-	bw = hal_rx_tlv_bw_get(soc->hal_soc, rx_tlv_hdr);
+	bw = hal_rx_tlv_bw_get(soc->hal_soc, stats_tlv_hdr);
 	reception_type = hal_rx_msdu_start_reception_type_get(soc->hal_soc,
-							      rx_tlv_hdr);
-	nss = hal_rx_msdu_start_nss_get(soc->hal_soc, rx_tlv_hdr);
-	pkt_type = hal_rx_tlv_get_pkt_type(soc->hal_soc, rx_tlv_hdr);
+							      stats_tlv_hdr);
+	nss = hal_rx_msdu_start_nss_get(soc->hal_soc, stats_tlv_hdr);
+	pkt_type = hal_rx_tlv_get_pkt_type(soc->hal_soc, stats_tlv_hdr);
 	/* do HW to SW pkt type conversion */
 	pkt_type = (pkt_type >= HAL_DOT11_MAX ? DOT11_MAX :
 		    hal_2_dp_pkt_type_map[pkt_type]);
@@ -2703,10 +2824,10 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	DP_PEER_EXTD_STATS_INC(txrx_peer, rx.sgi_count[sgi], 1, link_id);
 	DP_PEER_PER_PKT_STATS_INCC(txrx_peer, rx.err.mic_err, 1,
 				   hal_rx_tlv_mic_err_get(soc->hal_soc,
-				   rx_tlv_hdr), link_id);
+				   stats_tlv_hdr), link_id);
 	DP_PEER_PER_PKT_STATS_INCC(txrx_peer, rx.err.decrypt_err, 1,
 				   hal_rx_tlv_decrypt_err_get(soc->hal_soc,
-				   rx_tlv_hdr), link_id);
+				   stats_tlv_hdr), link_id);
 
 	DP_PEER_EXTD_STATS_INC(txrx_peer, rx.wme_ac_type[TID_TO_WME_AC(tid)], 1,
 			       link_id);
@@ -2719,13 +2840,14 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 				       rx.pkt_type[pkt_type].mcs_count[dst_mcs_idx],
 				       1, link_id);
 
-	dp_rx_rates_stats_update(soc, nbuf, rx_tlv_hdr, txrx_peer,
+	dp_rx_rates_stats_update(soc, nbuf, stats_tlv_hdr, txrx_peer,
 				 sgi, mcs, nss, bw, pkt_type, link_id);
 }
 #else
 static inline
 void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
-				  uint8_t *rx_tlv_hdr,
+				  uint8_t *mpdu_tlv_hdr,
+				  uint8_t *stats_tlv_hdr,
 				  struct dp_txrx_peer *txrx_peer,
 				  uint8_t link_id)
 {
@@ -2774,6 +2896,7 @@ void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	uint8_t enh_flag;
 	qdf_ether_header_t *eh;
 	uint16_t msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
+	uint8_t *stats_tlv_hdr = rx_tlv_hdr;
 
 	dp_rx_msdu_stats_update_prot_cnts(vdev, nbuf, txrx_peer);
 	is_not_amsdu = qdf_nbuf_is_rx_chfrag_start(nbuf) &
@@ -2807,7 +2930,22 @@ void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	txrx_peer->stats[link_id].per_pkt_stats.rx.last_rx_ts =
 							qdf_system_ticks();
 
-	dp_rx_msdu_extd_stats_update(soc, nbuf, rx_tlv_hdr,
+	/*
+	 * For a scatter-gathered MSDU, msdu_start/msdu_end derived stats
+	 * fields may only be valid on a different fragment than rx_tlv_hdr
+	 * (which is always the head fragment). Resolve the correct TLV
+	 * pointer per target before reading those fields.
+	 */
+	if (qdf_unlikely(qdf_nbuf_get_ext_list(nbuf))) {
+		uint8_t *last_tlv = dp_rx_get_last_msdu_tlv(soc, nbuf,
+							    rx_tlv_hdr);
+
+		stats_tlv_hdr = hal_rx_msdu_stats_tlv_resolve(soc->hal_soc,
+							      rx_tlv_hdr,
+							      last_tlv);
+	}
+
+	dp_rx_msdu_extd_stats_update(soc, nbuf, rx_tlv_hdr, stats_tlv_hdr,
 				     txrx_peer, link_id);
 }
 
@@ -3070,9 +3208,11 @@ void dp_rx_skip_tlvs(struct dp_soc *soc, qdf_nbuf_t nbuf, uint32_t l3_padding)
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 
 #ifdef DP_RX_DROP_RAW_FRM
-bool dp_rx_is_raw_frame_dropped(qdf_nbuf_t nbuf)
+bool dp_rx_is_raw_frame_dropped(struct dp_vdev *vdev, qdf_nbuf_t nbuf)
 {
 	if (qdf_nbuf_is_raw_frame(nbuf)) {
+		if (vdev && vdev->opmode == wlan_op_mode_passthru)
+			return false;
 		dp_rx_nbuf_free(nbuf);
 		return true;
 	}

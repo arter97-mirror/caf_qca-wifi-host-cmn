@@ -113,6 +113,9 @@ wlan_util_vdev_get_cdp_txrx_opmode(struct wlan_objmgr_vdev *vdev)
 	case QDF_NDI_MODE:
 		cdp_txrx_opmode = wlan_op_mode_ndi;
 		break;
+	case QDF_PASSTHRU_MODE:
+		cdp_txrx_opmode = wlan_op_mode_passthru;
+		break;
 	default:
 		cdp_txrx_opmode = wlan_op_mode_unknown;
 	};

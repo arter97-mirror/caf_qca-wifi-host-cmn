@@ -404,22 +404,27 @@ void dp_tx_process_htt_completion_be(struct dp_soc *soc,
 		ts.peer_id = HTT_INVALID_PEER;
 		ts.tid = HTT_INVALID_TID;
 	}
-	txrx_peer = dp_txrx_peer_get_ref_by_id(soc, ts.peer_id,
-					       &txrx_ref_handle,
-					       DP_MOD_ID_HTT_COMP);
-	if (qdf_likely(txrx_peer)) {
-		if (qdf_unlikely(qdf_nbuf_is_ipv4_eapol_pkt(tx_desc->nbuf))) {
-			eapol_type = qdf_nbuf_get_eapol_subtype(tx_desc->nbuf);
-			pairwise = (eapol_type == QDF_PROTO_EAPOL_G1 ||
-				    eapol_type == QDF_PROTO_EAPOL_G2) ? 0 : 1;
-			dp_tx_update_eapol_comp_status_stats(soc, vdev,
-							     tx_desc->nbuf,
-							     txrx_peer, 0,
-							     tx_status,
-							     pairwise);
+
+	if (qdf_likely(wlan_op_mode_passthru != vdev->opmode)) {
+		txrx_peer = dp_txrx_peer_get_ref_by_id(soc, ts.peer_id,
+						       &txrx_ref_handle,
+						       DP_MOD_ID_HTT_COMP);
+		if (qdf_likely(txrx_peer)) {
+			if (qdf_unlikely(qdf_nbuf_is_ipv4_eapol_pkt(tx_desc->nbuf))) {
+				eapol_type = qdf_nbuf_get_eapol_subtype(tx_desc->nbuf);
+				pairwise = (eapol_type == QDF_PROTO_EAPOL_G1 ||
+					    eapol_type == QDF_PROTO_EAPOL_G2) ?
+					   0 : 1;
+				dp_tx_update_eapol_comp_status_stats(soc, vdev,
+								     tx_desc->nbuf,
+								     txrx_peer,
+								     0,
+								     tx_status,
+								     pairwise);
+			}
+			dp_txrx_peer_unref_delete(txrx_ref_handle,
+						  DP_MOD_ID_HTT_COMP);
 		}
-		dp_txrx_peer_unref_delete(txrx_ref_handle,
-					  DP_MOD_ID_HTT_COMP);
 	}
 	switch (tx_status) {
 	case HTT_TX_FW2WBM_TX_STATUS_DROP:
@@ -488,9 +493,10 @@ void dp_tx_process_htt_completion_be(struct dp_soc *soc,
 						tx_status,
 						pdev->enhanced_stats_en);
 
-		dp_tx_comp_process_tx_status(soc, tx_desc, &ts, txrx_peer,
-					     ring_id);
-		dp_tx_comp_process_desc(soc, tx_desc, &ts, txrx_peer);
+		dp_tx_comp_process_tx_status_n_desc_wrapper(soc, vdev, tx_desc,
+							    &ts, txrx_peer,
+							    ring_id);
+
 		if (tx_desc->flags & DP_TX_DESC_FLAG_COMPLETED_TX)
 			dp_tx_comp_free_buf(soc, tx_desc, false);
 		dp_tx_desc_release(soc, tx_desc, tx_desc->pool_id);
@@ -1707,8 +1713,17 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 	hal_tx_desc_set_lmac_id_be(soc->hal_soc, hal_tx_desc_cached,
 				   vdev->lmac_id);
 
-	hal_tx_desc_set_search_index_be(soc->hal_soc, hal_tx_desc_cached,
-					ast_idx);
+	/*
+	 * PEER_SEARCH_IDX or ast_idx will be valid only for packets on
+	 * PASSTHRU interface
+	 */
+	if (qdf_unlikely(QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(tx_desc->nbuf)))
+		hal_tx_desc_set_search_index_be(soc->hal_soc,
+						hal_tx_desc_cached,
+						QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(tx_desc->nbuf));
+	else
+		hal_tx_desc_set_search_index_be(soc->hal_soc,
+						hal_tx_desc_cached, ast_idx);
 	/*
 	 * Bank_ID is used as DSCP_TABLE number in beryllium
 	 * So there is no explicit field used for DSCP_TID_TABLE_NUM.
@@ -1725,9 +1740,10 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 		hal_tx_desc_set_to_fw(hal_tx_desc_cached, 1);
 
 	/* verify checksum offload configuration*/
-	if ((qdf_nbuf_get_tx_cksum(tx_desc->nbuf) ==
-				   QDF_NBUF_TX_CKSUM_TCP_UDP) ||
-	      qdf_nbuf_is_tso(tx_desc->nbuf)) {
+	if (vdev->opmode != wlan_op_mode_passthru &&
+	    ((qdf_nbuf_get_tx_cksum(tx_desc->nbuf) ==
+				    QDF_NBUF_TX_CKSUM_TCP_UDP) ||
+	     qdf_nbuf_is_tso(tx_desc->nbuf))) {
 		hal_tx_desc_set_l3_checksum_en(hal_tx_desc_cached, 1);
 		hal_tx_desc_set_l4_checksum_en(hal_tx_desc_cached, 1);
 	}
@@ -1914,7 +1930,8 @@ void dp_tx_get_vdev_bank_config(struct dp_vdev_be *be_vdev,
 	bank_config->link_meta_swap = 0;
 
 	if ((vdev->search_type == HAL_TX_ADDR_INDEX_SEARCH) &&
-	    vdev->opmode == wlan_op_mode_sta) {
+	    (vdev->opmode == wlan_op_mode_sta ||
+	     vdev->opmode == wlan_op_mode_passthru)) {
 		bank_config->index_lookup_enable = 1;
 		bank_config->mcast_pkt_ctrl = HAL_TX_MCAST_CTRL_MEC_NOTIFY;
 		bank_config->addrx_en = 0;

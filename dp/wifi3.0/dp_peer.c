@@ -3075,12 +3075,17 @@ dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 			peer->ast_idx = hw_peer_id;
 			vdev = peer->vdev;
 			/* Only check for STA Vdev and peer is not for TDLS */
-			if (wlan_op_mode_sta == vdev->opmode &&
-			    !peer->is_tdls_peer) {
-				if (qdf_mem_cmp(peer->mac_addr.raw,
+			if ((wlan_op_mode_sta == vdev->opmode &&
+			     !peer->is_tdls_peer) ||
+			    (vdev->opmode == wlan_op_mode_passthru &&
+			     !qdf_mem_cmp(peer->mac_addr.raw,
+					  vdev->mac_addr.raw,
+					  QDF_MAC_ADDR_SIZE))) {
+				if (vdev->opmode == wlan_op_mode_passthru ||
+				    qdf_mem_cmp(peer->mac_addr.raw,
 						vdev->mac_addr.raw,
 						QDF_MAC_ADDR_SIZE) != 0) {
-					dp_info("%pK: STA vdev bss_peer", soc);
+					dp_info("%pK: vdev bss_peer", soc);
 					peer->bss_peer = 1;
 					if (peer->txrx_peer)
 						peer->txrx_peer->bss_peer = 1;
@@ -4082,6 +4087,25 @@ uint8_t *dp_peer_get_peer_mac_addr(void *peer_handle)
 	return peer->mac_addr.raw;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static
+void dp_update_passthru_peer_ast_info(struct cdp_peer_output_param *param,
+				      struct dp_peer *peer)
+{
+	if (peer->vdev->opmode == wlan_op_mode_passthru &&
+	    peer->is_peer_assoc_done) {
+		param->is_peer_assoc_done = peer->is_peer_assoc_done;
+		param->ast_idx = peer->ast_idx;
+	}
+}
+#else
+static
+void dp_update_passthru_peer_ast_info(struct cdp_peer_output_param *param,
+				      struct dp_peer *peer)
+{
+}
+#endif
+
 static inline
 QDF_STATUS dp_get_peer_details(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			       uint8_t *peer_mac,
@@ -4104,6 +4128,7 @@ QDF_STATUS dp_get_peer_details(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	tgt_peer = dp_get_tgt_peer_from_peer(peer);
 	peer_details->state = tgt_peer->state;
 	peer_details->peer_id = tgt_peer->peer_id;
+	dp_update_passthru_peer_ast_info(peer_details, tgt_peer);
 
 	if (slowpath)
 		dp_peer_info("peer %pK tgt_peer: %pK peer MAC "
@@ -4270,6 +4295,19 @@ void dp_set_peer_as_tdls_peer(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline
+void dp_peer_param_reset_ast_idx(struct cdp_peer_output_param *param)
+{
+	param->ast_idx = CDP_INVALID_PEER_AST_IDX;
+}
+#else
+static inline
+void dp_peer_param_reset_ast_idx(struct cdp_peer_output_param *param)
+{
+}
+#endif
+
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_MULTI_LINK_SAP)
 void dp_get_info_by_peer_mac(struct cdp_soc_t *soc_hdl,
 			     uint8_t *peer_mac,
@@ -4293,6 +4331,8 @@ void dp_get_info_by_peer_mac(struct cdp_soc_t *soc_hdl,
 	tgt_peer = dp_get_tgt_peer_from_peer(peer);
 	param->state = tgt_peer->state;
 	param->vdev_id = tgt_peer->vdev->vdev_id;
+	dp_peer_param_reset_ast_idx(param);
+	dp_update_passthru_peer_ast_info(param, tgt_peer);
 
 	/* mlo connection link peer, get mld peer with reference */
 	if (IS_MLO_DP_MLD_PEER(peer))
@@ -4317,6 +4357,7 @@ void dp_get_info_by_peer_mac(struct cdp_soc_t *soc_hdl,
 {
 	param->vdev_id = vdev_id;
 	param->peer_id = 0xFFFF;
+	dp_peer_param_reset_ast_idx(param);
 	dp_get_peer_details(soc_hdl, vdev_id, peer_mac, param, false);
 }
 #endif

@@ -168,9 +168,6 @@ struct dp_rx_desc *dp_rx_desc_ppeds_cookie_2_va(struct dp_soc *soc,
 
 #define DP_PEER_METADATA_OFFLOAD_GET_BE(_peer_metadata)		(0)
 
-#define HTT_RX_PEER_META_DATA_FIELD_GET(_var, _field_s, _field_m) \
-	(((_var) & (_field_m)) >> (_field_s))
-
 #ifdef DP_USE_REDUCED_PEER_ID_FIELD_WIDTH
 static inline uint16_t
 dp_rx_peer_metadata_peer_id_get_be(struct dp_soc *soc, uint32_t peer_metadata)
@@ -816,11 +813,13 @@ dp_rx_set_msdu_lmac_id(qdf_nbuf_t nbuf, uint32_t peer_mdata)
 #ifndef CONFIG_NBUF_AP_PLATFORM
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(DP_MLO_LINK_STATS_SUPPORT)
 static inline uint8_t
-dp_rx_peer_mdata_link_id_get_be(uint32_t peer_mdata)
+dp_rx_peer_mdata_link_id_get_be(struct dp_soc *soc, uint32_t peer_mdata)
 {
 	uint8_t link_id;
 
-	link_id = HTT_RX_PEER_META_DATA_V1A_LOGICAL_LINK_ID_GET(peer_mdata) + 1;
+	link_id = HTT_RX_PEER_META_DATA_FIELD_GET(peer_mdata,
+						  soc->htt_logical_link_id_s,
+						  soc->htt_logical_link_id_m) + 1;
 	if (link_id > DP_MAX_MLO_LINKS)
 		link_id = 0;
 
@@ -828,7 +827,7 @@ dp_rx_peer_mdata_link_id_get_be(uint32_t peer_mdata)
 }
 #else
 static inline uint8_t
-dp_rx_peer_mdata_link_id_get_be(uint32_t peer_metadata)
+dp_rx_peer_mdata_link_id_get_be(struct dp_soc *soc, uint32_t peer_metadata)
 {
 	return 0;
 }
@@ -842,25 +841,27 @@ dp_rx_set_mpdu_seq_number_be(qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr)
 }
 
 static inline void
-dp_rx_set_link_id_be(qdf_nbuf_t nbuf, uint32_t peer_mdata)
+dp_rx_set_link_id_be(struct dp_soc *soc, qdf_nbuf_t nbuf, uint32_t peer_mdata)
 {
 	uint8_t logical_link_id;
 
-	logical_link_id = dp_rx_peer_mdata_link_id_get_be(peer_mdata);
+	logical_link_id = dp_rx_peer_mdata_link_id_get_be(soc, peer_mdata);
 	QDF_NBUF_CB_RX_LOGICAL_LINK_ID(nbuf) = logical_link_id;
 }
 
 #ifdef IPA_OPT_WIFI_DP_CTRL
 static inline void
-dp_rx_set_refill_opt_dp_ctrl(uint8_t *is_ctrl_refill,
+dp_rx_set_refill_opt_dp_ctrl(struct dp_soc *soc, uint8_t *is_ctrl_refill,
 			     uint32_t peer_mdata)
 {
 	*is_ctrl_refill =
-		HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_GET(peer_mdata);
+		HTT_RX_PEER_META_DATA_FIELD_GET(peer_mdata,
+						soc->htt_opt_dp_ctrl_refill_s,
+						soc->htt_opt_dp_ctrl_refill_m);
 }
 #else
 static inline void
-dp_rx_set_refill_opt_dp_ctrl(uint8_t *is_ctrl_refill,
+dp_rx_set_refill_opt_dp_ctrl(struct dp_soc *soc, uint8_t *is_ctrl_refill,
 			     uint32_t peer_mdata)
 {
 }
@@ -916,8 +917,8 @@ static inline uint8_t dp_rx_copy_desc_info_in_nbuf_cb(struct dp_soc *soc,
 	QDF_NBUF_CB_RX_VDEV_ID(nbuf) =
 		dp_rx_peer_metadata_vdev_id_get_be(soc, peer_mdata);
 	dp_rx_set_msdu_lmac_id(nbuf, peer_mdata);
-	dp_rx_set_link_id_be(nbuf, peer_mdata);
-	dp_rx_set_refill_opt_dp_ctrl(is_ctrl_refill, peer_mdata);
+	dp_rx_set_link_id_be(soc, nbuf, peer_mdata);
+	dp_rx_set_refill_opt_dp_ctrl(soc, is_ctrl_refill, peer_mdata);
 
 	/* to indicate whether this msdu is rx offload */
 	pkt_capture_offload =
@@ -981,7 +982,7 @@ dp_rx_wbm_err_msdu_continuation_get(struct dp_soc *soc,
 }
 #else
 static inline void
-dp_rx_set_link_id_be(qdf_nbuf_t nbuf, uint32_t peer_mdata)
+dp_rx_set_link_id_be(struct dp_soc *soc, qdf_nbuf_t nbuf, uint32_t peer_mdata)
 {
 }
 
@@ -1099,4 +1100,62 @@ dp_get_soc_by_chip_id_be(struct dp_soc *soc, uint8_t chip_id)
 	return soc;
 }
 #endif
+
+/**
+ * dp_rx_can_reap_all_frags() - Peek the REO dest ring to check whether
+ *                               every fragment of the in-progress MSDU is
+ *                               already visible to the host, and fits
+ *                               within the current reap budget
+ * @soc: datapath soc handle
+ * @hal_ring_hdl: REO destination ring handle
+ * @num_pending: number of entries left to reap in this pass (includes the
+ *               fragment that was just reaped and triggered this check)
+ * @num_valid: number of valid entries currently available from the ring's
+ *             tp, e.g. as returned by hal_srng_dst_num_valid(). tp/hp are
+ *             not touched by this function, so the caller must have
+ *             computed this against the same (unmoved) tp/cached_hp.
+ *
+ * Called right after the first fragment (continuation bit set) of a
+ * scattered MSDU has been reaped, i.e. tp already points past it. Walks
+ * the ring purely by peeking -- starting at the current tp -- without
+ * moving tp/hp, counting fragments (num_frags) until either a
+ * non-continuation entry (last fragment) is found, @num_valid entries are
+ * exhausted, or num_pending budget (minus the already-reaped triggering
+ * fragment) runs out -- checked before each peek so a peek is never
+ * wasted on an offset the caller couldn't afford to use anyway.
+ *
+ * Return: true if the entry terminating this MSDU (continuation bit
+ *         clear) was found within budget before running out of visible
+ *         entries, i.e. all fragments are present and can be reaped now;
+ *         false if the ring ran dry mid-MSDU, or num_pending is not
+ *         enough to dequeue all of it, and the caller should wait/retry
+ */
+static inline bool
+dp_rx_can_reap_all_frags(struct dp_soc *soc,
+			 hal_ring_handle_t hal_ring_hdl,
+			 uint32_t num_pending,
+			 uint32_t num_valid)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	hal_ring_desc_t desc;
+	struct hal_rx_msdu_desc_info msdu_desc_info;
+	uint32_t num_frags = 0;
+
+	/* --num_pending accounts for the triggering fragment already
+	 * reaped; short-circuits before peeking once budget runs out.
+	 */
+	while (--num_pending &&
+	       (desc = hal_srng_dst_peek_n(hal_soc, hal_ring_hdl, num_frags,
+					   num_valid))) {
+		num_frags++;
+
+		hal_rx_msdu_desc_info_get_be(desc, &msdu_desc_info);
+
+		if (!(msdu_desc_info.msdu_flags & HAL_MSDU_F_MSDU_CONTINUATION))
+			return true;
+	}
+
+	return false;
+}
+
 #endif

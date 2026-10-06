@@ -316,7 +316,9 @@ struct qdf_nbuf_cb {
 						band:3,
 						flag_ts_valid:1,
 						rsvd:3;
-					uint8_t reserved[2];
+					uint8_t peer_search_idx_value;
+					uint8_t peer_search_idx_valid:1,
+						reserved:7;
 				} priv_cb_m;
 			} dev;
 			uint8_t ftype;
@@ -614,6 +616,11 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 #define QDF_NBUF_CB_TX_BAND(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	band)
+
+#define QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.peer_search_idx_valid)
+#define QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.peer_search_idx_value)
 
 #define QDF_NBUF_CB_RX_PEER_ID(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m.dp. \

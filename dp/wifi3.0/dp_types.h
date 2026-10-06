@@ -1423,6 +1423,12 @@ struct dp_soc_stats {
 		uint32_t hp_oos2;
 		/* tx desc freed as part of vdev detach */
 		uint32_t tx_comp_exception;
+		/* Number of duplicate tx desc */
+		uint32_t tx_desc_duplicate;
+		/* Number of unused tx desc */
+		uint32_t tx_desc_unused;
+		/* Number of tx desc when pdev is down */
+		uint32_t tx_desc_pdev_down;
 		/* TQM drops after/during peer delete */
 		uint64_t tqm_drop_no_peer;
 		/* Number of tx completions reaped per WBM2SW release ring */
@@ -2819,7 +2825,8 @@ struct dp_arch_ops {
 #endif
 #endif
 	uint8_t (*get_hw_link_id)(struct dp_pdev *pdev);
-	void (*dp_rx_peer_set_link_id)(qdf_nbuf_t nbuf, uint32_t peer_mdata);
+	void (*dp_rx_peer_set_link_id)(struct dp_soc *soc, qdf_nbuf_t nbuf,
+				       uint32_t peer_mdata);
 	uint64_t (*get_reo_qdesc_addr)(hal_soc_handle_t hal_soc_hdl,
 				       uint8_t *dst_ring_desc,
 				       uint8_t *buf,
@@ -2972,6 +2979,7 @@ struct dp_arch_ops {
  * @dp_ipa_opt_dp_ctrl_refill: opt_dp_ctrl refill support
  * @vdev_tx_nss_support: FW supports vdev Tx NSS report.
  * @dyn_resource_mgr_support: Dynamic RX buffer allocation support
+ * @passthru_ampdu_support: passthru_ampdu_support
  */
 struct dp_soc_features {
 	uint8_t pn_in_reo_dest:1,
@@ -2986,6 +2994,9 @@ struct dp_soc_features {
 #endif
 	bool vdev_tx_nss_support;
 	bool dyn_resource_mgr_support;
+#ifdef DRIVER_PASSTHRU_MODE
+	bool passthru_ampdu_support;
+#endif
 };
 
 enum sysfs_printing_mode {
@@ -3424,6 +3435,12 @@ struct dp_soc {
 	uint32_t htt_vdev_id_m;
 	uint8_t htt_mld_peer_valid_s;
 	uint32_t htt_mld_peer_valid_m;
+	uint8_t htt_logical_link_id_s;
+	uint32_t htt_logical_link_id_m;
+	uint8_t htt_opt_dp_ctrl_refill_s;
+	uint32_t htt_opt_dp_ctrl_refill_m;
+	uint8_t htt_passthru_pkt_s;
+	uint32_t htt_passthru_pkt_m;
 	/* rx peer metadata version */
 	uint8_t rx_peer_metadata_ver;
 
@@ -4785,6 +4802,9 @@ struct dp_vdev {
 	bool dp_eapol_stats;
 	/* Tx NSS stats received from FW */
 	struct cdp_htt_stats_tx_vdev_nss_tlv tx_vdev_nss;
+#ifdef DRIVER_PASSTHRU_MODE
+	qdf_freq_t passthru_freq;
+#endif
 };
 
 enum {
@@ -5719,6 +5739,10 @@ struct dp_peer {
 
 	/* peer setup info */
 	struct dp_peer_setup_info setup_info;
+
+#ifdef DRIVER_PASSTHRU_MODE
+	uint8_t is_peer_assoc_done;
+#endif
 };
 
 /**
@@ -6046,4 +6070,16 @@ void dp_rx_err_update_protocol_stats(struct dp_soc *soc, struct dp_pdev *pdev,
 				     qdf_nbuf_t nbuf,
 				     union hal_wbm_err_info_u *wbm_err,
 				     uint8_t *rx_tlv_hdr);
+
+#ifdef DRIVER_PASSTHRU_MODE
+static inline bool dp_get_passthru_ampdu_support(struct dp_soc *soc)
+{
+	return soc->features.passthru_ampdu_support;
+}
+#else
+static inline bool dp_get_passthru_ampdu_support(struct dp_soc *soc)
+{
+	return false;
+}
+#endif
 #endif /* _DP_TYPES_H_ */

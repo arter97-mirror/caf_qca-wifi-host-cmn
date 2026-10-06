@@ -61,6 +61,7 @@
 #include <i_qdf_ipa_wdi3.h>
 #endif /* IPA_OFFLOAD */
 #include "qdf_ssr_driver_dump.h"
+#include "linux/ieee80211.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
 
@@ -860,12 +861,16 @@ __qdf_nbuf_page_pool_alloc(qdf_device_t osdev, size_t size, int reserve,
 {
 	struct sk_buff *skb;
 	struct page *page;
+	size_t max_size = PAGE_SIZE << pp->p.order;
 
 	if (align)
 		size += (align - 1);
 
 	size = SKB_DATA_ALIGN(size) +
 		SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
+
+	if (size > max_size)
+		return NULL;
 
 	*offset = 0;
 
@@ -6406,7 +6411,8 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 
 	/* IEEE80211_RADIOTAP_RATE  u8           500kb/s */
 	if (!rx_status->ht_flags && !rx_status->vht_flags &&
-	    !rx_status->he_flags && !rx_status->eht_flags) {
+	    !rx_status->he_flags && !rx_status->eht_flags &&
+	    rx_status->rate) {
 		it_present_val |= (1 << IEEE80211_RADIOTAP_RATE);
 		rtap_buf[rtap_len] = rx_status->rate;
 	} else
@@ -6670,6 +6676,16 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 	qdf_nbuf_push_head(nbuf, rtap_len);
 	qdf_mem_copy(qdf_nbuf_data(nbuf), rtap_buf, rtap_len);
 	return rtap_len;
+}
+
+uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf)
+{
+	return ieee80211_get_radiotap_len(qdf_nbuf_data(nbuf));
+}
+
+uint8_t *qdf_nbuf_ieee80211_get_dest_mac(qdf_nbuf_t nbuf)
+{
+	return ieee80211_get_DA((struct ieee80211_hdr *)qdf_nbuf_data(nbuf));
 }
 #else
 static unsigned int qdf_nbuf_update_radiotap_vht_flags(

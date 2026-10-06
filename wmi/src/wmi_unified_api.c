@@ -4330,3 +4330,68 @@ void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
 	return NULL;
 }
 #endif
+
+#ifdef DRIVER_PASSTHRU_MODE
+QDF_STATUS
+wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
+				       struct vdev_ch_hop_sched_params *params)
+{
+	if (wmi_handle->ops->send_vdev_ch_hop_sched_cmd)
+		return wmi_handle->ops->send_vdev_ch_hop_sched_cmd(wmi_handle,
+								   params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
+QDF_STATUS wmi_unified_ocb_get_tsf_timer(struct wmi_unified *wmi_hdl,
+					 struct ocb_get_tsf_timer_param *req)
+{
+	if (wmi_hdl->ops->send_ocb_get_tsf_timer_cmd)
+		return wmi_hdl->ops->send_ocb_get_tsf_timer_cmd(wmi_hdl,
+								req->vdev_id);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
+#ifdef DRIVER_PASSTHRU_MODE
+QDF_STATUS wmi_unified_vdev_get_chan_hop_status(
+	struct wmi_unified *wmi_handle,
+	struct vdev_chan_hop_status_req *req)
+{
+	if (!wmi_handle || !req) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (wmi_handle->ops->send_vdev_get_chan_hop_status_cmd)
+		return wmi_handle->ops->send_vdev_get_chan_hop_status_cmd(
+								wmi_handle,
+								req->vdev_id);
+
+	wmi_err("send_vdev_get_chan_hop_status_cmd not registered");
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_extract_vdev_chan_hop_status(
+	struct wmi_unified *wmi_handle,
+	void *evt_buf,
+	struct vdev_chan_hop_status_response *resp)
+{
+	if (!wmi_handle || !evt_buf || !resp) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (wmi_handle->ops->extract_vdev_chan_hop_status)
+		return wmi_handle->ops->extract_vdev_chan_hop_status(
+							wmi_handle,
+							evt_buf,
+							resp);
+
+	wmi_err("extract_vdev_chan_hop_status not registered");
+	return QDF_STATUS_E_FAILURE;
+}
+#endif

@@ -321,7 +321,7 @@ static int wlan_queue_logmsg_for_app(void)
 
 static const char *current_process_name(void)
 {
-	if (in_irq())
+	if (qdf_in_irq())
 		return "irq";
 
 	if (in_softirq())

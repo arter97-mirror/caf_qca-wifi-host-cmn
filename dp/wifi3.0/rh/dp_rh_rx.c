@@ -483,7 +483,7 @@ dp_rx_decrypt_unecrypt_err_handler_rh(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		}
 
 		if (qdf_unlikely(vdev->rx_decap_type == htt_cmn_pkt_type_raw)) {
-			dp_rx_deliver_raw(vdev, nbuf, txrx_peer, 0);
+			dp_rx_deliver_raw(vdev, nbuf, txrx_peer, 0, rx_tlv_hdr);
 		} else {
 			/* Update the protocol tag in SKB based on CCE metadata */
 			dp_rx_update_protocol_tag(soc, vdev, nbuf, rx_tlv_hdr,
@@ -978,7 +978,7 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 	while (nbuf) {
 		next = nbuf->next;
 
-		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(NULL, nbuf))) {
 			nbuf = next;
 			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
 			continue;
@@ -1126,7 +1126,7 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 			qdf_nbuf_pull_head(nbuf, soc->rx_pkt_tlv_size);
 		} else if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
 			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
-			nbuf = dp_rx_sg_create(soc, nbuf);
+			nbuf = dp_rx_sg_create(soc, nbuf, true);
 			next = nbuf->next;
 
 			if (qdf_nbuf_is_raw_frame(nbuf)) {

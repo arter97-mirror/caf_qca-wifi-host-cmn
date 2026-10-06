@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,16 +56,6 @@ QDF_STATUS wmi_unified_ocb_stop_timing_advert(struct wmi_unified *wmi_handle,
  */
 QDF_STATUS wmi_unified_ocb_set_config(struct wmi_unified *wmi_handle,
 				      struct ocb_config *config);
-
-/**
- * wmi_unified_ocb_get_tsf_timer() - get ocb tsf timer val
- * @wmi_handle: pointer to the wmi handle
- * @req: request for tsf timer
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_ocb_get_tsf_timer(struct wmi_unified *wmi_handle,
-					 struct ocb_get_tsf_timer_param *req);
 
 /**
  * wmi_unified_ocb_set_utc_time_cmd() - set OCB UTC time
