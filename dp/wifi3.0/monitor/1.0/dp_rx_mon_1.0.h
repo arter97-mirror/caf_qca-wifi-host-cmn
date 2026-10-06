@@ -989,6 +989,20 @@ void *dp_rx_cookie_2_mon_link_desc(struct dp_pdev *pdev,
 				   struct hal_buf_info *buf_info,
 				   uint8_t mac_id)
 {
+	struct qdf_mem_multi_page_t *pages = &pdev->soc->link_desc_pages;
+	uint16_t page_id = LINK_DESC_COOKIE_PAGE_ID(buf_info->sw_cookie);
+
+	if (qdf_unlikely(page_id < pages->num_pages &&
+			 (buf_info->paddr < pages->dma_pages[page_id].page_p_addr ||
+			  buf_info->paddr >= pages->dma_pages[page_id].page_p_addr +
+					      pages->page_size))) {
+		pdev->soc->stats.rx.err.mon_link_desc_paddr_invalid++;
+		dp_err_rl("invalid/stale paddr 0x%llx for page_id %u (page_p_addr 0x%llx, size %zu)",
+			  (unsigned long long)buf_info->paddr, page_id,
+			  (unsigned long long)pages->dma_pages[page_id].page_p_addr,
+			  pages->page_size);
+		return NULL;
+	}
 
 	return dp_rx_cookie_2_link_desc_va(pdev->soc, buf_info);
 }

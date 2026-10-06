@@ -1703,6 +1703,8 @@ struct dp_soc_stats {
 			uint32_t raw_frm_drop;
 			/* Stale link desc cookie count*/
 			uint32_t invalid_link_cookie;
+			/* Mon link desc paddr out of page DMA range count */
+			uint32_t mon_link_desc_paddr_invalid;
 			/* Nbuf sanity failure */
 			uint32_t nbuf_sanity_fail;
 			/* Duplicate link desc refilled */

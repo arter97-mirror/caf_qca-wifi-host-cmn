@@ -6769,6 +6769,8 @@ dp_print_rx_err_stats(struct dp_soc *soc, struct dp_pdev *pdev)
 		       soc->stats.rx.err.raw_frm_drop);
 	DP_PRINT_STATS("Rx stale link desc cookie: %d",
 		       pdev->soc->stats.rx.err.invalid_link_cookie);
+	DP_PRINT_STATS("Rx mon link desc paddr invalid: %d",
+		       pdev->soc->stats.rx.err.mon_link_desc_paddr_invalid);
 	DP_PRINT_STATS("Rx nbuf sanity fails: %d",
 		       pdev->soc->stats.rx.err.nbuf_sanity_fail);
 	DP_PRINT_STATS("Rx refill duplicate link desc: %d",
@@ -7057,6 +7059,8 @@ dp_print_rx_err_stats(struct dp_soc *soc, struct dp_pdev *pdev)
 		       soc->stats.rx.err.invalid_cookie);
 	DP_PRINT_STATS("RX stale cookie: %d",
 		       soc->stats.rx.err.stale_cookie);
+	DP_PRINT_STATS("Rx mon link desc paddr invalid: %d",
+		       soc->stats.rx.err.mon_link_desc_paddr_invalid);
 	DP_PRINT_STATS("Rx err msdu rejected: %d",
 		       soc->stats.rx.err.rejected);
 	DP_PRINT_STATS("Rx raw frame dropped: %d",
@@ -9686,6 +9690,9 @@ dp_print_soc_rx_stats(struct dp_soc *soc)
 
 	DP_PRINT_STATS("Rx stale link desc cookie: %d",
 		       soc->stats.rx.err.invalid_link_cookie);
+
+	DP_PRINT_STATS("Rx mon link desc paddr invalid: %d",
+		       soc->stats.rx.err.mon_link_desc_paddr_invalid);
 
 	DP_PRINT_STATS("Rx nbuf sanity fail: %d",
 		       soc->stats.rx.err.nbuf_sanity_fail);
