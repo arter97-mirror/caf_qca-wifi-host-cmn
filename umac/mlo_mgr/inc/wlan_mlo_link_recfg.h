@@ -1649,19 +1649,29 @@ mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx)
  * @ext_supported_rates: Extended Supported Rates element
  * @ht_cap: HT Capabilities element
  * @ht_cap_present: Whether HT capabilities were extracted
+ * @ht_info: HT Information element
+ * @ht_info_present: Whether HT information was extracted
  * @vht_cap: VHT Capabilities element
  * @vht_cap_present: Whether VHT capabilities were extracted
+ * @vht_op: VHT Operation element
+ * @vht_op_present: Whether VHT operation was extracted
  * @he_cap: HE Capabilities element
  * @he_cap_present: Whether HE capabilities were extracted
+ * @he_op: HE Operation element
+ * @he_op_present: Whether HE operation was extracted
  * @eht_cap: EHT Capabilities element
  * @eht_cap_present: Whether EHT capabilities were extracted
+ * @eht_op: EHT Operation element
+ * @eht_op_present: Whether EHT operation was extracted
  * @uhr_cap: UHR Capabilities element
  * @uhr_cap_present: Whether UHR capabilities were extracted
+ * @uhr_op: UHR Operation element
+ * @uhr_op_present: Whether UHR operation was extracted
  * @ext_cap: Extended Capabilities element
  * @ext_cap_present: Whether extended capabilities were extracted
  *
- * Structure to hold extracted capabilities for a single link from
- * target AP's per-STA profile in Basic ML IE.
+ * Structure to hold extracted capabilities for a single link from the target
+ * AP's per-STA profile in Basic ML IE, with scan-cache fallback data.
  */
 struct smd_target_ap_link_caps {
 	uint8_t link_id;
@@ -1671,14 +1681,24 @@ struct smd_target_ap_link_caps {
 	struct element_info ext_supported_rates;
 	struct element_info ht_cap;
 	bool ht_cap_present;
+	struct element_info ht_info;
+	bool ht_info_present;
 	struct element_info vht_cap;
 	bool vht_cap_present;
+	struct element_info vht_op;
+	bool vht_op_present;
 	struct element_info he_cap;
 	bool he_cap_present;
+	struct element_info he_op;
+	bool he_op_present;
 	struct element_info eht_cap;
 	bool eht_cap_present;
+	struct element_info eht_op;
+	bool eht_op_present;
 	struct element_info uhr_cap;
 	bool uhr_cap_present;
+	struct element_info uhr_op;
+	bool uhr_op_present;
 	struct element_info ext_cap;
 	bool ext_cap_present;
 };
@@ -1728,14 +1748,24 @@ wlan_mlo_cleanup_smd_target_ap_caps(struct smd_target_ap_caps *caps)
 		link_cap->ext_supported_rates.ptr = NULL;
 		qdf_mem_free(link_cap->ht_cap.ptr);
 		link_cap->ht_cap.ptr = NULL;
+		qdf_mem_free(link_cap->ht_info.ptr);
+		link_cap->ht_info.ptr = NULL;
 		qdf_mem_free(link_cap->vht_cap.ptr);
 		link_cap->vht_cap.ptr = NULL;
+		qdf_mem_free(link_cap->vht_op.ptr);
+		link_cap->vht_op.ptr = NULL;
 		qdf_mem_free(link_cap->he_cap.ptr);
 		link_cap->he_cap.ptr = NULL;
+		qdf_mem_free(link_cap->he_op.ptr);
+		link_cap->he_op.ptr = NULL;
 		qdf_mem_free(link_cap->eht_cap.ptr);
 		link_cap->eht_cap.ptr = NULL;
+		qdf_mem_free(link_cap->eht_op.ptr);
+		link_cap->eht_op.ptr = NULL;
 		qdf_mem_free(link_cap->uhr_cap.ptr);
 		link_cap->uhr_cap.ptr = NULL;
+		qdf_mem_free(link_cap->uhr_op.ptr);
+		link_cap->uhr_op.ptr = NULL;
 		qdf_mem_free(link_cap->ext_cap.ptr);
 		link_cap->ext_cap.ptr = NULL;
 	}
@@ -1744,11 +1774,18 @@ wlan_mlo_cleanup_smd_target_ap_caps(struct smd_target_ap_caps *caps)
 }
 
 /**
- * extract_target_ap_capabilities() - Extract target AP capabilities from scan cache
+ * extract_target_ap_capabilities() - Extract target AP capabilities
  * @mlo_ie: Pointer to ML IE data
  * @mlo_ie_len: Length of ML IE
  * @target_caps: Output structure to store extracted capabilities
  * @ctx: Link reconfiguration context
+ *
+ * All Capability/Operation IEs (HT, VHT, HE, EHT, UHR) are preferentially
+ * taken from the ST Prep response's per-STA profile in @mlo_ie, since it is
+ * the freshest and most authoritative source for the target link. If a
+ * given IE is not present in the per-STA profile (e.g. not a Complete
+ * Profile, or that element was omitted), the scan cache entry for the
+ * target AP link is used as a fallback.
  *
  * Return: QDF_STATUS_SUCCESS on success, error code otherwise
  */

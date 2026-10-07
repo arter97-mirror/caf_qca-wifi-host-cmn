@@ -8087,14 +8087,18 @@ end:
 }
 
 /**
- * extract_target_ap_capabilities() - Extract target AP capabilities from scan cache
- * @mlo_ie: Pointer to ML IE data (not used in this implementation)
- * @mlo_ie_len: Length of ML IE (not used in this implementation)
+ * extract_target_ap_capabilities() - Extract target AP capabilities
+ * @mlo_ie: Pointer to the ST Prep response ML IE data
+ * @mlo_ie_len: Length of the ST Prep response ML IE
  * @target_caps: Output structure to store extracted capabilities
  * @ctx: Link reconfiguration context (to access scan cache)
  *
- * This function extracts capabilities from the target AP's beacon/probe response
- * stored in the scan cache, rather than from per-STA profiles in ML IE.
+ * All Capability/Operation IEs (HT, VHT, HE, EHT, UHR) are preferentially
+ * taken from the ST Prep response's per-STA profile in @mlo_ie, since it is
+ * the freshest and most authoritative source for the target link. If a
+ * given IE is not present in the per-STA profile (e.g. not a Complete
+ * Profile, or that element was omitted), the scan cache entry for the
+ * target AP link is used as a fallback.
  *
  * Return: QDF_STATUS_SUCCESS on success, error code otherwise
  */
@@ -8145,7 +8149,7 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 
 	target_caps->num_links = add_link_info->num_links;
 
-	mlo_info("Extracting capabilities for %d links from scan cache",
+	mlo_info("Extracting capabilities for %d links from target AP",
 		 target_caps->num_links);
 
 	/* Extract capabilities for each link from scan cache */
@@ -8154,6 +8158,9 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 		struct qdf_mac_addr *ap_link_addr = &add_link_info->link[i].ap_link_addr;
 		uint8_t *frame_body;
 		qdf_size_t frame_len;
+		uint8_t *payload_copy = NULL;
+		uint8_t *sta_prof = NULL;
+		qdf_size_t sta_prof_len = 0;
 
 		/* Store link ID */
 		link_cap->link_id = add_link_info->link[i].link_id;
@@ -8182,12 +8189,51 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 		link_cap->capability_info = scan_entry->cap_info.value;
 		link_cap->capability_info_present = true;
 
+		/*
+		 * Locate this link's per-STA profile in the ST Prep response's
+		 * ML IE, if present. It is the freshest and most authoritative
+		 * source for this link's Capability/Operation IEs; scan cache
+		 * (frame_body/frame_len) is used below as a fallback whenever
+		 * a given IE is absent from it.
+		 */
+		if (mlo_ie && mlo_ie_len) {
+			QDF_STATUS sta_prof_status;
+
+			sta_prof_status = util_get_bvmlie_persta_profile_buf(
+				mlo_ie, mlo_ie_len, link_cap->link_id,
+				&payload_copy, &sta_prof, &sta_prof_len);
+			if (QDF_IS_STATUS_ERROR(sta_prof_status)) {
+				mlo_debug("No per-STA profile for link_id=%d in ST Prep response, using scan cache only",
+					  link_cap->link_id);
+			} else if (sta_prof_len <= (WLAN_CAPABILITYINFO_LEN +
+						 WLAN_STATUSCODE_LEN)) {
+				mlo_debug("No IE section in per-STA profile for link_id=%d, using scan cache only",
+					  link_cap->link_id);
+				sta_prof = NULL;
+				sta_prof_len = 0;
+			} else {
+				/*
+				 * An association-response STA Profile starts with the
+				 * link-specific Capability Information and Status Code.
+				 * Skip these fixed fields before searching the IE section.
+				 */
+				sta_prof += WLAN_CAPABILITYINFO_LEN +
+					    WLAN_STATUSCODE_LEN;
+				sta_prof_len -= WLAN_CAPABILITYINFO_LEN +
+						WLAN_STATUSCODE_LEN;
+			}
+		}
+
 		/* Extract Supported Rates IE (Element ID 1) */
-		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RATES, frame_body, frame_len);
+		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RATES,
+							     sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RATES, frame_body, frame_len);
 		if (ie_ptr) {
 			ie_len = ie_ptr[1];
 			link_cap->supported_rates.ptr = qdf_mem_malloc(ie_len);
 			if (!link_cap->supported_rates.ptr) {
+				qdf_mem_free(payload_copy);
 				util_scan_free_cache_entry(scan_entry);
 				goto err_release_pdev;
 			}
@@ -8196,11 +8242,15 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 		}
 
 		/* Extract Extended Supported Rates IE (Element ID 50) */
-		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XRATES, frame_body, frame_len);
+		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XRATES,
+							     sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XRATES, frame_body, frame_len);
 		if (ie_ptr) {
 			ie_len = ie_ptr[1];
 			link_cap->ext_supported_rates.ptr = qdf_mem_malloc(ie_len);
 			if (!link_cap->ext_supported_rates.ptr) {
+				qdf_mem_free(payload_copy);
 				util_scan_free_cache_entry(scan_entry);
 				goto err_release_pdev;
 			}
@@ -8209,11 +8259,15 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 		}
 
 		/* Extract HT Capabilities IE (Element ID 45) */
-		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTCAP_ANA, frame_body, frame_len);
+		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTCAP_ANA,
+							     sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTCAP_ANA, frame_body, frame_len);
 		if (ie_ptr) {
 			ie_len = ie_ptr[1];
 			link_cap->ht_cap.ptr = qdf_mem_malloc(ie_len);
 			if (!link_cap->ht_cap.ptr) {
+				qdf_mem_free(payload_copy);
 				util_scan_free_cache_entry(scan_entry);
 				goto err_release_pdev;
 			}
@@ -8222,12 +8276,34 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 			link_cap->ht_cap_present = true;
 		}
 
+		/* Extract HT Information IE (Element ID 61) */
+		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTINFO_ANA,
+							     sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTINFO_ANA, frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1];
+			link_cap->ht_info.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->ht_info.ptr) {
+				qdf_mem_free(payload_copy);
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->ht_info.ptr, ie_ptr + 2, ie_len);
+			link_cap->ht_info.len = ie_len;
+			link_cap->ht_info_present = true;
+		}
+
 		/* Extract VHT Capabilities IE (Element ID 191) */
-		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTCAP, frame_body, frame_len);
+		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTCAP,
+							     sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTCAP, frame_body, frame_len);
 		if (ie_ptr) {
 			ie_len = ie_ptr[1];
 			link_cap->vht_cap.ptr = qdf_mem_malloc(ie_len);
 			if (!link_cap->vht_cap.ptr) {
+				qdf_mem_free(payload_copy);
 				util_scan_free_cache_entry(scan_entry);
 				goto err_release_pdev;
 			}
@@ -8236,13 +8312,36 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 			link_cap->vht_cap_present = true;
 		}
 
+		/* Extract VHT Operation IE (Element ID 192) */
+		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTOP,
+							     sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTOP, frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1];
+			link_cap->vht_op.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->vht_op.ptr) {
+				qdf_mem_free(payload_copy);
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->vht_op.ptr, ie_ptr + 2, ie_len);
+			link_cap->vht_op.len = ie_len;
+			link_cap->vht_op_present = true;
+		}
+
 		/* Extract HE Capabilities IE (Extension Element ID 35) */
-		ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_HECAP}, 1,
-							 frame_body, frame_len);
+		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
+					(uint8_t[]){WLAN_EXTN_ELEMID_HECAP}, 1,
+					sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_HECAP}, 1,
+								 frame_body, frame_len);
 		if (ie_ptr) {
 			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
 			link_cap->he_cap.ptr = qdf_mem_malloc(ie_len);
 			if (!link_cap->he_cap.ptr) {
+				qdf_mem_free(payload_copy);
 				util_scan_free_cache_entry(scan_entry);
 				goto err_release_pdev;
 			}
@@ -8251,13 +8350,38 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 			link_cap->he_cap_present = true;
 		}
 
-		/* Extract EHT Capabilities IE (Extension Element ID 106) */
-		ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_EHTCAP}, 1,
-							 frame_body, frame_len);
+		/* Extract HE Operation IE (Extension Element ID 36) */
+		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
+					(uint8_t[]){WLAN_EXTN_ELEMID_HEOP}, 1,
+					sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_HEOP}, 1,
+								 frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
+			link_cap->he_op.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->he_op.ptr) {
+				qdf_mem_free(payload_copy);
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->he_op.ptr, ie_ptr + 3, ie_len);
+			link_cap->he_op.len = ie_len;
+			link_cap->he_op_present = true;
+		}
+
+		/* Extract EHT Capabilities IE (Extension Element ID 108) */
+		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
+					(uint8_t[]){WLAN_EXTN_ELEMID_EHTCAP}, 1,
+					sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_EHTCAP}, 1,
+								 frame_body, frame_len);
 		if (ie_ptr) {
 			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
 			link_cap->eht_cap.ptr = qdf_mem_malloc(ie_len);
 			if (!link_cap->eht_cap.ptr) {
+				qdf_mem_free(payload_copy);
 				util_scan_free_cache_entry(scan_entry);
 				goto err_release_pdev;
 			}
@@ -8266,13 +8390,38 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 			link_cap->eht_cap_present = true;
 		}
 
+		/* Extract EHT Operation IE (Extension Element ID 106) */
+		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
+					(uint8_t[]){WLAN_EXTN_ELEMID_EHTOP}, 1,
+					sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_EHTOP}, 1,
+								 frame_body, frame_len);
+		if (ie_ptr && ie_ptr[1] >= 1) {
+			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
+			link_cap->eht_op.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->eht_op.ptr) {
+				qdf_mem_free(payload_copy);
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->eht_op.ptr, ie_ptr + 3, ie_len);
+			link_cap->eht_op.len = ie_len;
+			link_cap->eht_op_present = true;
+		}
+
 		/* Extract UHR Capabilities IE (Extension Element ID 152) */
-		ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_UHRCAP}, 1,
-							 frame_body, frame_len);
+		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
+					(uint8_t[]){WLAN_EXTN_ELEMID_UHRCAP}, 1,
+					sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_UHRCAP}, 1,
+								 frame_body, frame_len);
 		if (ie_ptr && ie_ptr[1] >= 1) {
 			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
 			link_cap->uhr_cap.ptr = qdf_mem_malloc(ie_len);
 			if (!link_cap->uhr_cap.ptr) {
+				qdf_mem_free(payload_copy);
 				util_scan_free_cache_entry(scan_entry);
 				goto err_release_pdev;
 			}
@@ -8281,12 +8430,36 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 			link_cap->uhr_cap_present = true;
 		}
 
+		/* Extract UHR Operation IE (Extension Element ID 151) */
+		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
+					(uint8_t[]){WLAN_EXTN_ELEMID_UHROP}, 1,
+					sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_UHROP}, 1,
+								 frame_body, frame_len);
+		if (ie_ptr && ie_ptr[1] >= 1) {
+			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
+			link_cap->uhr_op.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->uhr_op.ptr) {
+				qdf_mem_free(payload_copy);
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->uhr_op.ptr, ie_ptr + 3, ie_len);
+			link_cap->uhr_op.len = ie_len;
+			link_cap->uhr_op_present = true;
+		}
+
 		/* Extract Extended Capabilities IE (Element ID 127) */
-		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XCAPS, frame_body, frame_len);
+		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XCAPS,
+							     sta_prof, sta_prof_len) : NULL;
+		if (!ie_ptr)
+			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XCAPS, frame_body, frame_len);
 		if (ie_ptr) {
 			ie_len = ie_ptr[1];
 			link_cap->ext_cap.ptr = qdf_mem_malloc(ie_len);
 			if (!link_cap->ext_cap.ptr) {
+				qdf_mem_free(payload_copy);
 				util_scan_free_cache_entry(scan_entry);
 				goto err_release_pdev;
 			}
@@ -8295,24 +8468,30 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 			link_cap->ext_cap_present = true;
 		}
 
+		qdf_mem_free(payload_copy);
 		util_scan_free_cache_entry(scan_entry);
 
-		mlo_info("Extracted capabilities for link_id=%d: cap=0x%x rates=%d/%d ht=%d vht=%d he=%d eht=%d uhr=%d ext=%d",
-			link_cap->link_id,
-			link_cap->capability_info,
-			link_cap->supported_rates.len,
-			link_cap->ext_supported_rates.len,
-			link_cap->ht_cap_present,
-			link_cap->vht_cap_present,
-			link_cap->he_cap_present,
-			link_cap->eht_cap_present,
-			link_cap->uhr_cap_present,
-			link_cap->ext_cap_present);
+		mlo_info("Extracted capabilities for link_id=%d: cap=0x%x rates=%d/%d ht=%d/%d vht=%d/%d he=%d/%d eht=%d/%d uhr=%d/%d ext=%d",
+			 link_cap->link_id,
+			 link_cap->capability_info,
+			 link_cap->supported_rates.len,
+			 link_cap->ext_supported_rates.len,
+			 link_cap->ht_cap_present,
+			 link_cap->ht_info_present,
+			 link_cap->vht_cap_present,
+			 link_cap->vht_op_present,
+			 link_cap->he_cap_present,
+			 link_cap->he_op_present,
+			 link_cap->eht_cap_present,
+			 link_cap->eht_op_present,
+			 link_cap->uhr_cap_present,
+			 link_cap->uhr_op_present,
+			 link_cap->ext_cap_present);
 	}
 
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
 
-	mlo_info("Successfully extracted capabilities for %d links from scan cache",
+	mlo_info("Successfully extracted capabilities for %d links from target AP",
 		 target_caps->num_links);
 
 	return QDF_STATUS_SUCCESS;
