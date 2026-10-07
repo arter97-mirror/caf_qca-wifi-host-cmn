@@ -2808,17 +2808,25 @@ void hif_set_grp_intr_affinity(struct hif_opaque_softc *scn,
  *               Pass 0 to skip TX groups.
  * @rx_grp_bmap: RX groups bitmap (cdp_get_rx_rings_grp_bitmap).
  *               Pass 0 to skip RX groups.
+ * @cpumask:     Optional explicit CPU mask for redirect targets. Only
+ *               consulted when @enable is true: if non-zero and it yields
+ *               at least one online CPU, it is used as the redirect target
+ *               list instead of the perf cluster; otherwise falls back to
+ *               the perf-cluster-derived list. Ignored when @enable is
+ *               false.
  * @enable:      true = redirect to perf CPU; false = disable (local schedule)
  */
 void hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
 			       uint32_t tx_grp_bmap,
 			       uint32_t rx_grp_bmap,
+			       uint32_t cpumask,
 			       bool enable);
 #else
 static inline void
 hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
 			  uint32_t tx_grp_bmap,
 			  uint32_t rx_grp_bmap,
+			  uint32_t cpumask,
 			  bool enable) {}
 #endif
 /**

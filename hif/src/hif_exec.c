@@ -1031,10 +1031,10 @@ static void hif_exec_napi_schedule(struct hif_exec_context *ctx)
  *   for groups specified by TX and/or RX bitmap.
  *
  * When enabled, each group in the combined bitmap is assigned a unique CPU
- * from the perf cluster as IPI target, distributing NAPI poll load across
- * cores (round-robin by assignment order).  Groups NOT in the bitmap are
- * left unchanged.  When disabled, all groups in the bitmap are reset to
- * local scheduling (napi_redirect_cpu = -1).
+ * as IPI target, distributing NAPI poll load across cores (round-robin by
+ * assignment order).  Groups NOT in the bitmap are left unchanged.  When
+ * disabled, all groups in the bitmap are reset to local scheduling
+ * (napi_redirect_cpu = -1).
  *
  * Designed to be called from dp_set_tx_irq_affinity() and
  * dp_set_rx_irq_affinity() immediately after hif_set_grp_intr_affinity().
@@ -1044,11 +1044,17 @@ static void hif_exec_napi_schedule(struct hif_exec_context *ctx)
  *               Pass 0 to skip TX groups.
  * @rx_grp_bmap: Bitmap of RX groups (cdp_get_rx_rings_grp_bitmap).
  *               Pass 0 to skip RX groups.
- * @enable:      true = assign perf CPUs; false = clear redirect (set to -1)
+ * @cpumask:     Optional explicit CPU mask for redirect targets, only used
+ *               when @enable is true. If non-zero and it maps to at least
+ *               one online CPU, that CPU list is used instead of the perf
+ *               cluster. Otherwise falls back to the perf-cluster-derived
+ *               list (today's behavior).
+ * @enable:      true = assign redirect CPUs; false = clear redirect (set to -1)
  */
 void hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
 			       uint32_t tx_grp_bmap,
 			       uint32_t rx_grp_bmap,
+			       uint32_t cpumask,
 			       bool enable)
 {
 	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(hif_ctx);
@@ -1060,14 +1066,25 @@ void hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
 		return;
 
 	if (enable) {
-		int perf_cluster = hif_get_perf_cluster_bitmap();
+		if (cpumask) {
+			for_each_online_cpu(cpu) {
+				if (n_perf >= QDF_MAX_AVAILABLE_CPU)
+					break;
+				if (BIT(cpu) & cpumask)
+					perf_cpu_list[n_perf++] = cpu;
+			}
+		}
 
-		for_each_online_cpu(cpu) {
-			if (n_perf >= QDF_MAX_AVAILABLE_CPU)
-				break;
-			if (BIT(qdf_topology_physical_package_id(cpu)) &
-			    perf_cluster)
-				perf_cpu_list[n_perf++] = cpu;
+		if (!n_perf) {
+			int perf_cluster = hif_get_perf_cluster_bitmap();
+
+			for_each_online_cpu(cpu) {
+				if (n_perf >= QDF_MAX_AVAILABLE_CPU)
+					break;
+				if (BIT(qdf_topology_physical_package_id(cpu)) &
+				    perf_cluster)
+					perf_cpu_list[n_perf++] = cpu;
+			}
 		}
 		if (!n_perf) {
 			hif_warn("%s: no perf cluster CPUs online", __func__);
