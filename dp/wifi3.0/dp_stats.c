@@ -6611,6 +6611,8 @@ dp_print_rx_err_stats(struct dp_soc *soc, struct dp_pdev *pdev)
 		       soc->stats.rx.err.invalid_cookie);
 	DP_PRINT_STATS("RX stale cookie: %d",
 		       soc->stats.rx.err.stale_cookie);
+	DP_PRINT_STATS("RX stale reo desc: %d",
+		       soc->stats.rx.err.stale_rx_desc);
 	DP_PRINT_STATS("2k jump delba sent: %u",
 		       pdev->soc->stats.rx.err.rx_2k_jump_delba_sent);
 	DP_PRINT_STATS("2k jump msdu to stack: %u",
@@ -9289,6 +9291,14 @@ dp_print_pdev_rx_stats(struct dp_pdev *pdev)
 	DP_PRINT_STATS("\tAllocations from the pool during replenish = %llu",
 		       pdev->stats.rx_buffer_pool.num_pool_bufs_replenish);
 
+	DP_PRINT_STATS("RX Refill Buffer Pool Stats:\n");
+	DP_PRINT_STATS("\tBuffers refilled = %llu",
+		       pdev->stats.rx_refill_buff_pool.num_bufs_refilled);
+	DP_PRINT_STATS("\tBuffers allocated from refill pool = %llu",
+		       pdev->stats.rx_refill_buff_pool.num_bufs_allocated);
+	DP_PRINT_STATS("\tRefill alloc failure (all attempts failed) = %llu",
+		       pdev->stats.rx_refill_buff_pool.num_batch_refill_fail);
+
 	DP_PRINT_STATS("Invalid MSDU count = %u",
 		       pdev->stats.invalid_msdu_cnt);
 
@@ -9527,6 +9537,8 @@ dp_print_soc_rx_stats(struct dp_soc *soc)
 
 	DP_PRINT_STATS("RX stale cookie: %d",
 		       soc->stats.rx.err.stale_cookie);
+	DP_PRINT_STATS("RX stale reo desc: %d",
+		       soc->stats.rx.err.stale_rx_desc);
 
 	DP_PRINT_STATS("RX wait completed msdu break: %d",
 		       soc->stats.rx.msdu_scatter_wait_break);
