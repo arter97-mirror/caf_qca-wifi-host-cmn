@@ -11970,6 +11970,68 @@ QDF_STATUS dp_get_tx_retries(struct cdp_soc_t *soc_handle,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+/**
+ * dp_get_tx_phy_rate_stats - function to get accumulated tx phy rate stats
+ * @soc_handle: soc handle
+ * @vdev_id: virtual device ID
+ * @phy_rate_sum: pointer to store accumulated phy rate sum across all CPUs
+ * @phy_rate_cnt: pointer to store total packet count across all CPUs
+ *
+ * Return: QDF_STATUS
+ */
+static
+QDF_STATUS dp_get_tx_phy_rate_stats(struct cdp_soc_t *soc_handle,
+					uint8_t vdev_id,
+					uint64_t *phy_rate_sum,
+					uint64_t *phy_rate_cnt)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_handle);
+	struct dp_vdev *vdev;
+	struct dp_peer *peer;
+	struct dp_txrx_peer *txrx_peer;
+	int cpu;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev) {
+		dp_err_rl("vdev %d does not exist", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	peer = dp_vdev_bss_peer_ref_n_get(soc, vdev, DP_MOD_ID_CDP);
+	if (!peer) {
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	txrx_peer = dp_get_txrx_peer(peer);
+	if (!txrx_peer) {
+		dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!phy_rate_sum || !phy_rate_cnt) {
+		dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	*phy_rate_sum = 0;
+	*phy_rate_cnt = 0;
+
+	for_each_possible_cpu(cpu) {
+		*phy_rate_sum +=
+			qdf_atomic64_read(&txrx_peer->tx_phy_rate_stats.phy_rate_sum[cpu]);
+		*phy_rate_cnt +=
+			qdf_atomic64_read(&txrx_peer->tx_phy_rate_stats.phy_rate_cnt[cpu]);
+	}
+
+	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 /**
@@ -14516,6 +14578,7 @@ static struct cdp_ctrl_ops dp_ops_ctrl = {
 #ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
 	.txrx_bw_request = dp_txrx_bw_request,
 	.get_tx_retries = dp_get_tx_retries,
+	.get_tx_phy_rate_stats = dp_get_tx_phy_rate_stats,
 #endif
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	.txrx_set_pdev_phyrx_error_mask = dp_set_pdev_phyrx_error_mask,

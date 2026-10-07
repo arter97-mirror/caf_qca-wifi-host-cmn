@@ -1350,6 +1350,40 @@ QDF_STATUS cdp_get_txrx_bw(ol_txrx_soc_handle soc, uint8_t vdev_id,
 	return soc->ops->ctrl_ops->txrx_bw_request(soc, vdev_id,
 							    req);
 }
+
+/**
+ * cdp_get_tx_phy_rate_stats() - Get accumulated tx phy rate stats
+ * @soc: SOC TXRX handle
+ * @vdev_id: vdev id
+ * @phy_rate_sum: pointer to store accumulated phy rate sum across all CPUs
+ * @phy_rate_cnt: pointer to store total packet count across all CPUs
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+cdp_get_tx_phy_rate_stats(ol_txrx_soc_handle soc, uint8_t vdev_id,
+			  uint64_t *phy_rate_sum, uint64_t *phy_rate_cnt)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_err("Invalid SOC instance");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!phy_rate_sum || !phy_rate_cnt) {
+		dp_cdp_err("Invalid params");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->ctrl_ops ||
+	    !soc->ops->ctrl_ops->get_tx_phy_rate_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->ctrl_ops->get_tx_phy_rate_stats(soc, vdev_id,
+							 phy_rate_sum,
+							 phy_rate_cnt);
+}
+
 #else
 static inline QDF_STATUS cdp_get_tx_retries(ol_txrx_soc_handle soc,
 					    uint32_t vdev_id, uint32_t *val)
@@ -1360,6 +1394,14 @@ static inline QDF_STATUS cdp_get_tx_retries(ol_txrx_soc_handle soc,
 static inline
 QDF_STATUS cdp_get_txrx_bw(ol_txrx_soc_handle soc, uint8_t vdev_id,
 			   uint32_t **req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS cdp_get_tx_phy_rate_stats(ol_txrx_soc_handle soc,
+						   uint8_t vdev_id,
+						   uint64_t *phy_rate_sum,
+						   uint64_t *phy_rate_cnt)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

@@ -50,6 +50,7 @@
 #ifdef WLAN_HAPS_ENABLE
 #include "wlan_dp_haps.h"
 #endif
+#include "dp_ratetable.h"
 
 #define DP_TX_MAX_NUM_FRAGS 6
 #ifdef DP_COMP_FW_REINJECT_WAR
@@ -3026,6 +3027,51 @@ void dp_tx_hw_enqueue_post_process(struct dp_soc *soc,
 				   struct dp_tx_msdu_info_s *msdu_info,
 				   int hw_enqueue_result);
 #endif /* FEATURE_DAL_DP_SUPPORT */
+
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+/**
+ * dp_tx_update_peer_phy_rate_stats() - Accumulate per-CPU TX PHY rate stats
+ *     for predictive roaming. Called only when the vdev has opted in and
+ *     dst_mcs_idx is valid (must NOT be MCS_INVALID_ARRAY_INDEX).
+ *
+ * @ts:          TX completion status from HW
+ * @txrx_peer:   txrx peer handle
+ * @pkt_type:    SW-converted packet type (post hal_2_dp_pkt_type_map)
+ * @dst_mcs_idx: MCS array index, caller guarantees validity
+ */
+static inline void
+dp_tx_update_peer_phy_rate_stats(struct hal_tx_completion_status *ts,
+				 struct dp_txrx_peer *txrx_peer,
+				 uint8_t pkt_type,
+				 uint8_t dst_mcs_idx)
+{
+	uint64_t tx_phy_rate;
+	uint32_t rix;
+	uint16_t ratecode;
+	uint8_t cpu_id;
+
+	if (!txrx_peer->vdev ||
+	    !txrx_peer->vdev->predictive_roam_stats_enabled)
+		return;
+
+	tx_phy_rate = dp_getrateindex(ts->sgi, dst_mcs_idx, ts->tx_nss,
+				      pkt_type, ts->bw, 0, &rix, &ratecode);
+
+	cpu_id = qdf_get_cpu();
+	qdf_atomic64_add(tx_phy_rate,
+			 &txrx_peer->tx_phy_rate_stats.phy_rate_sum[cpu_id]);
+	qdf_atomic64_inc(&txrx_peer->tx_phy_rate_stats.phy_rate_cnt[cpu_id]);
+}
+#else
+static inline void
+dp_tx_update_peer_phy_rate_stats(struct hal_tx_completion_status *ts,
+				 struct dp_txrx_peer *txrx_peer,
+				 uint8_t pkt_type,
+				 uint8_t dst_mcs_idx)
+{
+}
+#endif /* FEATURE_WLAN_PREDICTIVE_ROAMING */
+
 #ifdef DP_FEATURE_TX_PAGE_POOL
 /**
  * dp_tx_trigger_page_pool_shrink() - Trigger shrink monitor for all vdevs
