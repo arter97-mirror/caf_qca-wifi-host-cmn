@@ -14243,16 +14243,11 @@ dp_dump_custom_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
 						     DP_MOD_ID_CDP);
 	struct dp_pdev *pdev;
-	uint32_t val;
-	int pkt_count;
 
 	if (!vdev)
 		return QDF_STATUS_E_INVAL;
 
 	pdev = vdev->pdev;
-	pkt_count = dp_tx_average_ul_delay(vdev, UL_DELAY_CALC_ID_INTERNAL,
-					   &val);
-	dp_info("UL delay = %u, pkts %d", val, pkt_count);
 	dp_print_tx_rates(pdev);
 	dp_print_rx_rates(pdev);
 	dp_info("PER: %d", dp_get_total_per(soc_hdl, 0));

@@ -1996,12 +1996,14 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
  * dp_get_uplink_delay() - Get uplink delay value
  * @soc_hdl: cdp soc pointer
  * @vdev_id: vdev id
+ * @client: client
  * @val: pointer to save uplink delay value
+ * @num_pkts: pointer to store number of packets
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			       uint32_t *val);
+			       uint8_t client, uint32_t *val, int *num_pkts);
 
 /**
  * dp_txrx_enable_ul_delay() - Enable UL delay calculation

@@ -9891,10 +9891,11 @@ end:
 }
 
 QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			       uint32_t *val)
+			       uint8_t client, uint32_t *val, int *num_pkts)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev;
+	int pkt_num;
 
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
 	if (!vdev) {
@@ -9902,13 +9903,18 @@ QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (!qdf_atomic_read(&vdev->tsf_ul_delay_report)) {
-		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
-		return QDF_STATUS_E_FAILURE;
+	if (client == UL_DELAY_CALC_ID_INTERNAL) {
+		pkt_num = dp_tx_average_ul_delay(vdev, client, val);
+		if (num_pkts)
+			*num_pkts = pkt_num;
+	} else {
+		if (!qdf_atomic_read(&vdev->tsf_ul_delay_report)) {
+			dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+			return QDF_STATUS_E_FAILURE;
+		}
+		dp_tx_average_ul_delay(vdev, UL_DELAY_CALC_ID_TSF, val);
+		dp_tx_print_ul_delay_hist(vdev);
 	}
-
-	dp_tx_average_ul_delay(vdev, UL_DELAY_CALC_ID_TSF, val);
-	dp_tx_print_ul_delay_hist(vdev);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
