@@ -1294,6 +1294,20 @@
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_tas.
  *
+ * @QCA_NL80211_VENDOR_SUBCMD_WOW: This vendor subcommand is used both as a
+ *	command and as an event. Userspace sends this command with
+ *	%QCA_WLAN_VENDOR_ATTR_WOW_OPERATION to select the WoWLAN (Wake on
+ *	Wireless LAN) operation to perform. The operation applies to the
+ *	interface on which the command is issued. This command is applicable
+ *	only in station mode.
+ *
+ *	The driver processes the operation asynchronously and later sends this
+ *	subcommand as an event carrying %QCA_WLAN_VENDOR_ATTR_WOW_STATUS to
+ *	notify userspace of the result of the requested operation.
+ *
+ *	The attributes used with this command are defined in
+ *	enum qca_wlan_vendor_attr_wow.
+ *
  * @QCA_NL80211_VENDOR_SUBCMD_PREDICTIVE_ROAMING: Vendor subcommand to
  *	control and manage the predictive roaming feature. The attributes
  *	used with this subcommand are defined in
@@ -1598,7 +1612,58 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_TDLS_STATS = 277,
 	QCA_NL80211_VENDOR_SUBCMD_TDLS_REPORTING_CONFIG = 278,
 	QCA_NL80211_VENDOR_SUBCMD_TAS = 279,
+	QCA_NL80211_VENDOR_SUBCMD_WOW = 282,
 	QCA_NL80211_VENDOR_SUBCMD_PREDICTIVE_ROAMING = 284,
+};
+
+/**
+ * enum qca_wlan_wow_operation - WoWLAN operation values used with
+ * %QCA_WLAN_VENDOR_ATTR_WOW_OPERATION.
+ *
+ * @QCA_WLAN_WOW_OPERATION_PRE_SUSPEND: Requests the driver to perform any
+ *	internal preparation needed prior to entering WoWLAN suspend.
+ * @QCA_WLAN_WOW_OPERATION_POST_RESUME: Requests the driver to perform any
+ *	internal restoration needed after leaving WoWLAN suspend.
+ */
+enum qca_wlan_wow_operation {
+	QCA_WLAN_WOW_OPERATION_PRE_SUSPEND = 0,
+	QCA_WLAN_WOW_OPERATION_POST_RESUME = 1,
+};
+
+/**
+ * enum qca_wlan_wow_status - WoWLAN operation status values used with
+ * %QCA_WLAN_VENDOR_ATTR_WOW_STATUS.
+ *
+ * @QCA_WLAN_WOW_STATUS_SUCCESS: The requested operation completed
+ *	successfully.
+ * @QCA_WLAN_WOW_STATUS_FAILURE: The requested operation failed.
+ */
+enum qca_wlan_wow_status {
+	QCA_WLAN_WOW_STATUS_SUCCESS = 0,
+	QCA_WLAN_WOW_STATUS_FAILURE = 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_wow - Attributes used by
+ * %QCA_NL80211_VENDOR_SUBCMD_WOW.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_WOW_OPERATION: u8 attribute. Selects the WoWLAN
+ *	operation to perform. Values are defined in enum qca_wlan_wow_operation.
+ *	Mandatory in the command sent from userspace.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_WOW_STATUS: u8 attribute. Sent by the driver in the
+ *	%QCA_NL80211_VENDOR_SUBCMD_WOW event to indicate the result of the
+ *	requested operation. Values are defined in enum qca_wlan_wow_status.
+ */
+enum qca_wlan_vendor_attr_wow {
+	QCA_WLAN_VENDOR_ATTR_WOW_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_WOW_OPERATION = 1,
+	QCA_WLAN_VENDOR_ATTR_WOW_STATUS = 2,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_WOW_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_WOW_MAX =
+	QCA_WLAN_VENDOR_ATTR_WOW_AFTER_LAST - 1,
 };
 
 enum qca_wlan_vendor_tos {
