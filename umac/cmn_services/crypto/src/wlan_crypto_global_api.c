@@ -5567,21 +5567,33 @@ struct wlan_crypto_key *wlan_crypto_get_ml_sta_link_key(
  * @vdev: vdev object
  * @peer_mac: MAC address of crypto key entity
  * @key_index: the index of the key that needs to be retrieved
+ * @is_roam_eppke: true if @vdev is currently roaming to an EPPKE /
+ * 802.1X-in-auth AP
+ *
+ * For a roaming 11bi (EPPKE / 802.1X-in-auth) vdev, @peer_mac is the
+ * candidate AP's MLD/link address, but no peer object for it exists yet
+ * in objmgr during preauth. Skip the objmgr peer lookup in that case and
+ * fall back to the vdev's own link address, matching the link_addr used
+ * to store the key on the corresponding store path.
  *
  * Return: Key material
  */
 static struct wlan_crypto_key *
 wlan_crypto_get_ml_keys_from_index(struct wlan_objmgr_vdev *vdev,
-				   const uint8_t *peer_mac, uint8_t key_index)
+				   const uint8_t *peer_mac, uint8_t key_index,
+				   bool is_roam_eppke)
 {
 	struct wlan_objmgr_psoc *psoc;
 	struct crypto_psoc_priv_obj *crypto_psoc_obj;
 	struct qdf_mac_addr *link_addr = NULL;
+	struct qdf_mac_addr mac_addr;
 	struct wlan_crypto_key_entry *key_entry = NULL;
 	uint8_t link_id = CRYPTO_MAX_LINK_IDX;
 	struct wlan_objmgr_peer *peer;
 
-	crypto_debug("crypto get key index %d", key_index);
+	crypto_debug("crypto get key index %d, peer_mac :" QDF_MAC_ADDR_FMT,
+		     key_index, QDF_MAC_ADDR_REF(peer_mac));
+
 	psoc = wlan_vdev_get_psoc(vdev);
 	if (!psoc) {
 		crypto_err("psoc NULL");
@@ -5609,6 +5621,11 @@ wlan_crypto_get_ml_keys_from_index(struct wlan_objmgr_vdev *vdev,
 			}
 			wlan_objmgr_peer_release_ref(peer, WLAN_CRYPTO_ID);
 		}
+	}
+
+	if (is_roam_eppke && peer_mac) {
+		qdf_mem_copy(mac_addr.bytes, peer_mac, QDF_MAC_ADDR_SIZE);
+		link_addr = &mac_addr;
 	}
 
 	if (!link_addr) {
@@ -5643,9 +5660,10 @@ wlan_crypto_get_ml_keys_from_index(struct wlan_objmgr_vdev *vdev,
 	return NULL;
 }
 
-struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
-					    const uint8_t *peer_mac,
-					    uint8_t key_index)
+struct wlan_crypto_key *
+wlan_crypto_get_key_allow_roam_bypass(struct wlan_objmgr_vdev *vdev,
+				      const uint8_t *peer_mac,
+				      uint8_t key_index, bool is_roam_eppke)
 {
 	struct wlan_crypto_comp_priv *crypto_priv;
 	struct wlan_crypto_keys *priv_key = NULL;
@@ -5664,7 +5682,8 @@ struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
 
 	if (wlan_crypto_is_store_in_psoc(vdev)) {
 		return wlan_crypto_get_ml_keys_from_index(vdev, peer_mac,
-							  key_index);
+							  key_index,
+							  is_roam_eppke);
 	} else {
 		if (key_index < WLAN_CRYPTO_MAXKEYIDX)
 			return priv_key->key[key_index];
@@ -5683,6 +5702,14 @@ struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
 		}
 	}
 	return NULL;
+}
+
+struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
+					    const uint8_t *peer_mac,
+					    uint8_t key_index)
+{
+	return wlan_crypto_get_key_allow_roam_bypass(vdev, peer_mac, key_index,
+						     false);
 }
 
 QDF_STATUS wlan_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,

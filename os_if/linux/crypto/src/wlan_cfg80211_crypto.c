@@ -33,6 +33,7 @@
 #include "wlan_cfg80211_crypto.h"
 #include <wlan_cfg80211.h>
 #include <wlan_osif_request_manager.h>
+#include "wlan_cm_ucfg_api.h"
 
 void wlan_cfg80211_translate_ml_sta_key(uint8_t key_index,
 					enum wlan_crypto_key_type key_type,
@@ -118,13 +119,15 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 				 enum wlan_crypto_key_type key_type,
 				 const u8 *mac_addr, struct key_params *params,
 				 struct qdf_mac_addr *link_addr,
-				 uint8_t link_id)
+				 uint8_t link_id,
+				 bool is_roam_eppke)
 {
 	struct wlan_crypto_key *crypto_key = NULL;
 	enum wlan_crypto_cipher_type cipher;
 	int cipher_len;
 	QDF_STATUS status;
 	bool is_crypto_key_malloc = false;
+	struct qdf_mac_addr mac_address;
 
 	if (!psoc) {
 		osif_err("psoc is NULL");
@@ -161,8 +164,15 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 	 * update it.
 	 */
 	wlan_crypto_aquire_lock();
+
+	if (is_roam_eppke) {
+		qdf_mem_copy(mac_address.bytes, mac_addr, QDF_MAC_ADDR_SIZE);
+		goto create_key;
+	}
+
 	crypto_key = wlan_crypto_get_ml_sta_link_key(psoc, key_index,
 						     link_addr, link_id);
+create_key:
 	if (!crypto_key) {
 		wlan_crypto_release_lock();
 		crypto_key = qdf_mem_malloc(sizeof(*crypto_key));
@@ -171,12 +181,17 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 		is_crypto_key_malloc = true;
 		wlan_crypto_aquire_lock();
 	}
-
 	wlan_cfg80211_translate_ml_sta_key(key_index, key_type, mac_addr,
 					   params, crypto_key);
 
-	status = wlan_crypto_save_ml_sta_key(psoc, key_index, crypto_key,
-					     link_addr, link_id);
+	if (!is_roam_eppke)
+		status = wlan_crypto_save_ml_sta_key(psoc, key_index,
+						     crypto_key, link_addr,
+						     link_id);
+	else
+		status = wlan_crypto_save_ml_sta_key(psoc, key_index,
+						     crypto_key, &mac_address,
+						     link_id);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		wlan_crypto_release_lock();
 		osif_err("Failed to save key");
@@ -292,13 +307,23 @@ int wlan_cfg80211_crypto_add_key(struct wlan_objmgr_vdev *vdev,
 	struct crypto_add_key_result *result;
 	struct wlan_crypto_comp_priv *priv;
 	int ret;
+	bool is_roam_eppke;
 	static const struct osif_request_params params = {
 		.priv_size = sizeof(*result),
 		.timeout_ms = WLAN_WAIT_TIME_ADD_KEY,
 	};
 
+	is_roam_eppke = ucfg_cm_is_vdev_roaming(vdev) &&
+		(wlan_crypto_vdev_has_auth_mode(vdev,
+						BIT(WLAN_CRYPTO_AUTH_EPPKE)) ||
+		 wlan_crypto_vdev_has_auth_mode(
+				vdev,
+				BIT(WLAN_CRYPTO_AUTH_8021X_IN_AUTH)));
+
 	wlan_crypto_aquire_lock();
-	crypto_key = wlan_crypto_get_key(vdev, peer_mac, key_index);
+	crypto_key = wlan_crypto_get_key_allow_roam_bypass(
+					vdev, peer_mac, key_index,
+					is_roam_eppke);
 	if (!crypto_key) {
 		wlan_crypto_release_lock();
 		osif_err("Crypto KEY is NULL");

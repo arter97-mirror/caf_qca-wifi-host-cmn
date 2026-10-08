@@ -1162,6 +1162,28 @@ struct wlan_crypto_key *wlan_crypto_get_ml_sta_link_key(
 				uint8_t key_index,
 				struct qdf_mac_addr *link_addr,
 				uint8_t link_id);
+
+/**
+ * wlan_crypto_copy_ml_sta_link_key() - Copy a stored ml sta link key of the
+ *					given type to another link
+ * @psoc: psoc handler
+ * @params: key copy parameters, @params->copied_key_index is filled with the
+ *	    key index that was copied on success
+ *
+ * Scans the key indices stored under (@params->src_link_addr,
+ * @params->src_link_id) for the first key matching @params->key_type and
+ * stores a copy of it under (@params->dst_link_addr, @params->dst_link_id) at
+ * the same key index, allocating the destination key when the link has none.
+ * The whole lookup-copy-store sequence is performed while holding the crypto
+ * lock, so callers must not take the crypto lock themselves.
+ *
+ * Return: QDF_STATUS_SUCCESS on copy, QDF_STATUS_E_NOENT when the source link
+ *	   has no key of @params->key_type, QDF_STATUS_E_* otherwise
+ */
+QDF_STATUS
+wlan_crypto_copy_ml_sta_link_key(struct wlan_objmgr_psoc *psoc,
+				 struct wlan_crypto_ml_key_copy_params *params);
+
 /**
  * wlan_crypto_get_key() - Get the stored key information
  * @vdev: vdev object
@@ -1173,6 +1195,26 @@ struct wlan_crypto_key *wlan_crypto_get_ml_sta_link_key(
 struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
 					    const uint8_t *peer_mac,
 					    uint8_t key_index);
+
+/**
+ * wlan_crypto_get_key_allow_roam_bypass() - Get the stored key information,
+ * with an option to bypass the ML link key lookup for a roaming 11bi vdev
+ * @vdev: vdev object
+ * @peer_mac: MAC address of crypto key entity
+ * @key_index: the index of the key that needs to be retrieved
+ * @is_roam_eppke: true if this is an EPPKE / 802.1X-in-auth (11bi) roam
+ *
+ * When @is_roam_eppke is true, the AP's link address (@peer_mac) is used as
+ * the ML key hash-table lookup key instead of the vdev's own link address,
+ * to match the link_addr used when the key was stored via
+ * wlan_crypto_save_ml_sta_key().
+ *
+ * Return: Key material
+ */
+struct wlan_crypto_key *
+wlan_crypto_get_key_allow_roam_bypass(struct wlan_objmgr_vdev *vdev,
+				      const uint8_t *peer_mac,
+				      uint8_t key_index, bool is_roam_eppke);
 
 /**
  * wlan_crypto_set_key_req() - Set key request

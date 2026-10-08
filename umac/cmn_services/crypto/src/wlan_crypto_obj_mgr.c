@@ -838,6 +838,82 @@ void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 	qdf_mutex_release(&crypto_psoc_obj->crypto_key_lock);
 }
 
+QDF_STATUS
+wlan_crypto_copy_ml_sta_link_key(struct wlan_objmgr_psoc *psoc,
+				 struct wlan_crypto_ml_key_copy_params *params)
+{
+	struct wlan_crypto_key *src_key;
+	struct wlan_crypto_key *dst_key;
+	uint8_t key_index;
+	bool dst_key_alloc = false;
+	QDF_STATUS status = QDF_STATUS_E_NOENT;
+	uint8_t max_key_index = WLAN_CRYPTO_MAXKEYIDX +
+				WLAN_CRYPTO_MAXIGTKKEYIDX +
+				WLAN_CRYPTO_MAXBIGTKKEYIDX;
+
+	if (!psoc || !params) {
+		crypto_err("invalid params");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!params->src_link_addr || !params->dst_link_addr ||
+	    !params->dst_peer_addr) {
+		crypto_err("invalid link addr");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wlan_crypto_aquire_lock();
+
+	for (key_index = 0; key_index < max_key_index; key_index++) {
+		src_key = wlan_crypto_get_ml_sta_link_key(psoc, key_index,
+							  params->src_link_addr,
+							  params->src_link_id);
+		if (!src_key || src_key->key_type != params->key_type)
+			continue;
+
+		dst_key = wlan_crypto_get_ml_sta_link_key(psoc, key_index,
+							  params->dst_link_addr,
+							  params->dst_link_id);
+		if (!dst_key) {
+			dst_key = qdf_mem_malloc(sizeof(*dst_key));
+			if (!dst_key) {
+				status = QDF_STATUS_E_NOMEM;
+				break;
+			}
+			dst_key_alloc = true;
+		}
+
+		qdf_mem_copy(dst_key, src_key, sizeof(*dst_key));
+		/*
+		 * The key install path passes macaddr to firmware as the peer,
+		 * so point the copy at the destination link's peer.
+		 */
+		qdf_mem_copy(dst_key->macaddr, params->dst_peer_addr->bytes,
+			     QDF_MAC_ADDR_SIZE);
+
+		status = wlan_crypto_save_ml_sta_key(psoc, key_index, dst_key,
+						     params->dst_link_addr,
+						     params->dst_link_id);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			crypto_err("failed to save key %d for link_id %d",
+				   key_index, params->dst_link_id);
+			if (dst_key_alloc)
+				qdf_mem_free(dst_key);
+			break;
+		}
+
+		crypto_debug("copied key %d from link_id %d to link_id %d",
+			     key_index, params->src_link_id,
+			     params->dst_link_id);
+		params->copied_key_index = key_index;
+		break;
+	}
+
+	wlan_crypto_release_lock();
+
+	return status;
+}
+
 static QDF_STATUS wlan_crypto_vdev_obj_destroy_handler(
 						struct wlan_objmgr_vdev *vdev,
 						void *arg)

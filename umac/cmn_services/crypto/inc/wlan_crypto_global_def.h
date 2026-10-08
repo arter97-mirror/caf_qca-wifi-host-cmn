@@ -754,6 +754,28 @@ struct wlan_crypto_key_entry {
 };
 
 /**
+ * struct wlan_crypto_ml_key_copy_params - ml sta link key copy parameters
+ * @key_type: key type to copy, unicast or group
+ * @src_link_addr: link address the source key is stored under
+ * @src_link_id: link id the source key is stored under
+ * @dst_link_addr: link address to store the copied key under
+ * @dst_link_id: link id to store the copied key under
+ * @dst_peer_addr: peer (AP link) address to stamp into the copied key, as the
+ *		   key install path passes it to firmware as the peer
+ * @copied_key_index: output, the key index that was copied, valid only when
+ *		      the copy succeeds
+ */
+struct wlan_crypto_ml_key_copy_params {
+	enum wlan_crypto_key_type key_type;
+	struct qdf_mac_addr *src_link_addr;
+	uint8_t src_link_id;
+	struct qdf_mac_addr *dst_link_addr;
+	uint8_t dst_link_id;
+	struct qdf_mac_addr *dst_peer_addr;
+	uint8_t copied_key_index;
+};
+
+/**
  * struct wlan_crypto_req_key - key request structure
  * @type:                       key/cipher type
  * @pad:                        padding member

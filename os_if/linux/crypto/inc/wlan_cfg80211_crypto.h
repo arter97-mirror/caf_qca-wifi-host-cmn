@@ -141,6 +141,8 @@ int wlan_cfg80211_crypto_del_ndi_key(struct wlan_objmgr_vdev *vdev,
  * @params: params
  * @link_addr: link address
  * @link_id: link id
+ * @is_roam_eppke: true if this is a roam-driven EPPKE/802.1X-in-Auth key
+ *  install, computed by the caller from the link vdev's state.
  *
  */
 int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
@@ -148,7 +150,8 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 				 enum wlan_crypto_key_type key_type,
 				 const u8 *mac_addr, struct key_params *params,
 				 struct qdf_mac_addr *link_addr,
-				 uint8_t link_id);
+				 uint8_t link_id,
+				 bool is_roam_eppke);
 #else
 static inline
 int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
@@ -156,7 +159,8 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 				 enum wlan_crypto_key_type key_type,
 				 const u8 *mac_addr, struct key_params *params,
 				 struct qdf_mac_addr *link_addr,
-				 uint8_t link_id)
+				 uint8_t link_id,
+				 bool is_roam_eppke)
 {
 	return -EINVAL;
 }
