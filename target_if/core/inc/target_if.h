@@ -3370,6 +3370,129 @@ target_if_get_fw_btm_multi_ap_support(struct wlan_objmgr_psoc *psoc)
 
 	return mac_phy_cap->ext_mldcap.btm_recommended_for_multi_ap;
 }
+
+/**
+ * target_if_get_fw_multi_link_power_mgmt_support() - Get if FW supports
+ * multi link power management or not
+ * @psoc: objmgr psoc
+ *
+ * Return: true if multi link power management is supported else false
+ */
+static inline bool
+target_if_get_fw_multi_link_power_mgmt_support(struct wlan_objmgr_psoc *psoc)
+{
+	struct target_psoc_info *tgt_hdl;
+	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl)
+		return false;
+
+	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+	if (!mac_phy_cap)
+		return false;
+
+	return mac_phy_cap->ext_mldcap.multi_link_power_mgmt_support;
+}
+
+/**
+ * target_if_get_fw_enhanced_group_key_delivery_support() - Get if FW
+ * supports enhanced group key delivery or not
+ * @psoc: objmgr psoc
+ *
+ * Return: true if enhanced group key delivery is supported else false
+ */
+static inline bool
+target_if_get_fw_enhanced_group_key_delivery_support(
+		struct wlan_objmgr_psoc *psoc)
+{
+	struct target_psoc_info *tgt_hdl;
+	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl)
+		return false;
+
+	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+	if (!mac_phy_cap)
+		return false;
+
+	return mac_phy_cap->ext_mldcap.enhanced_group_key_delivery_support;
+}
+
+/**
+ * target_if_get_fw_max_supported_dl_ba_bitmap_length() - Get the max
+ * supported DL BA bitmap length advertised by FW
+ * @psoc: objmgr psoc
+ *
+ * Return: max supported DL BA bitmap length, 0 if unavailable
+ */
+static inline uint8_t
+target_if_get_fw_max_supported_dl_ba_bitmap_length(
+		struct wlan_objmgr_psoc *psoc)
+{
+	struct target_psoc_info *tgt_hdl;
+	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl)
+		return 0;
+
+	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+	if (!mac_phy_cap)
+		return 0;
+
+	return mac_phy_cap->ext_mldcap.max_supported_dl_ba_bitmap_length;
+}
+
+/**
+ * target_if_get_fw_dl_dual_ba_support() - Get if FW supports DL dual BA
+ * or not
+ * @psoc: objmgr psoc
+ *
+ * Return: true if DL dual BA is supported else false
+ */
+static inline bool
+target_if_get_fw_dl_dual_ba_support(struct wlan_objmgr_psoc *psoc)
+{
+	struct target_psoc_info *tgt_hdl;
+	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl)
+		return false;
+
+	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+	if (!mac_phy_cap)
+		return false;
+
+	return mac_phy_cap->ext_mldcap.dl_dual_ba_support;
+}
+
+/**
+ * target_if_get_fw_negotiated_ttlm_discard_exception_support() - Get if FW
+ * supports negotiated TTLM discard exception or not
+ * @psoc: objmgr psoc
+ *
+ * Return: true if negotiated TTLM discard exception is supported else false
+ */
+static inline bool
+target_if_get_fw_negotiated_ttlm_discard_exception_support(
+		struct wlan_objmgr_psoc *psoc)
+{
+	struct target_psoc_info *tgt_hdl;
+	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl)
+		return false;
+
+	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+	if (!mac_phy_cap)
+		return false;
+
+	return mac_phy_cap->ext_mldcap.negotiated_ttlm_discard_exception_support;
+}
 #endif
 
 /**

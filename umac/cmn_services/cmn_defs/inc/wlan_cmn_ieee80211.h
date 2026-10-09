@@ -3958,7 +3958,7 @@ struct wlan_eht_cap_info {
 } qdf_packed;
 
 #ifdef WLAN_FEATURE_11BN
-#define WLAN_UHR_CAP_IE_MAX_LEN 21
+#define WLAN_UHR_CAP_IE_MAX_LEN 25
 /**
  * struct wlan_uhr_cap_info - UHR (Ultra High Reliability) capability info
  * @present: UHR capability IE present
@@ -3993,7 +3993,9 @@ struct wlan_eht_cap_info {
  * @cobf_support: COBF (Coordinated beamforming) support
  * @co_sr_support: COSR (Coordinated Spatial Reuse) support
  * @mapc_enh_meas_support: MAPC Enhanced Measurement support
- * @reserved_mac_b41_b47: Reserved MAC caps bits (B41-B47)
+ * @hg_rtwt_support: HG-rTWT (Hybrid Group restricted TWT) support (B41)
+ * @extended_channel_usage_support: Extended Channel Usage support (B42)
+ * @reserved_mac_b43_b47: Reserved MAC caps bits (B43-B47)
  * @num_data: Length of data
  * @data: UHR capability IE data. Element ID + length + extension element ID +
  *        UHR capability information
@@ -4030,7 +4032,8 @@ struct wlan_eht_cap_info {
  * @dru_dbw60_pbw_ge80_support: DRU DBW=60 in PBW>=80 MHz support (B30)
  * @dru_rru_hybrid_support: DRU+RRU hybrid mode support (B31)
  * @reserved_phy_b32_b39: Reserved PHY bits (B32-B39)
- * @dbe_param: DBE Capability Parameters (0, 1, 4, or 7 bytes)
+ * @dbe_param: DBE Capability Parameters (0, 3, 7, or 11 bytes: 3-byte header
+ *             plus 0, 1, or 2 optional 4-byte per-band blocks)
  */
 struct wlan_uhr_cap_info {
 	bool present;
@@ -4064,7 +4067,9 @@ struct wlan_uhr_cap_info {
 	uint16_t         cobf_support:1;
 	uint16_t         co_sr_support:1;
 	uint16_t mapc_enh_meas_support:1;
-	uint16_t reserved_mac_b41_b47:7;
+	uint16_t       hg_rtwt_support:1;
+	uint16_t extended_channel_usage_support:1;
+	uint16_t reserved_mac_b43_b47:5;
 	uint16_t max_nss_rx_ndp_sounding_80mhz:1;
 	uint16_t max_nss_rx_dl_mumimo_80mhz:1;
 	uint16_t max_nss_rx_ndp_sounding_160mhz:1;
@@ -4096,7 +4101,7 @@ struct wlan_uhr_cap_info {
 	uint8_t  dru_dbw60_pbw_ge80_support:1;
 	uint8_t  dru_rru_hybrid_support:1;
 	uint8_t  reserved_phy_b32_b39:8;
-	uint8_t  dbe_param[7];
+	uint8_t  dbe_param[11];
 	uint16_t num_data;
 	uint8_t data[WLAN_UHR_CAP_IE_MAX_LEN];
 } qdf_packed;
@@ -4135,6 +4140,8 @@ struct wlan_uhr_cap_info {
 #define WLAN_UHR_CAPPARAM_CO_BF_SUPP_IDX				38
 #define WLAN_UHR_CAPPARAM_CO_SR_SUPP_IDX				39
 #define WLAN_UHR_CAPPARAM_MAPC_ENH_MEAS_SUPP_IDX			40
+#define WLAN_UHR_CAPPARAM_HG_RTWT_SUPP_IDX				41
+#define WLAN_UHR_CAPPARAM_EXT_CHAN_USAGE_SUPP_IDX			42
 
 /* UHR PHY Capabilities first octet bit positions */
 #define WLAN_UHR_PHY_MAX_NSS_RX_NDP_80MHZ_IDX                           0
@@ -5094,10 +5101,11 @@ struct csa_offload_params {
 
 /*
  * UHR Operation IE max size:
- *   1(EID) + 1(Len) + 1(ExtID) + 2(ctrl) + 4(MCS/NSS) +
- *   1(DUO) + 4(DPS) + 6(NPCA) + 3(P-EDCA) + 3(DBE) = 26 bytes
+ *   1(EID) + 1(Len) + 1(ExtID) + 2(ctrl) + 1(DUO) + 4(DPS) + 6(NPCA) +
+ *   2(P-EDCA) + 3(DBE) + 64(DBE TPE trailer bound, see
+ *   WLAN_UHR_DBE_TPE_ELEMS_MAX_LEN) = 85 bytes
  */
-#define WLAN_UHR_OP_IE_MAX_LEN 26
+#define WLAN_UHR_OP_IE_MAX_LEN 85
 
 /* MAC caps fixed field = 6 octets (B0-B47); PHY caps fixed field = 5 octets (B0-B39) */
 #define WLAN_UHR_CAP_MAC_FIXED_FIELD_LEN         6
@@ -5106,10 +5114,18 @@ struct csa_offload_params {
 #define WLAN_UHR_OP_PARAM_LEN                    2
 #define WLAN_UHR_DPS_OP_PARAM_LEN                4
 #define WLAN_UHR_NPCA_OP_PARAM_LEN               6
-#define WLAN_UHR_PEDCA_OP_PARAM_LEN              3
+#define WLAN_UHR_PEDCA_OP_PARAM_LEN              2
 #define WLAN_UHR_DBE_OP_PARAM_LEN                3
-/* 2(ctrl)+1(DUO)+4(DPS)+6(NPCA)+3(P-EDCA)+3(DBE) = 19 bytes */
-#define WLAN_UHR_UHR_OP_MAX_LEN                  19
+/*
+ * Max bound on the DBE Operation Parameters' variable-length Transmit
+ * Power Envelope element trailer (see struct wlan_uhr_dbe_op_params).
+ * This is an implementation choice, not a spec-defined limit -- full
+ * semantic decode of TPE elements (clause 9.4.2.160) is out of scope;
+ * elements beyond this bound are skipped rather than stored.
+ */
+#define WLAN_UHR_DBE_TPE_ELEMS_MAX_LEN            64
+/* 2(ctrl)+1(DUO)+4(DPS)+6(NPCA)+2(P-EDCA)+3(DBE)+64(DBE TPE trailer) = 82 bytes */
+#define WLAN_UHR_UHR_OP_MAX_LEN                  82
 
 /**
  * struct wlan_uhr_dps_op_params - DPS Operation Parameters field (4 octets)
@@ -5200,46 +5216,56 @@ struct wlan_npca_caps {
 
 /**
  * struct wlan_uhr_pedca_op_params - P-EDCA Operation Parameters field
- *                                   (3 octets)
+ *                                   (2 octets)
  * @present:                         Indicates P-EDCA Operation Parameters
  *                                   are present
  * @ecw_min:                         P-EDCA ECWmin (B0..B3)
  * @ecw_max:                         P-EDCA ECWmax (B4..B7)
  * @aifsn:                           P-EDCA AIFSN (B8..B11)
  * @cw_ds:                           CW DS (B12..B13)
- * @psrc_threshold:                  P-EDCA PSRC Threshold (B14..B16)
- * @qsrc_threshold:                  P-EDCA QSRC Threshold (B17..B18)
- * @reserved:                        Reserved (B19..B23)
+ * @psrc_threshold:                  P-EDCA PSRC Threshold (B14)
+ * @qsrc_threshold:                  P-EDCA QSRC Threshold (B15)
  *
  */
 struct wlan_uhr_pedca_op_params {
 	bool present;
-	uint32_t ecw_min:4;
-	uint32_t ecw_max:4;
-	uint32_t aifsn:4;
-	uint32_t cw_ds:2;
-	uint32_t psrc_threshold:3;
-	uint32_t qsrc_threshold:2;
-	uint32_t reserved:5;
+	uint16_t ecw_min:4;
+	uint16_t ecw_max:4;
+	uint16_t aifsn:4;
+	uint16_t cw_ds:2;
+	uint16_t psrc_threshold:1;
+	uint16_t qsrc_threshold:1;
 } qdf_packed;
 
 /**
  * struct wlan_uhr_dbe_op_params - DBE Operation Parameters field (3 octets)
+ *                                 plus an optional variable-length TPE
+ *                                 trailer
  * @present:                       Indicates DBE Operation Parameters are
  *                                 present
  * @dbe_bandwidth:                 DBE Bandwidth (B0..B2)
  * @disabled_subchan_bmap_present: DBE Disabled Subchannel Bitmap Present (B3)
- * @reserved:                      Reserved (B4..B7)
+ * @num_tpe_elements_for_dbe:      Number of Transmit Power Envelope
+ *                                 elements carried in the trailer (B4..B6)
+ * @reserved:                      Reserved (B7)
  * @disabled_subchannel_bitmap:    DBE Disabled Subchannel Bitmap (B8..B23)
  *                                 (0 or 16 bits meaningful based on
  *                                 @disabled_subchan_bmap_present)
+ * @tpe_elems_len:                 Number of bytes stored in @tpe_elems
+ *                                 (raw [Element ID][Length][body] elements,
+ *                                 capped at WLAN_UHR_DBE_TPE_ELEMS_MAX_LEN;
+ *                                 not semantically decoded)
+ * @tpe_elems:                     Raw bytes of the TPE element trailer
  */
 struct wlan_uhr_dbe_op_params {
 	bool present;
 	uint32_t dbe_bandwidth:3;
 	uint32_t disabled_subchan_bmap_present:1;
-	uint32_t reserved:4;
+	uint32_t num_tpe_elements_for_dbe:3;
+	uint32_t reserved:1;
 	uint32_t disabled_subchannel_bitmap:16;
+	uint16_t tpe_elems_len;
+	uint8_t tpe_elems[WLAN_UHR_DBE_TPE_ELEMS_MAX_LEN];
 } qdf_packed;
 
 /**
@@ -5269,7 +5295,8 @@ struct wlan_uhr_duo_op_params {
  * @npca_op_params_present: NPCA Operation Parameters Present (B10)
  * @pedca_op_params_present: P-EDCA Operation Parameters Present (B11)
  * @dbe_op_params_present: DBE Operation Parameters Present (B12)
- * @reserved0:             Reserved (B13..B15)
+ * @ap_puo_enabled:        AP PUO Enabled (B13)
+ * @reserved0:             Reserved (B14..B15)
  *
  * Optional blocks:
  * @duo_params:            DUO Operation Parameters (present when B7 set)
@@ -5296,7 +5323,8 @@ struct wlan_uhr_op_ie {
 	uint16_t npca_op_params_present:1;
 	uint16_t pedca_op_params_present:1;
 	uint16_t dbe_op_params_present:1;
-	uint16_t reserved0:3;
+	uint16_t ap_puo_enabled:1;
+	uint16_t reserved0:2;
 
 	/* Optional parameter blocks */
 	struct wlan_uhr_duo_op_params   duo_params;
@@ -5323,6 +5351,7 @@ struct wlan_uhr_op_ie {
 #define WLAN_UHR_OPPARAM_NPCA_PARAMS_PRESENT_IDX   10
 #define WLAN_UHR_OPPARAM_PEDCA_PARAMS_PRESENT_IDX  11
 #define WLAN_UHR_OPPARAM_DBE_PARAMS_PRESENT_IDX    12
+#define WLAN_UHR_OPPARAM_AP_PUO_EN_IDX             13
 
 /* DUO Operation Parameters bit layout (1 octet) */
 #define WLAN_UHR_DUO_MAX_STANDALONE_BSRP_IDX       0
@@ -5369,7 +5398,7 @@ struct wlan_uhr_op_ie {
 #define WLAN_UHR_NPCA_DSBMP_IDX            32
 #define WLAN_UHR_NPCA_DSBMP_BITS           16
 
-/* P-EDCA Operation Parameters bit layout (3 octets) */
+/* P-EDCA Operation Parameters bit layout (2 octets) */
 #define WLAN_UHR_PEDCA_ECWMIN_IDX          0
 #define WLAN_UHR_PEDCA_ECWMIN_BITS         4
 #define WLAN_UHR_PEDCA_ECWMAX_IDX          4
@@ -5379,15 +5408,17 @@ struct wlan_uhr_op_ie {
 #define WLAN_UHR_PEDCA_CWDS_IDX            12
 #define WLAN_UHR_PEDCA_CWDS_BITS           2
 #define WLAN_UHR_PEDCA_PSRC_TH_IDX         14
-#define WLAN_UHR_PEDCA_PSRC_TH_BITS        3
-#define WLAN_UHR_PEDCA_QSRC_TH_IDX         17
-#define WLAN_UHR_PEDCA_QSRC_TH_BITS        2
+#define WLAN_UHR_PEDCA_PSRC_TH_BITS        1
+#define WLAN_UHR_PEDCA_QSRC_TH_IDX         15
+#define WLAN_UHR_PEDCA_QSRC_TH_BITS        1
 
-/* DBE Operation Parameters bit layout (3 octets) */
+/* DBE Operation Parameters bit layout (3 octets, plus TPE trailer) */
 #define WLAN_UHR_DBE_BW_IDX                0
 #define WLAN_UHR_DBE_BW_BITS               3
 #define WLAN_UHR_DBE_DSBMP_PRESENT_IDX     3
 #define WLAN_UHR_DBE_DSBMP_PRESENT_BITS    1
+#define WLAN_UHR_DBE_NUM_TPE_ELEMS_IDX     4
+#define WLAN_UHR_DBE_NUM_TPE_ELEMS_BITS    3
 #define WLAN_UHR_DBE_DSBMP_IDX             8
 #define WLAN_UHR_DBE_DSBMP_BITS            16
 
