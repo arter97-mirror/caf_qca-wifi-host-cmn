@@ -2442,12 +2442,12 @@ struct cdp_ipa_ops {
 	int (*ipa_tx_buf_alloc_map)(struct cdp_soc_t *soc_hdl);
 	void (*ipa_opt_dp_set_tx_doorbell)(struct cdp_soc_t *soc_hdl);
 	void (*ipa_opt_dp_reset_tx_doorbell)(struct cdp_soc_t *soc_hdl);
-	QDF_STATUS (*ipa_rx_pp_cntrs_init)(struct cdp_soc_t *soc_hdl);
-	QDF_STATUS (*ipa_rx_pp_cntrs_deinit)(struct cdp_soc_t *soc_hdl);
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	bool (*ipa_opt_dp_ctrl_debug_enable)(struct cdp_soc_t *soc_hdl);
 #endif
 #endif
+	QDF_STATUS (*ipa_rx_pp_cntrs_init)(struct cdp_soc_t *soc_hdl);
+	QDF_STATUS (*ipa_rx_pp_cntrs_deinit)(struct cdp_soc_t *soc_hdl);
 #ifdef IPA_WDS_EASYMESH_FEATURE
 	QDF_STATUS (*ipa_ast_create)(struct cdp_soc_t *soc_hdl,
 				     qdf_ipa_ast_info_type_t *data);
