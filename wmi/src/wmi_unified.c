@@ -2465,6 +2465,20 @@ QDF_STATUS wmi_unified_unregister_event_handler(wmi_unified_t wmi_handle,
 }
 qdf_export_symbol(wmi_unified_unregister_event_handler);
 
+#ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
+static void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
+{
+	nbuf = wbuff_buff_put(nbuf);
+	if (nbuf)
+		qdf_nbuf_free(nbuf);
+}
+#else
+static inline void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
+{
+	return qdf_nbuf_free(nbuf);
+}
+#endif
+
 static void
 wmi_process_rx_diag_event_worker_thread_ctx(struct wmi_unified *wmi_handle,
 					    void *evt_buf)
@@ -2481,7 +2495,7 @@ wmi_process_rx_diag_event_worker_thread_ctx(struct wmi_unified *wmi_handle,
 			wmi_handle->wmi_rx_diag_events_dropped++;
 			wmi_debug_rl("Rx diag events dropped count: %d",
 				     wmi_handle->wmi_rx_diag_events_dropped);
-			qdf_nbuf_free(evt_buf);
+			wmi_rx_nbuf_free(evt_buf);
 			return;
 		}
 	}
@@ -2578,7 +2592,7 @@ wmi_process_fw_event_sched_thread_ctx(struct wmi_unified *wmi,
 	params_buf = qdf_mem_malloc(sizeof(struct wmi_process_fw_event_params));
 	if (!params_buf) {
 		wmi_err("malloc failed");
-		qdf_nbuf_free(ev);
+		wmi_rx_nbuf_free(ev);
 		return QDF_STATUS_E_NOMEM;
 	}
 
@@ -2599,7 +2613,7 @@ wmi_process_fw_event_sched_thread_ctx(struct wmi_unified *wmi,
 		scheduler_post_message(QDF_MODULE_ID_TARGET_IF,
 				       QDF_MODULE_ID_TARGET_IF,
 				       QDF_MODULE_ID_TARGET_IF, &msg)) {
-		qdf_nbuf_free(ev);
+		wmi_rx_nbuf_free(ev);
 		qdf_mem_free(params_buf);
 		return QDF_STATUS_E_FAULT;
 	}
@@ -2655,20 +2669,6 @@ static void wmi_mtrace_rx(uint32_t message_id, uint16_t vdev_id, uint32_t data)
 	qdf_mtrace(QDF_MODULE_ID_WMI, QDF_MODULE_ID_WMA,
 		   mtrace_message_id, vdev_id, data);
 }
-
-#ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
-static void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
-{
-	nbuf = wbuff_buff_put(nbuf);
-	if (nbuf)
-		qdf_nbuf_free(nbuf);
-}
-#else
-static inline void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
-{
-	return qdf_nbuf_free(nbuf);
-}
-#endif
 
 /**
  * wmi_process_control_rx() - process fw events callbacks

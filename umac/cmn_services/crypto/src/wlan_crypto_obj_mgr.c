@@ -269,6 +269,7 @@ QDF_STATUS crypto_add_entry(struct crypto_psoc_priv_obj *psoc,
 	struct wlan_crypto_key_entry *crypto_entry = NULL;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	uint8_t igtk_key_idx, bigtk_key_idx;
+	struct wlan_crypto_key *old_vlan_key;
 
 	crypto_debug("crypto add entry link id %d mac_addr " QDF_MAC_ADDR_FMT
 		     " key index %d psoc key cnt %d",
@@ -342,7 +343,7 @@ QDF_STATUS crypto_add_entry(struct crypto_psoc_priv_obj *psoc,
 		crypto_entry->keys.igtk_key[igtk_key_idx] = crypto_key;
 		crypto_entry->keys.def_igtk_tx_keyid = igtk_key_idx;
 		crypto_entry->keys.igtk_key_type = crypto_key->cipher_type;
-	} else {
+	} else if (is_bigtk(key_index)) {
 		bigtk_key_idx = key_index - WLAN_CRYPTO_MAXKEYIDX -
 				WLAN_CRYPTO_MAXIGTKKEYIDX;
 		if (crypto_entry->keys.bigtk_key[bigtk_key_idx] &&
@@ -356,8 +357,26 @@ QDF_STATUS crypto_add_entry(struct crypto_psoc_priv_obj *psoc,
 		}
 		crypto_entry->keys.bigtk_key[bigtk_key_idx] = crypto_key;
 		crypto_entry->keys.def_bigtk_tx_keyid = bigtk_key_idx;
+	} else if (is_vgtk(key_index)) {
+		old_vlan_key = wlan_crypto_get_vlan_key(&crypto_entry->keys,
+							key_index);
+		if (old_vlan_key && old_vlan_key != crypto_key) {
+			crypto_info("crypto key addr1:%pK addr2:%pK key index %d, link id %d mac_addr: " QDF_MAC_ADDR_FMT,
+				    old_vlan_key, crypto_key, key_index,
+				    link_id, QDF_MAC_ADDR_REF(mac_addr));
+			qdf_mem_free(old_vlan_key);
+		}
+		wlan_crypto_save_vlan_key(&crypto_entry->keys, key_index,
+					  crypto_key);
+	} else {
+		/*
+		 * is_valid_keyix() above admits every index below
+		 * WLAN_CRYPTO_TOTAL_KEYIDX; refuse rather than silently
+		 * drop the key if no slot class matched.
+		 */
+		crypto_err("No slot class for key index %d", key_index);
+		status = QDF_STATUS_E_INVAL;
 	}
-
 rel_lock:
 	qdf_mutex_release(&psoc->crypto_key_lock);
 	return status;
@@ -376,7 +395,7 @@ static void crypto_remove_entry(struct crypto_psoc_priv_obj *psoc,
 	crypto_info("crypto remove entry key index %d link id %d",
 		    index, crypto_entry->link_id);
 
-	for (i = 0; i < WLAN_CRYPTO_MAX_VLANKEYIX; i++) {
+	for (i = 0; i < WLAN_CRYPTO_MAXKEYIDX; i++) {
 		if (crypto_entry->keys.key[i]) {
 			qdf_mem_free(crypto_entry->keys.key[i]);
 			crypto_entry->keys.key[i] = NULL;
@@ -396,6 +415,8 @@ static void crypto_remove_entry(struct crypto_psoc_priv_obj *psoc,
 			crypto_entry->keys.bigtk_key[i] = NULL;
 		}
 	}
+
+	wlan_crypto_free_vlan_keys(&crypto_entry->keys);
 	/* Reset All key index as well */
 	crypto_entry->keys.def_tx_keyid = 0;
 	crypto_entry->keys.def_igtk_tx_keyid = 0;
@@ -690,7 +711,7 @@ void wlan_crypto_free_key(struct wlan_crypto_keys *crypto_key)
 		return;
 	}
 
-	for (i = 0; i < WLAN_CRYPTO_MAX_VLANKEYIX; i++) {
+	for (i = 0; i < WLAN_CRYPTO_MAXKEYIDX; i++) {
 		if (crypto_key->key[i]) {
 			qdf_mem_free(crypto_key->key[i]);
 			crypto_key->key[i] = NULL;
@@ -710,6 +731,8 @@ void wlan_crypto_free_key(struct wlan_crypto_keys *crypto_key)
 			crypto_key->bigtk_key[i] = NULL;
 		}
 	}
+
+	wlan_crypto_free_vlan_keys(crypto_key);
 
 	/* Reset All key index as well */
 	crypto_key->def_tx_keyid = 0;
@@ -740,7 +763,6 @@ void wlan_crypto_release_lock(void)
 	qdf_mutex_release(&crypto_lock);
 }
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     struct qdf_mac_addr *link_addr,
 				     uint8_t link_id)
@@ -780,7 +802,6 @@ void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 	qdf_mutex_release(&crypto_psoc_obj->crypto_key_lock);
 }
 
-#endif
 static QDF_STATUS wlan_crypto_vdev_obj_destroy_handler(
 						struct wlan_objmgr_vdev *vdev,
 						void *arg)
