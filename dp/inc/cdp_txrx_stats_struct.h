@@ -3475,6 +3475,9 @@ struct cdp_htt_stats_tx_vdev_nss_tlv {
  * @replenish.map_err: Mapping failure
  * @replenish.x86_fail: x86 failures
  * @replenish.low_thresh_intrs: low threshold interrupts
+ * @replenish.critical_desc_unavail: counter for the number of times descriptors
+ *			are unavailable in the freelist during
+ *			buffer replenishment when IPA is enabled.
  * @replenish.free_list: RX descriptors moving back to free list
  * @rx_raw_pkts: Rx Raw Packets
  * @mesh_mem_alloc: Mesh Rx Stats Alloc fail
@@ -3530,6 +3533,9 @@ struct cdp_htt_stats_tx_vdev_nss_tlv {
  * @rx_refill_buff_pool:
  * @rx_refill_buff_pool.num_bufs_refilled:
  * @rx_refill_buff_pool.num_bufs_allocated:
+ * @rx_refill_buff_pool.num_batch_refill_fail: number of times all
+ *                      allocation attempts in a burst failed, causing an
+ *                      early exit from the refill loop
  * @peer_unauth_rx_pkt_drop: stats counter for drops due to unauthorized peer
  * @telemetry_stats: pdev telemetry stats
  * @deter_stats:
@@ -3557,6 +3563,7 @@ struct cdp_pdev_stats {
 		uint32_t map_err;
 		uint32_t x86_fail;
 		uint32_t low_thresh_intrs;
+		uint32_t critical_desc_unavail;
 		int32_t free_list;
 	} replenish;
 
@@ -3627,6 +3634,7 @@ struct cdp_pdev_stats {
 	struct {
 		uint64_t num_bufs_refilled;
 		uint64_t num_bufs_allocated;
+		uint64_t num_batch_refill_fail;
 	} rx_refill_buff_pool;
 
 	uint32_t peer_unauth_rx_pkt_drop;

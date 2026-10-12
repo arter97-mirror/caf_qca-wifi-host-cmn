@@ -1060,8 +1060,16 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 			DP_STATS_DEC(dp_pdev,
 				     replenish.free_list,
 				     num_alloc_desc);
-		} else
-			dp_err_rl("%pK:  no free rx_descs in freelist", dp_soc);
+		} else {
+			if (wlan_cfg_is_ipa_enabled(dp_soc->wlan_cfg_ctx)) {
+				DP_STATS_INC(dp_pdev,
+					     replenish.critical_desc_unavail,
+					     1);
+			} else {
+				dp_err_rl("%pK:  no free rx_descs in freelist",
+					  dp_soc);
+			}
+		}
 	}
 
 	if (qdf_unlikely(!num_req_buffers)) {
