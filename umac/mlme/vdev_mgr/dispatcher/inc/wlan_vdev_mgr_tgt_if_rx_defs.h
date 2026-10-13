@@ -29,6 +29,7 @@
 
 #include <qdf_timer.h>
 #include <qdf_atomic.h>
+#include <qdf_lock.h>
 #include <qdf_util.h>
 #include <wlan_cmn.h>
 #ifdef FEATURE_RUNTIME_PM
@@ -118,10 +119,16 @@ defined(QCA_WIFI_QCA5018)
 /*
  * struct vdev_cmd_rsp_rt_lock - VDEV level runtime lock struct
  * @is_lock_acquired: Is lock currently held by the vdev
+ * @is_deinitialized: Runtime lock has been deinitialized
+ * @lock_initialized: Guard mutex has been initialized
+ * @lock: Serializes runtime lock ownership and deinitialization
  * @vdev_cmd_rt_lock: Runtime lock
  */
 struct vdev_cmd_rsp_rt_lock {
 	bool is_lock_acquired;
+	bool is_deinitialized;
+	bool lock_initialized;
+	qdf_mutex_t lock;
 	qdf_runtime_lock_t vdev_cmd_rt_lock;
 };
 
