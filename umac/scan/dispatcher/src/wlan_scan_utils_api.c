@@ -3173,10 +3173,17 @@ util_scan_parse_beacon_frame(struct wlan_objmgr_pdev *pdev,
 
 	extcap_ie = util_scan_find_ie(WLAN_ELEMID_XCAPS,
 				      (uint8_t *)&bcn->ie, ie_len);
-	/* Process MBSSID when Multiple BSSID (Bit 22) is set in Ext Caps */
+	/* Process MBSSID when Multiple BSSID (Bit 22) is set in Ext Caps
+	 * and if firmware supports WMI_SERVICE_INFRA_MBSSID. When FW does
+	 * not advertise this service, Non-Tx BSS scan entries are not
+	 * created, ensuring the connection manager only sees Tx BSSes that
+	 * FW can properly track.
+	 */
 	if (extcap_ie &&
 	    extcap_ie[1] >= 3 && extcap_ie[1] <= WLAN_EXTCAP_IE_MAX_LEN &&
-	    (extcap_ie[4] & 0x40)) {
+	    (extcap_ie[4] & 0x40) &&
+	    wlan_psoc_nif_fw_ext_cap_get(wlan_pdev_get_psoc(pdev),
+					 WLAN_SOC_CEXT_MBSS_IE)) {
 		mbssid_ie = util_scan_find_ie(WLAN_ELEMID_MULTIPLE_BSSID,
 					      (uint8_t *)&bcn->ie, ie_len);
 		if (mbssid_ie) {
