@@ -358,7 +358,11 @@ struct qca_napi_stat {
  * instances.
  */
 struct qca_napi_info {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device   *netdev; /* dummy net_dev ptr */
+#else
 	struct net_device    netdev; /* dummy net_dev */
+#endif
 	void                 *hif_ctx;
 	struct napi_struct   napi;
 	uint8_t              scale;   /* currently same on all instances */
@@ -366,12 +370,16 @@ struct qca_napi_info {
 	uint8_t              cpu;
 	int                  irq;
 	cpumask_t            cpumask;
-	struct qca_napi_stat stats[NR_CPUS];
+	struct qca_napi_stat stats[QDF_MAX_AVAILABLE_CPU];
 #ifdef RECEIVE_OFFLOAD
 	/* will only be present for data rx CE's */
 	void (*offld_flush_cb)(void *);
 	struct napi_struct   rx_thread_napi;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device    *rx_thread_netdev;
+#else
 	struct net_device    rx_thread_netdev;
+#endif
 #endif /* RECEIVE_OFFLOAD */
 	qdf_lro_ctx_t        lro_ctx;
 #ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
@@ -453,7 +461,7 @@ struct qca_napi_data {
 	uint32_t             exec_map;
 	uint32_t             user_cpu_affin_mask;
 	struct qca_napi_info *napis[CE_COUNT_MAX];
-	struct qca_napi_cpu  napi_cpu[NR_CPUS];
+	struct qca_napi_cpu  napi_cpu[QDF_MAX_AVAILABLE_CPU];
 	int                  lilcl_head, bigcl_head;
 	enum qca_napi_tput_state napi_mode;
 	struct qdf_cpuhp_handler *cpuhp_handler;
@@ -2790,6 +2798,36 @@ void hif_set_grp_intr_affinity(struct hif_opaque_softc *scn,
 			       uint32_t cpumask, bool perf)
 {
 }
+#endif
+
+#ifdef WLAN_DP_NAPI_IPI_REDIRECT
+/**
+ * hif_set_napi_redirect_cpu() - Enable/disable IPI-based NAPI poll redirect.
+ * @hif_ctx:     HIF handle
+ * @tx_grp_bmap: TX completion groups bitmap (cdp_get_tx_rings_grp_bitmap).
+ *               Pass 0 to skip TX groups.
+ * @rx_grp_bmap: RX groups bitmap (cdp_get_rx_rings_grp_bitmap).
+ *               Pass 0 to skip RX groups.
+ * @cpumask:     Optional explicit CPU mask for redirect targets. Only
+ *               consulted when @enable is true: if non-zero and it yields
+ *               at least one online CPU, it is used as the redirect target
+ *               list instead of the perf cluster; otherwise falls back to
+ *               the perf-cluster-derived list. Ignored when @enable is
+ *               false.
+ * @enable:      true = redirect to perf CPU; false = disable (local schedule)
+ */
+void hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
+			       uint32_t tx_grp_bmap,
+			       uint32_t rx_grp_bmap,
+			       uint32_t cpumask,
+			       bool enable);
+#else
+static inline void
+hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
+			  uint32_t tx_grp_bmap,
+			  uint32_t rx_grp_bmap,
+			  uint32_t cpumask,
+			  bool enable) {}
 #endif
 /**
  * hif_get_max_wmi_ep() - Get max WMI EPs configured in target svc map

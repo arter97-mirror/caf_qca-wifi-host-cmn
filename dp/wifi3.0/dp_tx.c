@@ -1156,7 +1156,7 @@ static void dp_tx_trace_pkt(struct dp_soc *soc,
 				 QDF_DP_TRACE_LI_DP_TX_PACKET_PTR_RECORD,
 				 QDF_TRACE_DEFAULT_PDEV_ID,
 				 qdf_nbuf_data_addr(skb),
-				 sizeof(qdf_nbuf_data(skb)),
+				 sizeof(uint8_t *),
 				 msdu_id, vdev_id, 0,
 				 op_mode));
 
@@ -7276,7 +7276,7 @@ out_log:
 			 QDF_DP_TRACE_LI_DP_FREE_PACKET_PTR_RECORD,
 			 QDF_TRACE_DEFAULT_PDEV_ID,
 			 qdf_nbuf_data_addr(nbuf),
-			 sizeof(qdf_nbuf_data(nbuf)),
+			 sizeof(uint8_t *),
 			 tx_desc->id, ts->status, dp_status, op_mode));
 out:
 	return;
@@ -7606,7 +7606,7 @@ void dp_tx_desc_check_corruption(struct dp_tx_desc_s *tx_desc)
 static inline void
 dp_tx_comp_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
 {
-	soc->stale_entry[ring_num].detected = 0;
+	soc->tx_comp_stale_entry[ring_num].detected = 0;
 }
 
 /**
@@ -7631,18 +7631,18 @@ dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	if (soc->stale_entry[ring_num].detected) {
+	if (soc->tx_comp_stale_entry[ring_num].detected) {
 		/* stale entry process continuation */
 		delta_us = curr_timestamp -
-				soc->stale_entry[ring_num].start_time;
+				soc->tx_comp_stale_entry[ring_num].start_time;
 		if (delta_us > DP_STALE_TX_COMP_WAIT_TIMEOUT_US) {
 			dp_err("Stale tx comp desc, waited %llu us", delta_us);
 			return QDF_STATUS_E_FAILURE;
 		}
 	} else {
 		/* This is the start of stale entry detection */
-		soc->stale_entry[ring_num].detected = 1;
-		soc->stale_entry[ring_num].start_time = curr_timestamp;
+		soc->tx_comp_stale_entry[ring_num].detected = 1;
+		soc->tx_comp_stale_entry[ring_num].start_time = curr_timestamp;
 	}
 
 	return QDF_STATUS_SUCCESS;

@@ -174,10 +174,25 @@ void dp_rx_refill_buff_pool_enqueue(struct dp_soc *soc)
 			count++;
 		}
 
+		/* All operations above have to be completed before
+		 * assigning the head pointer to buff_pool->head.
+		 * Otherwise, we will end up using a stale NBUF in
+		 * the RX replenish path.
+		 */
+		qdf_wmb();
+
 		if (count) {
 			buff_pool->head = head;
 			total_num_refill -= count;
 			total_count += count;
+		} else {
+			/* All allocation attempts failed; bail out to avoid
+			 * spinning forever when memory pressure is sustained.
+			 */
+			DP_STATS_INC(buff_pool->dp_pdev,
+				     rx_refill_buff_pool.num_batch_refill_fail,
+				     1);
+			break;
 		}
 	}
 

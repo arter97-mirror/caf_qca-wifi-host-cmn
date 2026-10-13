@@ -485,6 +485,8 @@ static const uint32_t pdev_param_tlv[] = {
 		  PDEV_PARAM_DSTALL_CONSECUTIVE_TX_NO_ACK_THRESHOLD),
 	PARAM_MAP(pdev_param_disable_lpi_ant_optimization,
 		  PDEV_PARAM_DISABLE_LPI_ANT_OPTIMIZATION),
+	PARAM_MAP(pdev_param_l3_header_padding_enable,
+		  PDEV_PARAM_L3_HEADER_PADDING_ENABLE),
 };
 
 /* Populate vdev_param array whose index is host param, value is target param */
@@ -15138,9 +15140,20 @@ static QDF_STATUS extract_profile_data_tlv(wmi_unified_t wmi_handle,
 	WMI_WLAN_PROFILE_DATA_EVENTID_param_tlvs *param_buf;
 	wmi_wlan_profile_t *ev;
 
+	if (!profile_data) {
+		wmi_err("Null profile_data");
+		return QDF_STATUS_E_INVAL;
+	}
+
 	param_buf = (WMI_WLAN_PROFILE_DATA_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf) {
 		wmi_err("Invalid profile data event buf");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (idx >= param_buf->num_profile_data) {
+		wmi_err("Invalid profile data index: %u, max: %u",
+			idx, param_buf->num_profile_data);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -17960,6 +17973,11 @@ static QDF_STATUS extract_reg_chan_list_ext_update_event_tlv(
 	reg_info->phybitmap = convert_phybitmap_tlv(
 			ext_chan_list_event_hdr->phybitmap);
 	reg_info->offload_enabled = true;
+	if (ext_chan_list_event_hdr->num_phy > PSOC_MAX_PHY_REG_CAP) {
+		wmi_err_rl("Invalid num_phy: %u",
+			   ext_chan_list_event_hdr->num_phy);
+		return QDF_STATUS_E_FAILURE;
+	}
 	reg_info->num_phy = ext_chan_list_event_hdr->num_phy;
 	reg_info->phy_id = wmi_handle->ops->convert_phy_id_target_to_host(
 				wmi_handle, ext_chan_list_event_hdr->phy_id);
@@ -20411,11 +20429,11 @@ static QDF_STATUS
 send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 				  struct wlan_pasn_auth_status *data)
 {
-	QDF_STATUS status;
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
 	wmi_buf_t buf;
 	wmi_rtt_pasn_auth_status_cmd_fixed_param *fixed_param;
 	uint8_t *buf_ptr;
-	uint8_t i, total_cookie_len;
+	uint8_t i, total_cookie_len = 0;
 	size_t len = 0;
 	uint32_t pending_cnt = data->num_peers;
 	uint16_t max_entry_per_cmd = 0, max_entry_cnt = 0;
@@ -20426,12 +20444,13 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 			     (2 *  WMI_TLV_HDR_SIZE)) /
 			     (sizeof(wmi_rtt_pasn_auth_status_param));
 
+	wmi_debug("max_entry_per_cmd:%u, data->num_peers:%u",
+		   max_entry_per_cmd, data->num_peers);
+
 	if (data->num_peers > max_entry_per_cmd)
 		max_entry_cnt = max_entry_per_cmd;
 	else
 		max_entry_cnt = data->num_peers;
-
-	wmi_debug("Setting max entry limit as %u", max_entry_cnt);
 
 	while (pending_cnt) {
 		len = sizeof(*fixed_param) + WMI_TLV_HDR_SIZE;
@@ -20443,17 +20462,16 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 		len += num_entry * sizeof(wmi_rtt_pasn_auth_status_param);
 		for (i = 0; i < num_entry; i++) {
 			if (data->auth_status[i].status ==
-			    WLAN_PASN_AUTH_STATUS_PEER_COMEBACK) {
-				total_cookie_len = total_cookie_len +
+			    WLAN_PASN_AUTH_STATUS_PEER_COMEBACK)
+				total_cookie_len +=
 				data->auth_status[i].cookie_len;
-			}
 		}
 
 		len += WMI_TLV_HDR_SIZE + total_cookie_len;
 		buf = wmi_buf_alloc(wmi_handle, len);
 		if (!buf) {
 			wmi_err("wmi_buf_alloc failed");
-			return QDF_STATUS_E_FAILURE;
+			return QDF_STATUS_E_NOMEM;
 		}
 		buf_ptr = (uint8_t *)wmi_buf_data(buf);
 		fixed_param = (wmi_rtt_pasn_auth_status_cmd_fixed_param *)
@@ -20503,14 +20521,15 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 				data->auth_status[i].comeback_after;
 			}
 
-			wmi_debug("peer_mac: " QDF_MAC_ADDR_FMT " self_mac:" QDF_MAC_ADDR_FMT " status:%d akm:%d cipher:%d comeback_after:%d i:%d",
+			wmi_debug("peer_mac: " QDF_MAC_ADDR_FMT " self_mac:" QDF_MAC_ADDR_FMT " status:%d akm:%d cipher:%d comeback_after:%d cookie_length:%d i:%d vdev_id:%u",
 			  QDF_MAC_ADDR_REF(data->auth_status[i].peer_mac.bytes),
 			  QDF_MAC_ADDR_REF(data->auth_status[i].self_mac.bytes),
 			  auth_status_tlv->status,
 			  auth_status_tlv->akm,
 			  auth_status_tlv->cipher_suite,
 			  auth_status_tlv->timeout_value,
-			  i);
+			  auth_status_tlv->cookie_len,
+			  i, data->vdev_id);
 
 			buf_ptr += sizeof(wmi_rtt_pasn_auth_status_param);
 		}
@@ -20538,15 +20557,17 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 		status = wmi_unified_cmd_send(wmi_handle, buf, len,
 					      WMI_RTT_PASN_AUTH_STATUS_CMD);
 		if (QDF_IS_STATUS_ERROR(status)) {
-			wmi_err("num_entries:%d failed!", pending_cnt);
-			wmi_err("Failed to send Auth status command ret = %d", status);
+			wmi_err("num_entries:%d failed!, Failed to send Auth status command ret = %d",
+				pending_cnt, status);
 			wmi_buf_free(buf);
-			return QDF_STATUS_E_FAILURE;
+			return status;
 		}
 
 		pending_cnt -= num_entry;
-		wmi_err("num_entries:%d done! pending_cnt:%d", num_entry, pending_cnt);
+		wmi_err("num_entries:%d done! pending_cnt:%d",
+			num_entry, pending_cnt);
 	}
+
 	return status;
 }
 
@@ -21199,11 +21220,16 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (!param_buf->roam_result || idx >= param_buf->num_roam_result)
+	if (!param_buf->roam_result || idx >= param_buf->num_roam_result) {
 		wmi_err("roam_result or idx error.%u", idx);
+		return QDF_STATUS_E_FAILURE;
+	}
 
-	if (!param_buf->roam_scan_info || idx >= param_buf->num_roam_scan_info)
+	if (!param_buf->roam_scan_info ||
+	    idx >= param_buf->num_roam_scan_info) {
 		wmi_err("roam_scan_info or idx error.%u", idx);
+		return QDF_STATUS_E_FAILURE;
+	}
 
 	trig->present = true;
 
@@ -25387,6 +25413,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #endif
 	wmi_service[wmi_service_delete_all_peer_bitmap_support] =
 				WMI_SERVICE_DELETE_ALL_PEER_BITMAP_SUPPORT;
+	wmi_service[wmi_service_l3_header_padding_enable] =
+				WMI_SERVICE_L3_HEADER_PADDING_ENABLE;
 }
 
 /**

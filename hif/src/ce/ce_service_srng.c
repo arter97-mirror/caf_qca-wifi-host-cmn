@@ -294,7 +294,7 @@ ce_sendlist_send_srng(struct CE_handle *copyeng,
 			QDF_DP_TRACE_CE_PACKET_PTR_RECORD,
 			QDF_TRACE_DEFAULT_PDEV_ID,
 			(uint8_t *)(((qdf_nbuf_t)per_transfer_context)->data),
-			sizeof(((qdf_nbuf_t)per_transfer_context)->data), QDF_TX));
+			qdf_nbuf_len((qdf_nbuf_t)per_transfer_context), QDF_TX));
 	} else {
 		/*
 		 * Probably not worth the additional complexity to support

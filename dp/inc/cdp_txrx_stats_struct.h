@@ -74,13 +74,6 @@
 #define CDP_MAX_RX_DEST_RINGS 8
 #define CDP_MAX_TX_DATA_RINGS 5
 #define CDP_MAX_WIFI_INT_ERROR_REASONS 5
-/*
- * This header file is being accessed in userspace applications.
- * NR_CPUS is a linux kernel macro and cannot be accessible by user space apps.
- * Defining maximum possible cpu count locally.
- */
-#define CDP_NR_CPUS 8
-
 #define MAX_TRANSMIT_TYPES	9
 
 #define MAX_USER_POS		8
@@ -3088,7 +3081,7 @@ struct cdp_cfr_rcc_stats {
  */
 struct cdp_per_cpu_packets {
 	uint8_t num_cpus;
-	uint64_t pkts[CDP_NR_CPUS][CDP_MAX_RX_DEST_RINGS];
+	uint64_t pkts[QDF_MAX_AVAILABLE_CPU][CDP_MAX_RX_DEST_RINGS];
 };
 
 /**
@@ -3537,6 +3530,9 @@ struct cdp_htt_stats_tx_vdev_nss_tlv {
  * @rx_refill_buff_pool:
  * @rx_refill_buff_pool.num_bufs_refilled:
  * @rx_refill_buff_pool.num_bufs_allocated:
+ * @rx_refill_buff_pool.num_batch_refill_fail: number of times all
+ *                      allocation attempts in a burst failed, causing an
+ *                      early exit from the refill loop
  * @peer_unauth_rx_pkt_drop: stats counter for drops due to unauthorized peer
  * @telemetry_stats: pdev telemetry stats
  * @deter_stats:
@@ -3634,6 +3630,7 @@ struct cdp_pdev_stats {
 	struct {
 		uint64_t num_bufs_refilled;
 		uint64_t num_bufs_allocated;
+		uint64_t num_batch_refill_fail;
 	} rx_refill_buff_pool;
 
 	uint32_t peer_unauth_rx_pkt_drop;
