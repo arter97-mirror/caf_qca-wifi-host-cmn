@@ -305,6 +305,9 @@ typedef enum wlan_crypto_rsn_cap {
  * @WLAN_CRYPTO_RSNX_CAP_SAE_PASSWORD_ID_CHANGE: SAE Password Identifier Change
  *   Support per IEEE 802.11bi.
  *
+ * @WLAN_CRYPTO_RSNX_CAP_SMD: Seamless Mobility Domain support.
+ *   Non-AP UHR MLD sets when dot11SMDImplemented is true.
+ *
  * Definition: (IEEE Std 802.11-2024, 9.4.2.240, Table 9-373)
  */
 enum wlan_crypto_rsnx_cap {
@@ -347,6 +350,9 @@ enum wlan_crypto_rsnx_cap {
 	/* bit 32 requires 64-bit backing if stored in u32 */
 	WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_NTB_TX = BIT_ULL(32),
 	WLAN_CRYPTO_RSNX_CAP_SAE_PASSWORD_ID_CHANGE = BIT_ULL(34),
+#ifdef WLAN_FEATURE_11BN_SMD
+	WLAN_CRYPTO_RSNX_CAP_SMD               = BIT_ULL(37),
+#endif
 };
 
 /*
@@ -601,7 +607,7 @@ struct wlan_crypto_params {
 	uint32_t key_mgmt;
 	struct   wlan_crypto_pmksa *pmksa[WLAN_CRYPTO_MAX_PMKID];
 	uint16_t rsn_caps;
-	uint32_t rsnx_caps;
+	uint64_t rsnx_caps;
 #ifdef WLAN_ADAPTIVE_11R
 	struct key_mgmt_list akm_list[WLAN_CRYPTO_KEY_MGMT_MAX];
 #endif
