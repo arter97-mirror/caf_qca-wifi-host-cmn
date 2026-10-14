@@ -216,6 +216,8 @@
  * @QCA_NL80211_VENDOR_SUBCMD_TDLS_STATS_INDEX: TDLS stats event index
  * @QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION_INDEX: Event index for GVP
  * operation event.
+ * @QCA_NL80211_VENDOR_SUBCMD_WOW_INDEX: WoW suspend/resume IPA pipe control
+ * vendor event index.
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -376,6 +378,10 @@ enum qca_nl80211_vendor_subcmds_index {
 	QCA_NL80211_VENDOR_SUBCMD_TDLS_STATS_INDEX,
 #endif /* FEATURE_TDLS_STATS_VENDOR_EVENTS */
 	QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION_INDEX,
+#ifdef IPA_OFFLOAD
+	/* WoW suspend/resume prepare vendor event index */
+	QCA_NL80211_VENDOR_SUBCMD_WOW_INDEX,
+#endif /* IPA_OFFLOAD */
 };
 
 #if !defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC) && \
