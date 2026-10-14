@@ -21814,13 +21814,7 @@ extract_roam_scan_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	dst->num_chan = src_data->roam_scan_channel_count;
 	dst->scan_complete_timestamp = src_data->scan_complete_timestamp;
 
-	if (!wmi_service_enabled(wmi_handle, wmi_service_hw_db2dbm_support))
-		dst->next_rssi_threshold =
-			qdf_abs(src_data->next_rssi_trigger_threshold +
-				WMI_NOISE_FLOOR_DBM_DEFAULT);
-	else
-		dst->next_rssi_threshold =
-					src_data->next_rssi_trigger_threshold;
+	dst->next_rssi_threshold = src_data->next_rssi_trigger_threshold;
 
 	dst->is_btcoex_active = WMI_GET_BTCONNECT_STATUS(src_data->flags);
 	dst->frame_info_count = src_data->frame_info_count;
