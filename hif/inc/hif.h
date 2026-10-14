@@ -547,7 +547,8 @@ static inline void hif_event_history_deinit(struct hif_opaque_softc *hif_ctx,
 
 void hif_display_ctrl_traffic_pipes_state(struct hif_opaque_softc *hif_ctx);
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) || \
+	defined(RECORD_DP_CE_EVTS)
 void hif_display_latest_desc_hist(struct hif_opaque_softc *hif_ctx);
 #else
 static inline void hif_display_latest_desc_hist(struct hif_opaque_softc *hif_ctx) {}
