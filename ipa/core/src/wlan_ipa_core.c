@@ -73,6 +73,13 @@ static struct wlan_ipa_priv *gp_ipa;
 static void wlan_ipa_set_pending_tx_timer(struct wlan_ipa_priv *ipa_ctx);
 static void wlan_ipa_reset_pending_tx_timer(struct wlan_ipa_priv *ipa_ctx);
 
+#ifdef WLAN_WOW_IPA_SUSPEND_RESUME
+static void wlan_ipa_uc_offload_enable_disable(struct wlan_ipa_priv *ipa_ctx,
+					       uint32_t offload_type,
+					       uint8_t session_id,
+					       bool enable);
+#endif /* WLAN_WOW_IPA_SUSPEND_RESUME */
+
 static inline
 bool wlan_ipa_is_driver_unloading(struct wlan_ipa_priv *ipa_ctx)
 {
@@ -2199,6 +2206,97 @@ static void wlan_ipa_i2w_cb(void *priv, qdf_ipa_dp_evt_type_t evt,
 
 #endif /* QCA_LL_TX_FLOW_CONTROL_V2 */
 
+#ifdef WLAN_WOW_IPA_SUSPEND_RESUME
+static void wlan_ipa_wow_disable_offload(struct wlan_ipa_priv *ipa_ctx)
+{
+	struct wlan_ipa_iface_context *iface_ctx;
+	int i;
+
+	qdf_spin_lock_bh(&ipa_ctx->pm_lock);
+	if (ipa_ctx->wow_offload_active) {
+		qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
+		ipa_debug("WoW offload already disabled, skip duplicate request");
+		return;
+	}
+	ipa_ctx->wow_offload_active = true;
+	qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
+
+	/* Step 1: Disable IPA UC pipes */
+	wlan_ipa_uc_disable_pipes(ipa_ctx, true);
+
+	if (ipa_ctx->uc_loaded) {
+		/* Step 2: Disable STA RX data offload for all STA ifaces */
+		for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
+			iface_ctx = &ipa_ctx->iface_context[i];
+			if (iface_ctx->device_mode == QDF_STA_MODE &&
+			    iface_ctx->dev) {
+				wlan_ipa_uc_offload_enable_disable(
+					ipa_ctx,
+					WMI_STA_RX_DATA_OFFLOAD,
+					iface_ctx->session_id,
+					false);
+				continue;
+			}
+		}
+	}
+}
+
+static QDF_STATUS wlan_ipa_wow_enable_offload(struct wlan_ipa_priv *ipa_ctx)
+{
+	struct wlan_ipa_iface_context *iface_ctx;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	int i;
+
+	qdf_spin_lock_bh(&ipa_ctx->pm_lock);
+	if (!ipa_ctx->wow_offload_active) {
+		qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
+		ipa_debug("WoW offload already enabled, skip duplicate request");
+		return QDF_STATUS_SUCCESS;
+	}
+	qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
+
+	/* Step 1: Re-establish IPA pipe */
+	status = wlan_ipa_uc_enable_pipes(ipa_ctx);
+	if (status) {
+		ipa_err("IPA Enable Pipe failed (status=%d)",
+			status);
+		return status;
+	}
+
+	if (ipa_ctx->uc_loaded) {
+		/* Step 2: Re-enable STA RX data offload for all STA ifaces */
+		for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
+			iface_ctx = &ipa_ctx->iface_context[i];
+			if (iface_ctx->device_mode == QDF_STA_MODE &&
+			    iface_ctx->dev) {
+				wlan_ipa_uc_offload_enable_disable(
+					ipa_ctx,
+					WMI_STA_RX_DATA_OFFLOAD,
+					iface_ctx->session_id,
+					true);
+				continue;
+			}
+		}
+	}
+
+	qdf_spin_lock_bh(&ipa_ctx->pm_lock);
+	ipa_ctx->wow_offload_active = false;
+	qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
+
+	return status;
+}
+#else /* !WLAN_WOW_IPA_SUSPEND_RESUME */
+static inline void wlan_ipa_wow_disable_offload(struct wlan_ipa_priv *ipa_ctx)
+{
+}
+
+static inline QDF_STATUS
+wlan_ipa_wow_enable_offload(struct wlan_ipa_priv *ipa_ctx)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_WOW_IPA_SUSPEND_RESUME */
+
 QDF_STATUS wlan_ipa_suspend(struct wlan_ipa_priv *ipa_ctx)
 {
 	/*
@@ -2223,11 +2321,22 @@ QDF_STATUS wlan_ipa_suspend(struct wlan_ipa_priv *ipa_ctx)
 					ipa_ctx->config->bus_bw_high,
 					ipa_ctx->config->bus_bw_high);
 
+	wlan_ipa_wow_disable_offload(ipa_ctx);
+
 	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS wlan_ipa_resume(struct wlan_ipa_priv *ipa_ctx)
 {
+	QDF_STATUS status;
+
+	status = wlan_ipa_wow_enable_offload(ipa_ctx);
+	if (status) {
+		ipa_err("Failed to restore WoW IPA offload (status=%d)",
+			status);
+		return status;
+	}
+
 	qdf_sched_work(0, &ipa_ctx->pm_work);
 
 	qdf_spin_lock_bh(&ipa_ctx->pm_lock);

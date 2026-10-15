@@ -904,6 +904,9 @@ struct wlan_ipa_priv {
 	qdf_work_t pm_work;
 	qdf_spinlock_t pm_lock;
 	bool suspended;
+#ifdef WLAN_WOW_IPA_SUSPEND_RESUME
+	bool wow_offload_active;
+#endif
 	bool roaming;
 	qdf_spinlock_t q_lock;
 	qdf_spinlock_t enable_disable_lock;
