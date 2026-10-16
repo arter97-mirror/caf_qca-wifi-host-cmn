@@ -3475,6 +3475,9 @@ struct cdp_htt_stats_tx_vdev_nss_tlv {
  * @replenish.map_err: Mapping failure
  * @replenish.x86_fail: x86 failures
  * @replenish.low_thresh_intrs: low threshold interrupts
+ * @replenish.critical_desc_unavail: counter for the number of times descriptors
+ *			are unavailable in the freelist during
+ *			buffer replenishment when IPA is enabled.
  * @replenish.free_list: RX descriptors moving back to free list
  * @rx_raw_pkts: Rx Raw Packets
  * @mesh_mem_alloc: Mesh Rx Stats Alloc fail
@@ -3560,6 +3563,7 @@ struct cdp_pdev_stats {
 		uint32_t map_err;
 		uint32_t x86_fail;
 		uint32_t low_thresh_intrs;
+		uint32_t critical_desc_unavail;
 		int32_t free_list;
 	} replenish;
 
