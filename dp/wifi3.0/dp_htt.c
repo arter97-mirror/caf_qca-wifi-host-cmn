@@ -2972,15 +2972,22 @@ dp_sawf_msduq_recfg_ind(struct htt_soc *soc, uint32_t *msg_word)
  * @htt_bp_handler:	backpressure handler
  * @ring_id:		ring_id (index)
  * @th_time:		threshold time
+ * @max_ring_id:	number of valid entries in @htt_bp_handler
  *
  * Return: 1 for successfully saving timestamp in array
  *	and 0 for timestamp falling within 2 seconds after last one
  */
 static bool time_allow_print(struct bp_handler *htt_bp_handler,
-			     u_int8_t ring_id, u_int32_t th_time)
+			     u_int8_t ring_id, u_int32_t th_time,
+			     u_int8_t max_ring_id)
 {
 	unsigned long tstamp;
-	struct bp_handler *path = &htt_bp_handler[ring_id];
+	struct bp_handler *path;
+
+	if (ring_id >= max_ring_id)
+		return 0;
+
+	path = &htt_bp_handler[ring_id];
 
 	tstamp = qdf_get_system_timestamp();
 
@@ -3495,14 +3502,16 @@ static void dp_htt_bkp_event_alert(u_int32_t *msg_word, struct htt_soc *soc)
 
 	switch (ring_type) {
 	case HTT_SW_RING_TYPE_UMAC:
-		if (!time_allow_print(radio_tt->umac_path, ring_id, th_time))
+		if (!time_allow_print(radio_tt->umac_path, ring_id, th_time,
+				      HTT_SW_UMAC_RING_IDX_MAX))
 			return;
 		dp_htt_alert_print(msg_type, pdev, ring_id, hp_idx, tp_idx,
 				   bkp_time, radio_tt->umac_path,
 				   "HTT_SW_RING_TYPE_UMAC");
 	break;
 	case HTT_SW_RING_TYPE_LMAC:
-		if (!time_allow_print(radio_tt->lmac_path, ring_id, th_time))
+		if (!time_allow_print(radio_tt->lmac_path, ring_id, th_time,
+				      HTT_SW_LMAC_RING_IDX_MAX))
 			return;
 		dp_check_backpressure_in_monitor(ring_id, pdev);
 		dp_htt_alert_print(msg_type, pdev, ring_id, hp_idx, tp_idx,
