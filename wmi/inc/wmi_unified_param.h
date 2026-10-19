@@ -6547,6 +6547,7 @@ typedef enum {
 	wmi_service_twt_requestor,
 	wmi_service_twt_responder,
 	wmi_service_listen_interval_offload_support,
+	wmi_service_apf_data_offload_support_enabled,
 
 #ifdef OL_ATH_SMART_LOGGING
 	wmi_service_smart_logging_support,
@@ -7213,6 +7214,7 @@ struct target_feature_set {
  * @enable_optimize_power: Enable power optimization
  * @haps_feature_flags: HAPS flags setting for power save config
  * @enable_bcn_rssi_history_report: Enable beacon rssi history report
+ * @apfv6_offload_disabled: APFv6 offload disabled bitmap
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7361,6 +7363,7 @@ typedef struct {
 	bool enable_optimize_power;
 	uint32_t haps_feature_flags;
 	bool enable_bcn_rssi_history_report;
+	uint32_t apfv6_offload_disabled;
 } target_resource_config;
 
 /**
