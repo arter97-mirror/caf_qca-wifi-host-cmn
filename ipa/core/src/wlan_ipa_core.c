@@ -181,7 +181,6 @@ static inline bool wlan_ipa_is_sta_only_offload_enabled(void)
 #endif /* IPA_OPT_WIFI_DP */
 #endif /* MDM_PLATFORM */
 
-#ifdef IPA_OPT_WIFI_DP
 static inline
 bool wlan_ipa_sta_last_disconnection(struct wlan_ipa_priv *ipa_ctx)
 {
@@ -193,14 +192,6 @@ bool wlan_ipa_sta_last_disconnection(struct wlan_ipa_priv *ipa_ctx)
 	ipa_debug("Multiple STA connected");
 	return false;
 }
-
-#else
-static inline
-bool wlan_ipa_sta_last_disconnection(struct wlan_ipa_priv *ipa_ctx)
-{
-	return true;
-}
-#endif
 
 /**
  * wlan_ipa_msg_free_fn() - Free an IPA message
