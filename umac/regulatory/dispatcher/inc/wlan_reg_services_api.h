@@ -540,6 +540,30 @@ QDF_STATUS wlan_reg_read_current_country(struct wlan_objmgr_psoc *psoc,
 				   uint8_t *country);
 
 #ifdef CONFIG_REG_CLIENT
+#ifdef CONFIG_BAND_6GHZ
+/**
+ * wlan_reg_check_if_6g_pwr_type_supp_for_chan() - Check if the 6 GHz power
+ * type is supported by STA for that channel
+ * @pdev: Pointer to pdev
+ * @pwr_type: 6 GHz power type
+ * @chan_idx: channel index
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_reg_check_if_6g_pwr_type_supp_for_chan(struct wlan_objmgr_pdev *pdev,
+					    enum reg_6g_ap_type pwr_type,
+					    enum channel_enum chan_idx);
+#else
+static inline QDF_STATUS
+wlan_reg_check_if_6g_pwr_type_supp_for_chan(struct wlan_objmgr_pdev *pdev,
+					    enum reg_6g_ap_type pwr_type,
+					    enum channel_enum chan_idx)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
+
 /**
  * wlan_reg_get_best_6g_power_type() - Return best power type for 6GHz
  * connection
