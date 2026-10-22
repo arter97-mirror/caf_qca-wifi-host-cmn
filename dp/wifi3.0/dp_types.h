@@ -1601,6 +1601,8 @@ struct dp_soc_stats {
 			uint32_t invalid_cookie;
 			/* Count of stale cookie read in RX path */
 			uint32_t stale_cookie;
+			/* Count of stale REO descriptor detected in RX path */
+			uint32_t stale_rx_desc;
 			/* Delba sent count due to RX 2k jump */
 			uint32_t rx_2k_jump_delba_sent;
 			/* RX 2k jump msdu indicated to stack count */
@@ -2716,6 +2718,7 @@ enum dp_context_type {
  * @dp_mlo_tx_pool_map: TX desc pool map
  * @dp_mlo_tx_pool_unmap: TX desc pool unmap
  * @dp_tx_override_flow_pool_id: flow pool id override
+ * @dp_srng_rx_ring_desc_mark_invalid: Poison REO dest ring descriptors on init
  */
 struct dp_arch_ops {
 	/* INIT/DEINIT Arch Ops */
@@ -3025,6 +3028,9 @@ struct dp_arch_ops {
 				     enum dp_mod_id mod_id);
 	void (*dp_tx_override_flow_pool_id)(struct dp_vdev *vdev,
 					    struct dp_tx_queue *queue);
+	void (*dp_srng_rx_ring_desc_mark_invalid)(struct dp_soc *soc,
+						  struct dp_srng *srng);
+
 };
 
 /**
@@ -3252,6 +3258,16 @@ struct dp_wds_entry {
 	TAILQ_ENTRY(dp_wds_entry) hash_list_elem;
 };
 #endif
+
+/**
+ * struct dp_stale_entry - Stale entry detection structure
+ * @detected: Flag to indicate stale entry detection is in progress
+ * @start_time: Timestamp when stale entry detection started
+ */
+struct dp_stale_entry {
+	uint32_t detected;
+	uint64_t start_time;
+};
 
 /* SOC level structure for data path */
 struct dp_soc {
@@ -3873,10 +3889,12 @@ struct dp_soc {
 #endif
 
 #ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
-	struct {
-		uint32_t detected;
-		uint64_t start_time;
-	} stale_entry[MAX_TCL_DATA_RINGS];
+	struct dp_stale_entry tx_comp_stale_entry[MAX_TCL_DATA_RINGS];
+#endif
+	/* TX Monitor stale entry tracking - one per MAC ID */
+	struct dp_stale_entry tx_mon_stale_entry[MAX_NUM_LMAC_HW];
+#ifdef DP_RX_RING_DESC_SANITY_CHECK
+	struct dp_stale_entry rx_stale_entry[MAX_REO_DEST_RINGS];
 #endif
 #ifdef DP_RX_MSDU_DONE_FAIL_HISTORY
 	struct dp_msdu_done_fail_history *msdu_done_fail_hist;
