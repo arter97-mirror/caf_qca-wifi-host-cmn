@@ -1210,6 +1210,15 @@ bool cm_get_active_disconnect_req(struct wlan_objmgr_vdev *vdev,
 				  struct wlan_cm_vdev_discon_req *req);
 
 /**
+ * cm_get_ho_disconnect_pending() - Get ho fail disconnect request
+ * is pending or not
+ * @vdev: vdev pointer
+ *
+ * Return: true and ho fail disconnect req is in pending queue
+ */
+bool cm_get_ho_disconnect_pending(struct wlan_objmgr_vdev *vdev);
+
+/**
  * cm_connect_handle_event_post_fail() - initiate connect failure if msg posting
  * to SM fails
  * @cm_ctx: connection manager context
