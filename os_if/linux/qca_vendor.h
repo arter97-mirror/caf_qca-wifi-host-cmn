@@ -7410,6 +7410,7 @@ enum qca_wlan_vendor_attr_wake_stats {
  * @QCA_WLAN_VENDOR_THERMAL_LEVEL_SEVERE: Throttle tx severely.
  * @QCA_WLAN_VENDOR_THERMAL_LEVEL_CRITICAL: Critical thermal level reached.
  * @QCA_WLAN_VENDOR_THERMAL_LEVEL_EMERGENCY: Emergency thermal level reached.
+ * @QCA_WLAN_VENDOR_THERMAL_LEVEL_EMERGENCY_L2: Second emergency thermal level reached.
  */
 enum qca_wlan_vendor_thermal_level {
 	QCA_WLAN_VENDOR_THERMAL_LEVEL_NONE = 0,
@@ -7418,6 +7419,7 @@ enum qca_wlan_vendor_thermal_level {
 	QCA_WLAN_VENDOR_THERMAL_LEVEL_SEVERE = 3,
 	QCA_WLAN_VENDOR_THERMAL_LEVEL_CRITICAL = 4,
 	QCA_WLAN_VENDOR_THERMAL_LEVEL_EMERGENCY = 5,
+	QCA_WLAN_VENDOR_THERMAL_LEVEL_EMERGENCY_L2 = 6,
 };
 
 /**
