@@ -109,7 +109,6 @@ enum TWT_OPERATION {
 /**
  * struct twt_enable_param:
  * @pdev_id: pdev_id for identifying the MAC.
- * @vdev_id: vdev_id of TWT enabled command
  * @sta_cong_timer_ms: STA TWT congestion timer TO value in terms of ms
  * @mbss_support: Flag indicating if AP TWT feature supported in
  *                MBSS mode or not.
@@ -154,12 +153,9 @@ enum TWT_OPERATION {
  * @b_twt_legacy_mbss_enable: Enable or disable legacy MBSSID TWT.
  * @b_twt_ax_mbss_enable: Enable or disable 11AX MBSSID TWT.
  * @r_twt_enable: Restricted TWT enable or disable.
- * @voip_pkt_ul_delay_ms: UPO - delay (ms) from VOIP RTP packet queued until
- * received by the WLAN target (STA only).
  */
 struct twt_enable_param {
 	uint32_t pdev_id;
-	uint32_t vdev_id;
 	uint32_t sta_cong_timer_ms;
 	uint32_t mbss_support;
 	uint32_t default_slot_size;
@@ -183,7 +179,6 @@ struct twt_enable_param {
 		 b_twt_legacy_mbss_enable:1,
 		 b_twt_ax_mbss_enable:1;
 	bool r_twt_enable;
-	uint32_t voip_pkt_ul_delay_ms;
 };
 
 /**
@@ -210,7 +205,6 @@ enum HOST_TWT_DISABLE_REASON {
 /**
  * struct twt_disable_param:
  * @pdev_id: pdev_id for identifying the MAC.
- * @vdev_id: vdev_id of TWT disabled command
  * @ext_conf_present: If requestor/responder extend config is present.
  * @twt_role: values from enum TWT_ROLE.
  * @twt_oper: values from enum TWT_OPERATION.
@@ -218,7 +212,6 @@ enum HOST_TWT_DISABLE_REASON {
  */
 struct twt_disable_param {
 	uint32_t pdev_id;
-	uint32_t vdev_id;
 	bool ext_conf_present;
 	enum TWT_ROLE twt_role;
 	enum TWT_OPERATION twt_oper;
@@ -287,30 +280,13 @@ enum HOST_ADD_TWT_STATUS {
 };
 
 /**
- * TWT_EN_DIS_EVENT_IS_VDEV_LEVEL - Check if vdev_id is valid in event params
- * @flags: flags field from twt_enable/disable_complete_event_param
- *
- * Returns 1 if vdev_id is valid (vdev-level TWT), 0 if mac_id is valid.
- * Bit 8 of flags mirrors TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT from the command.
- */
-#define TWT_EN_DIS_EVENT_IS_VDEV_LEVEL(flags) (((flags) >> 8) & 1)
-
-/**
  * struct twt_enable_complete_event_param:
- * @mac_id: mac_id for identifying the MAC.
- *          Valid when TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(flags) == 0.
+ * @pdev_id: pdev_id for identifying the MAC.
  * @status: From enum TWT_ENABLE_STATUS
- * @vdev_id: vdev id for STA vdev-level TWT enable.
- *           Valid when TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(flags) == 1.
- * @flags: mirrors TWT_EN_DIS_FLAGS_* from the enable command;
- *         if TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT is set then vdev_id is valid,
- *         otherwise mac_id is valid.
  */
 struct twt_enable_complete_event_param {
-	uint32_t mac_id;
+	uint32_t pdev_id;
 	uint32_t status;
-	uint32_t vdev_id;
-	uint32_t flags;
 };
 
 /**
@@ -331,20 +307,12 @@ enum HOST_TWT_DISABLE_STATUS {
 
 /**
  * struct twt_disable_complete_event_param:
- * @mac_id: mac_id for identifying the MAC.
- *          Valid when TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(flags) == 0.
+ * @pdev_id: pdev_id for identifying the MAC.
  * @status: From enum HOST_TWT_DISABLE_STATUS
- * @vdev_id: vdev id for STA vdev-level TWT disable.
- *           Valid when TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(flags) == 1.
- * @flags: mirrors TWT_EN_DIS_FLAGS_* from the disable command;
- *         if TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT is set then vdev_id is valid,
- *         otherwise mac_id is valid.
  */
 struct twt_disable_complete_event_param {
-	uint32_t mac_id;
+	uint32_t pdev_id;
 	uint32_t status;
-	uint32_t vdev_id;
-	uint32_t flags;
 };
 
 /**
@@ -497,7 +465,6 @@ enum HOST_TWT_COMMAND {
  * @flag_reserved: unused bits
  * @b_twt_recommendation: defines types of frames tx during bTWT SP
  * @b_twt_persistence: Countdown VAL frames to param update/teardown
- * @responder_pm_mode: Responder power management mode
  * @wake_time_tsf: Absolute TSF value to start first TWT service period
  * @announce_timeout_us: Timeout value before sending QoS NULL frame.
  * @link_id_bitmap: MLD links to which R-TWT element applies
@@ -525,8 +492,7 @@ struct twt_add_dialog_param {
 		flag_b_twt_id0:1,
 		flag_reserved:11,
 		b_twt_persistence:8,
-		b_twt_recommendation:3,
-		responder_pm_mode:1;
+		b_twt_recommendation:3;
 	uint64_t wake_time_tsf;
 	uint32_t announce_timeout_us;
 	uint32_t link_id_bitmap;
@@ -705,11 +671,6 @@ struct twt_del_dialog_param {
  * @HOST_TWT_DEL_STATUS_PS_DISABLE_TEARDOWN: PS disable TWT teardown
  * @HOST_TWT_DEL_STATUS_MULTIPLE_LINKS_ACTIVE_TERMINATE: TWT Teardown as
  * multiple links are active
- * @HOST_DEL_TWT_STATUS_MLO_LINK_INACTIVE: TWT Teardown as link switched to
- * unsupported link
- * @HOST_DEL_TWT_STATUS_2G_TWT_NOT_ENABLED: TWT Teardown when current
- * channel is on 2.4 GHz band
- * @HOST_DEL_TWT_STATUS_SCAN_STARTED: TWT teardown when the scan has started
  */
 enum HOST_TWT_DEL_STATUS {
 	HOST_TWT_DEL_STATUS_OK,
@@ -726,9 +687,6 @@ enum HOST_TWT_DEL_STATUS {
 	HOST_TWT_DEL_STATUS_SCAN_IN_PROGRESS,
 	HOST_TWT_DEL_STATUS_PS_DISABLE_TEARDOWN,
 	HOST_TWT_DEL_STATUS_MULTIPLE_LINKS_ACTIVE_TERMINATE,
-	HOST_DEL_TWT_STATUS_MLO_LINK_INACTIVE,
-	HOST_DEL_TWT_STATUS_2G_TWT_NOT_ENABLED,
-	HOST_DEL_TWT_STATUS_SCAN_STARTED,
 };
 
 /**
@@ -960,11 +918,9 @@ struct twt_notify_event_param {
 /**
  * enum HOST_TWT_NEXT_WORK_ACTION - next action of TWT worker thread
  * @HOST_TWT_SEND_DELETE_CMD: Send TWT delete command request
- * @HOST_TWT_SEND_ADD_CMD: Send TWT add (setup) command request
  */
 enum HOST_TWT_NEXT_WORK_ACTION {
 	HOST_TWT_SEND_DELETE_CMD = 1,
-	HOST_TWT_SEND_ADD_CMD = 2,
 };
 
 /**
@@ -1127,35 +1083,5 @@ enum twt_disable_reason {
 	REASON_PMO_SUSPEND  = 0x1,
 };
 
-/**
- * struct twt_p2p_chan_usage_unavail_params - P2P channel usage unavailability
- * parameters
- * @vdev_id: VDEV identifier
- * @peer_macaddr: Peer MAC address
- * @responder_pm_mode: Responder PM mode (0 or 1)
- * @req_type: TWT request type (negotiation_type in WMI)
- * @twt_request: TWT request flag (1 = request, 0 = response)
- * @twt_setup_cmd: TWT setup command type from enum HOST_TWT_COMMAND
- * @is_trigger_enabled: TWT with trigger support
- * @flow_type: Flow type (0: Announced, 1: Unannounced)
- * @wake_intvl_exp: Wake interval exponent
- * @is_protection_enabled: Protection required
- * @wake_duration: Wake duration in microseconds
- * @wake_intvl_mantissa: Wake interval mantissa in microseconds
- */
-struct twt_p2p_chan_usage_unavail_params {
-	uint32_t vdev_id;
-	struct qdf_mac_addr peer_macaddr;
-	uint8_t responder_pm_mode;
-	uint8_t req_type;
-	uint8_t twt_request;
-	enum HOST_TWT_COMMAND twt_setup_cmd;
-	bool is_trigger_enabled;
-	uint8_t flow_type;
-	uint8_t wake_intvl_exp;
-	bool is_protection_enabled;
-	uint32_t wake_duration;
-	uint32_t wake_intvl_mantissa;
-};
-
 #endif /* _WLAN_TWT_PUBLIC_STRUCTS_H_ */
+

@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -76,7 +75,7 @@ static A_STATUS htc_process_trailer(HTC_TARGET *target,
 #ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
 static void htc_rx_nbuf_free(qdf_nbuf_t nbuf)
 {
-	nbuf = wbuff_buff_put(nbuf, __func__, __LINE__);
+	nbuf = wbuff_buff_put(nbuf);
 	if (nbuf)
 		qdf_nbuf_free(nbuf);
 }
@@ -106,7 +105,6 @@ static void do_recv_completion_pkt(HTC_ENDPOINT *pEndpoint,
 	}
 }
 
-#ifdef HIF_SDIO
 static void do_recv_completion(HTC_ENDPOINT *pEndpoint,
 			       HTC_PACKET_QUEUE *pQueueToIndicate)
 {
@@ -122,7 +120,6 @@ static void do_recv_completion(HTC_ENDPOINT *pEndpoint,
 		do_recv_completion_pkt(pEndpoint, pPacket);
 	}
 }
-#endif /* HIF_SDIO */
 
 void htc_control_rx_complete(void *Context, HTC_PACKET *pPacket)
 {
@@ -131,8 +128,23 @@ void htc_control_rx_complete(void *Context, HTC_PACKET *pPacket)
 			("Invalid call to  htc_control_rx_complete\n"));
 }
 
+void htc_unblock_recv(HTC_HANDLE HTCHandle)
+{
+	/* TODO  find the Need in new model */
+}
 
-#ifdef HIF_SDIO
+void htc_enable_recv(HTC_HANDLE HTCHandle)
+{
+
+	/* TODO  find the Need in new model */
+}
+
+void htc_disable_recv(HTC_HANDLE HTCHandle)
+{
+
+	/* TODO  find the Need in new model */
+}
+
 int htc_get_num_recv_buffers(HTC_HANDLE HTCHandle, HTC_ENDPOINT_ID Endpoint)
 {
 	HTC_TARGET *target = GET_HTC_TARGET_FROM_HANDLE(HTCHandle);
@@ -140,7 +152,6 @@ int htc_get_num_recv_buffers(HTC_HANDLE HTCHandle, HTC_ENDPOINT_ID Endpoint)
 	HTC_ENDPOINT *pEndpoint = &target->endpoint[Endpoint];
 	return HTC_PACKET_QUEUE_DEPTH(&pEndpoint->RxBufferHoldQueue);
 }
-#endif /* HIF_SDIO */
 
 HTC_PACKET *allocate_htc_packet_container(HTC_TARGET *target)
 {
@@ -291,7 +302,7 @@ QDF_STATUS htc_rx_completion_handler(void *Context, qdf_nbuf_t netbuf,
 					    QDF_DP_TRACE_HTC_PACKET_PTR_RECORD,
 					    QDF_TRACE_DEFAULT_PDEV_ID,
 					    qdf_nbuf_data_addr(netbuf),
-					    qdf_nbuf_len(netbuf),
+					    sizeof(qdf_nbuf_data(netbuf)),
 					    QDF_RX));
 			break;
 		}
@@ -342,7 +353,7 @@ QDF_STATUS htc_rx_completion_handler(void *Context, qdf_nbuf_t netbuf,
 					    QDF_DP_TRACE_HTC_PACKET_PTR_RECORD,
 					    QDF_TRACE_DEFAULT_PDEV_ID,
 					    qdf_nbuf_data_addr(netbuf),
-					    qdf_nbuf_len(netbuf),
+					    sizeof(qdf_nbuf_data(netbuf)),
 					    QDF_RX));
 			break;
 #endif
@@ -526,7 +537,6 @@ _out:
 
 }
 
-#ifdef HIF_SDIO
 A_STATUS htc_add_receive_pkt_multiple(HTC_HANDLE HTCHandle,
 				      HTC_PACKET_QUEUE *pPktQueue)
 {
@@ -585,7 +595,6 @@ A_STATUS htc_add_receive_pkt_multiple(HTC_HANDLE HTCHandle,
 
 	return status;
 }
-#endif /* HIF_SDIO */
 
 void htc_flush_rx_hold_queue(HTC_TARGET *target, HTC_ENDPOINT *pEndpoint)
 {

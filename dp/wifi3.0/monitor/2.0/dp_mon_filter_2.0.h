@@ -25,27 +25,9 @@
 #define DMA_LENGTH_128B 2
 #define DMA_LENGTH_256B 4
 
-enum dp_tx_mon_dma_length {
-	/* TX MON dma 64 bytes */
-	TX_MON_DMA_LENGTH_64B = 1,
-	/* TX MON dma 128 bytes */
-	TX_MON_DMA_LENGTH_128B = 2,
-	/* TX MON dma 256 bytes */
-	TX_MON_DMA_LENGTH_256B = 4,
-	/* TX MON dma full bytes */
-	TX_MON_DMA_LENGTH_FULL = 7,
-};
-
-#ifdef BORON_MONITOR
-#define TX_MON_DMA_LENGTH_CFG TX_MON_DMA_LENGTH_FULL
-#else
-#define TX_MON_DMA_LENGTH_CFG TX_MON_DMA_LENGTH_256B
-#endif
-
 /* fwd declarations */
 struct dp_mon_pdev_be;
 
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_rx_mon_enable_set() - Setup rx monitor feature
  * @msg_word: msg word
@@ -114,7 +96,6 @@ void
 dp_rx_mon_config_packet_type_subtype(uint32_t *msg_word,
 				     struct htt_rx_ring_tlv_filter *tlv_filter,
 				     uint32_t htt_ring_id);
-#endif
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 /**
  * dp_mon_filter_setup_enhanced_stats_2_0() - Setup the enhanced stats filter
@@ -165,7 +146,6 @@ dp_mon_filter_reset_undecoded_metadata_capture_2_0(struct dp_pdev *pdev)
 }
 #endif
 
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_mon_filter_setup_rx_mon_mode_2_0() - Setup the Rx monitor mode filter
  * @pdev: DP pdev handle
@@ -177,9 +157,8 @@ void dp_mon_filter_setup_rx_mon_mode_2_0(struct dp_pdev *pdev);
  * @pdev: DP pdev handle
  */
 void dp_mon_filter_reset_rx_mon_mode_2_0(struct dp_pdev *pdev);
-#endif
 
-#ifdef WLAN_PKT_CAPTURE_TX_2_0_DISABLE
+#ifdef WLAN_PKT_CAPTURE_TX_2_0
 /**
  * dp_mon_filter_setup_tx_mon_mode_2_0() - Setup the Tx monitor mode filter
  * @pdev: DP pdev handle
@@ -205,8 +184,6 @@ dp_mon_filter_reset_tx_mon_mode_2_0(struct dp_pdev *pdev)
 #endif
 
 #ifdef WDI_EVENT_ENABLE
-
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_mon_filter_setup_rx_pkt_log_full_2_0() - Setup the Rx pktlog full mode
  *                                             filter
@@ -246,7 +223,7 @@ void dp_mon_filter_setup_rx_pkt_log_cbf_2_0(struct dp_pdev *pdev);
  * @pdev: DP pdev handle
  */
 void dp_mon_filter_reset_rx_pktlog_cbf_2_0(struct dp_pdev *pdev);
-#endif
+
 /**
  * dp_mon_filter_setup_pktlog_hybrid_2_0() - Setup the pktlog hybrid mode filter
  * @pdev: DP pdev handle
@@ -259,6 +236,36 @@ void dp_mon_filter_setup_pktlog_hybrid_2_0(struct dp_pdev *pdev);
  */
 void dp_mon_filter_reset_pktlog_hybrid_2_0(struct dp_pdev *pdev);
 #else
+static inline void
+dp_mon_filter_setup_rx_pkt_log_full_2_0(struct dp_pdev *pdev)
+{
+}
+
+static inline void
+dp_mon_filter_reset_rx_pkt_log_full_2_0(struct dp_pdev *pdev)
+{
+}
+
+static inline void
+dp_mon_filter_setup_rx_pkt_log_lite_2_0(struct dp_pdev *pdev)
+{
+}
+
+static inline void
+dp_mon_filter_reset_rx_pkt_log_lite_2_0(struct dp_pdev *pdev)
+{
+}
+
+static inline void
+dp_mon_filter_setup_rx_pkt_log_cbf_2_0(struct dp_pdev *pdev)
+{
+}
+
+static inline void
+dp_mon_filter_reset_rx_pktlog_cbf_2_0(struct dp_pdev *pdev)
+{
+}
+
 static inline void
 dp_mon_filter_setup_pktlog_hybrid_2_0(struct dp_pdev *pdev)
 {
@@ -278,7 +285,6 @@ dp_mon_filter_reset_pktlog_hybrid_2_0(struct dp_pdev *pdev)
  */
 QDF_STATUS dp_tx_mon_filter_update_2_0(struct dp_pdev *pdev);
 
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_rx_mon_filter_update_2_0() - Update monitor filter configuration
  * @pdev: physical device handle
@@ -286,7 +292,6 @@ QDF_STATUS dp_tx_mon_filter_update_2_0(struct dp_pdev *pdev);
  * Return: non-zero for failure, zero for success
  */
 QDF_STATUS dp_rx_mon_filter_update_2_0(struct dp_pdev *pdev);
-#endif
 
 /**
  * dp_mon_filter_dealloc_2_0() - free tx monitor filter memory
@@ -303,6 +308,41 @@ void dp_mon_filter_dealloc_2_0(struct dp_pdev *pdev);
  * Return: non-zero for failure, zero for success
  */
 QDF_STATUS dp_mon_filter_alloc_2_0(struct dp_pdev *pdev);
+
+#ifdef QCA_SUPPORT_LITE_MONITOR
+void dp_mon_filter_reset_rx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev);
+
+void dp_mon_filter_setup_rx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev);
+#endif
+
+#if defined(QCA_SUPPORT_LITE_MONITOR) && \
+defined(WLAN_PKT_CAPTURE_TX_2_0)
+/**
+ * dp_mon_filter_reset_tx_lite_mon() - Reset tx lite monitor filter
+ * @be_mon_pdev: physical mon device handle
+ *
+ * Return: Null
+ */
+void dp_mon_filter_reset_tx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev);
+
+/**
+ * dp_mon_filter_setup_tx_lite_mon() - Setup tx lite monitor filter
+ * @pdev: physical device handle
+ *
+ * Return: Null
+ */
+void dp_mon_filter_setup_tx_lite_mon(struct dp_pdev *pdev);
+#else
+static inline void
+dp_mon_filter_reset_tx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev)
+{
+}
+
+static inline void
+dp_mon_filter_setup_tx_lite_mon(struct dp_pdev *pdev)
+{
+}
+#endif
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 /**

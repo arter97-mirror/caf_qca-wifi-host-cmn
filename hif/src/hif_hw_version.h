@@ -41,24 +41,18 @@
 #define AR900B_REV_2                    0x1
 #define MANGO_V1                        0xDEADBEEF	// TODO Define this
 #define FIG_V1				0x402B0100
-#define FIG_V2                          0x402B0200
-#define WCN8750_V1                      0x40330100
 #define PEACH_V1                        0x40210100
 #define PEACH_V2                        0x40210200
 #define KIWI_V1                         0x40170100
 #define KIWI_V2                         0x40170200
 #define QCA6490_v2_1                    0x400c1211
 #define QCA6490_v2                      0x400c0200
-#define QCA6490_V2_2		        0x400C0210
-#define QCA6490_V3		        0x400c0110
+#define QCA6490_V2_2			0x400C0210
 #define WCN6750_V1                      0x40140110
 #define WCN6750_V2                      0x40140120
 #define WCN7750_V1                      0x40260100
-#define WCN7750_V2                      0x40262100
-#define WCN7750_V3                      0x40262110
 #define QCC2072_V1                      0x40290100
-#define WCN6450_V1                      0x40200100
-#define WCN6450_V2                      0x40200200
+#define WCN6450_V1			0x40200100
 #define WCN3990_TALOS                   0x40670000
 #define WCN3990_MOOREA                  0x40090000
 #define WCN3990_SAIPAN                  0x400B0000
@@ -69,9 +63,6 @@
 #define WCN3990_STRAIT                  0x400E0000
 #define WCN3990_NETRANI                 0x400F0000
 #define WCN3990_CLARENCE                0x406A0000
-#define WCN3990_ALDABRA                 0x900A0000
-#define WCN3990_PORUS                   0xA02E0000
-#define WCN7760_COLOGNE                 0x40292100
 
 struct qwlan_hw {
 	u32 id;

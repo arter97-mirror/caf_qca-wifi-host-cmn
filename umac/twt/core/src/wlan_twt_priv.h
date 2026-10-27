@@ -29,7 +29,6 @@
 #include <wlan_twt_public_structs.h>
 #include <wlan_twt_ext_defs.h>
 #include <wlan_twt_ext_type.h>
-#include <wlan_policy_mgr_public_struct.h>
 
 /**
  * struct twt_tgt_caps -
@@ -48,10 +47,6 @@
  * @max_wake_dur: maximum twt wake_dur supported by firmware in micro sec
  * @min_wake_intvl: minimum twt wake_intvl supported by firmware in micro sec
  * @max_wake_intvl: maximum twt wake_intvl supported by firmware in micro sec
- * @twt_resp_disable_per_vdev: TWT responder disable per VDEV SVC
- * @twt_req_en_dis_vdev_support: FW supports per-vdev TWT enable/disable
- *                                command for TWT requestor role
- *                                (STA/P2P-CLI etc.)
  */
 struct twt_tgt_caps {
 	bool twt_requestor;
@@ -69,8 +64,6 @@ struct twt_tgt_caps {
 	uint16_t max_wake_dur;
 	uint16_t min_wake_intvl;
 	uint16_t max_wake_intvl;
-	bool twt_resp_disable_per_vdev;
-	bool twt_req_en_dis_vdev_support;
 };
 
 /**
@@ -81,14 +74,6 @@ struct twt_tgt_caps {
  * @disable_context: disable context
  * @twt_pmo_disabled: twt pmo disabled
  * @twt_requestor_enable_pending: If TWT requestor enable command is pending
- * @twt_resp_flag: flag to check the TWT responder enable/disable per MAC
- * BIT0: MAC0 and BIT1: MAC1
- * @twt_req_flag_vdev: flag to check the TWT requestor enable/disable per vdev;
- * indexed by vdev_id (supports up to WLAN_UMAC_PSOC_MAX_VDEVS vdevs)
- * @twt_congestion_timeout: congestion timeout per MAC (index0: MAC0,
- *                                                      index1: MAC1)
- * @twt_congestion_timeout_vdev: congestion timeout per vdev for vdev-level
- * TWT requestor path; indexed by vdev_id
  */
 struct twt_psoc_priv_obj {
 	psoc_twt_ext_cfg_params_t cfg_params;
@@ -97,10 +82,6 @@ struct twt_psoc_priv_obj {
 	struct twt_en_dis_context disable_context;
 	uint32_t twt_pmo_disabled;
 	qdf_atomic_t twt_requestor_enable_pending;
-	uint8_t twt_resp_flag;
-	bool twt_req_flag_vdev[WLAN_UMAC_PSOC_MAX_VDEVS];
-	uint32_t twt_congestion_timeout[MAX_MAC];
-	uint32_t twt_congestion_timeout_vdev[WLAN_UMAC_PSOC_MAX_VDEVS];
 };
 
 /**
@@ -110,12 +91,6 @@ struct twt_psoc_priv_obj {
  * @peer_macaddr: Peer mac address
  * @is_ps_disabled: Whether power save is disabled or not
  * @next_action: next action of TWT worker queue
- * @retry_count: number of times the deferred TWT work has been rescheduled
- * @setup_params: cached TWT add dialog params for a deferred setup retry
- *                scheduled on the TWT worker queue when the setup request
- *                arrived while a scan/ROC/roam was in progress
- * @allow_btwt_id0: allow broadcast TWT ID 0
- * @twt_concurrency_enable: TWT concurrency enable or not
  */
 struct twt_vdev_priv_obj {
 	bool twt_wait_for_notify;
@@ -123,15 +98,6 @@ struct twt_vdev_priv_obj {
 	struct qdf_mac_addr peer_macaddr;
 	bool is_ps_disabled;
 	enum HOST_TWT_NEXT_WORK_ACTION next_action;
-	uint32_t retry_count;
-	struct twt_add_dialog_param setup_params;
-#if defined(WLAN_FEATURE_NAN) && \
-    (defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE) || \
-     defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE))
-	bool allow_btwt_id0;
-	bool twt_concurrency_enable;
-#endif
-
 };
 
 /**
@@ -252,3 +218,4 @@ static inline void twt_lock_release(qdf_mutex_t *twt_lock)
 #endif /* WLAN_TWT_SPINLOCK */
 
 #endif /* End  of _WLAN_TWT_PRIV_H_ */
+

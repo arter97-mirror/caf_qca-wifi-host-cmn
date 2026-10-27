@@ -24,13 +24,6 @@
 #include "hal_be_rx_compact_tlv.h"
 #include "hal_be_api_mon.h"
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-#include "dal_vndr_hal_be.h"
-#ifdef CONFIG_BORON
-#include "dal_vndr_hal_bn.h"
-#endif /* CONFIG_BORON */
-#endif
-
 /*
  * Structures & Macros to obtain fields from the TLV's in the Rx packet
  * pre-header.
@@ -234,11 +227,6 @@ struct rx_pkt_tlvs {
 
 #define HAL_RX_TLV_GET_FLOW_ID_TOEPLITZ(_rx_pkt_tlv) \
 	HAL_RX_MSDU_END(_rx_pkt_tlv).flow_id_toeplitz
-
-#ifdef DRIVER_PASSTHRU_MODE
-#define HAL_RX_TLV_GET_PPDU_START_TS_31_0(_rx_pkt_tlv) \
-	HAL_RX_MSDU_END(_rx_pkt_tlv).ppdu_start_timestamp_31_0
-#endif
 
 #define HAL_RX_TLV_MSDU_LEN_GET(_rx_pkt_tlv)		\
 	HAL_RX_MSDU_END(_rx_pkt_tlv).msdu_length
@@ -956,23 +944,6 @@ static inline uint32_t hal_rx_tlv_get_rssi_be(uint8_t *buf)
 	return rssi;
 }
 
-#ifdef DRIVER_PASSTHRU_MODE
-/**
- * hal_rx_tlv_get_ppdu_start_ts_be() - API to get ppdu start timestamp from
- *  msdu end tlv
- * @rx_tlv_hdr: pointer to the start of RX PKT TLV header
- *
- * Return: lsb 32 bits of ppdu start timestamp
- */
-
-static inline uint32_t hal_rx_tlv_get_ppdu_start_ts_be(uint8_t *rx_tlv_hdr)
-{
-	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)rx_tlv_hdr;
-
-	return HAL_RX_TLV_GET_PPDU_START_TS_31_0(rx_pkt_tlvs);
-}
-#endif
-
 /**
  * hal_rx_tlv_get_pkt_type_be() - API to get the pkt type from
  *                                rx_msdu_start
@@ -1028,7 +999,6 @@ static inline uint32_t hal_rx_tlv_mic_err_get_be(uint8_t *buf)
 	return mic_err;
 }
 
-#ifdef CONFIG_BORON
 /**
  * hal_get_reo_ent_desc_qdesc_addr_be() - API to get qdesc address of
  *                                        reo entrance ring desc
@@ -1038,14 +1008,8 @@ static inline uint32_t hal_rx_tlv_mic_err_get_be(uint8_t *buf)
  */
 static inline uint8_t *hal_get_reo_ent_desc_qdesc_addr_be(uint8_t *desc)
 {
-	return NULL;
-}
-#else
-static inline uint8_t *hal_get_reo_ent_desc_qdesc_addr_be(uint8_t *desc)
-{
 	return desc + REO_ENTRANCE_RING_RX_REO_QUEUE_DESC_ADDR_31_0_OFFSET;
 }
-#endif
 
 /**
  * hal_set_reo_ent_desc_reo_dest_ind_be() - API to set reo destination
@@ -1312,22 +1276,6 @@ static inline uint32_t hal_rx_desc_is_first_msdu_be(void *hw_desc_addr)
 	return HAL_RX_TLV_FIRST_MSDU_GET(rx_pkt_tlvs);
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * hal_rx_tlv_l3_hdr_padding_set_be() - API to set the l3_header padding
- *					from rx_msdu_end TLV
- * @buf: pointer to the start of RX PKT TLV headers
- * @l3_hdr_pad: L3 header padding value to set in tlvs
- *
- */
-static inline void hal_rx_tlv_l3_hdr_padding_set_be(uint8_t *buf,
-						    uint32_t l3_hdr_pad)
-{
-
-	dal_vndr_hal_rx_set_l3_pad_bytes_be(buf,
-					    l3_hdr_pad);
-}
-
 /**
  * hal_rx_tlv_l3_hdr_padding_get_be() - API to get the l3_header padding
  *					from rx_msdu_end TLV
@@ -1337,27 +1285,6 @@ static inline void hal_rx_tlv_l3_hdr_padding_set_be(uint8_t *buf,
  */
 static inline uint32_t hal_rx_tlv_l3_hdr_padding_get_be(uint8_t *buf)
 {
-	return dal_vndr_hal_rx_get_l3_pad_bytes_be(buf);
-}
-#else
-/**
- * hal_rx_tlv_l3_hdr_padding_set_be() - API to set the l3_header padding
- *					from rx_msdu_end TLV
- * @buf: pointer to the start of RX PKT TLV headers
- * @l3_hdr_pad: L3 header padding value to set in tlvs
- *
- * Return: number of l3 header padding bytes
- */
-static inline void hal_rx_tlv_l3_hdr_padding_set_be(uint8_t *buf,
-						    uint32_t l3_hdr_pad)
-{
-	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
-
-	HAL_RX_TLV_L3_HEADER_PADDING_GET(rx_pkt_tlvs) = l3_hdr_pad;
-}
-
-static inline uint32_t hal_rx_tlv_l3_hdr_padding_get_be(uint8_t *buf)
-{
 	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
 	uint32_t l3_header_padding;
 
@@ -1365,7 +1292,6 @@ static inline uint32_t hal_rx_tlv_l3_hdr_padding_get_be(uint8_t *buf)
 
 	return l3_header_padding;
 }
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /**
  * hal_rx_encryption_info_valid_be() - Returns encryption type.
@@ -1764,7 +1690,7 @@ uint16_t hal_rx_get_rx_sequence_be(uint8_t *buf)
 
 #ifdef RECEIVE_OFFLOAD
 #if defined(QCA_WIFI_KIWI_V2) || defined(QCA_WIFI_WCN7750) || \
-	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_WCN8750)
+	defined(QCA_WIFI_QCC2072)
 static inline
 uint16_t hal_rx_get_fisa_cumulative_l4_checksum_be(uint8_t *buf)
 {

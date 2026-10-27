@@ -135,34 +135,6 @@ static enum hrtimer_restart __qdf_hrtimer_cb(struct hrtimer *arg)
 }
 
 /**
- * __qdf_init_hrtimer() - Initialize a high-resolution timer
- * @hrtimer: pointer to the hrtimer object
- * @clock: clock id
- * @hrt_mode: mode of hrtimer
- *
- * Initialize a high-resolution timer with the appropriate setup function
- * based on the kernel version
- *
- * Return: None
- */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0))
-static inline void
-__qdf_init_hrtimer(struct hrtimer *hrtimer, enum qdf_clock_id clock,
-		   enum hrtimer_mode hrt_mode)
-{
-	hrtimer_setup(hrtimer, __qdf_hrtimer_cb, clock, hrt_mode);
-}
-#else
-static inline void
-__qdf_init_hrtimer(struct hrtimer *hrtimer, enum qdf_clock_id clock,
-		   enum hrtimer_mode hrt_mode)
-{
-	hrtimer_init(hrtimer, clock, hrt_mode);
-	hrtimer->function = __qdf_hrtimer_cb;
-}
-#endif /* KERNEL_VERSION(6, 15, 0)*/
-
-/**
  * __qdf_hrtimer_init() - init hrtimer in a given context
  * @timer: pointer to the hrtimer object
  * @cback: callback function to be fired
@@ -192,7 +164,8 @@ static inline void  __qdf_hrtimer_init(__qdf_hrtimer_data_t *timer,
 		mode |= HRTIMER_MODE_SOFT;
 
 	hrt_mode = __qdf_hrtimer_get_mode(mode);
-	__qdf_init_hrtimer(hrtimer, clock, hrt_mode);
+	hrtimer_init(hrtimer, clock, hrt_mode);
+	hrtimer->function = __qdf_hrtimer_cb;
 }
 #else
 static inline void  __qdf_hrtimer_init(__qdf_hrtimer_data_t *timer,
@@ -209,10 +182,12 @@ static inline void  __qdf_hrtimer_init(__qdf_hrtimer_data_t *timer,
 	timer->callback = cback;
 	timer->cb_ctx = timer;
 
-	if (timer->ctx == QDF_CONTEXT_HARDWARE)
-		__qdf_init_hrtimer(hrtimer, clock, hrt_mode);
-	else if (timer->ctx == QDF_CONTEXT_TASKLET)
+	if (timer->ctx == QDF_CONTEXT_HARDWARE) {
+		hrtimer_init(hrtimer, clock, hrt_mode);
+		hrtimer->function = __qdf_hrtimer_cb;
+	} else if (timer->ctx == QDF_CONTEXT_TASKLET) {
 		tasklet_hrtimer_init(tasklet_hrtimer, cback, clock, hrt_mode);
+	}
 }
 #endif
 

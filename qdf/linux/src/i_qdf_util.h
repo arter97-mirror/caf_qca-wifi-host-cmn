@@ -37,7 +37,7 @@
 
 #include <qdf_types.h>
 #include <asm/byteorder.h>
-#include <linux/hex.h>
+
 #if LINUX_VERSION_CODE  <= KERNEL_VERSION(3, 3, 8)
 #include <asm/system.h>
 #else
@@ -213,7 +213,7 @@ static inline bool __qdf_is_macaddr_equal(const struct qdf_mac_addr *mac_addr1,
 
 #define __qdf_assert(expr)  do { \
 		if (unlikely(!(expr))) { \
-			pr_err(__QDF_ASSERT_MSG, \
+			pr_err("Assertion failed! %s:%s %s:%d\n", \
 			       # expr, __func__, __FILE__, __LINE__); \
 			dump_stack(); \
 			QDF_BUG_ON_ASSERT(0); \
@@ -549,19 +549,6 @@ static inline int __qdf_ffs64(uint64_t x)
 static inline int __qdf_get_smp_processor_id(void)
 {
 	return smp_processor_id();
-}
-
-/**
- * __qdf_get_raw_smp_processor_id() - Get the current CPU id
- *
- * This API should be called with pre-emption disabled,
- * otherwise the value will be stale at use.
- *
- * Return: current CPU id
- */
-static inline int __qdf_get_raw_smp_processor_id(void)
-{
-	return raw_smp_processor_id();
 }
 
 /**

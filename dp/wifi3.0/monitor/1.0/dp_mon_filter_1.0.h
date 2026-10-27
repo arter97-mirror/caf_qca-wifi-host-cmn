@@ -87,6 +87,34 @@ static inline void dp_mon_filter_reset_mcopy_mode_1_0(struct dp_pdev *pdev)
 }
 #endif
 
+#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
+/**
+ * dp_mon_filter_setup_smart_monitor_1_0() - Setup the smart monitor mode filter
+ * @pdev: DP pdev handle
+ */
+void dp_mon_filter_setup_smart_monitor_1_0(struct dp_pdev *pdev);
+
+/**
+ * dp_mon_filter_reset_smart_monitor_1_0() - Reset the smart monitor mode filter
+ * @pdev: DP pdev handle
+ */
+void dp_mon_filter_reset_smart_monitor_1_0(struct dp_pdev *pdev);
+#else
+static inline void dp_mon_filter_setup_smart_monitor_1_0(struct dp_pdev *pdev)
+{
+}
+
+static inline void dp_mon_filter_reset_smart_monitor_1_0(struct dp_pdev *pdev)
+{
+}
+#endif
+
+/**
+ * dp_mon_set_reset_mon_mac_filter_1_0() - Set/Reset the monitor mode filter
+ * @pdev: DP pdev handle
+ * @val: Indicate set/reset filter
+ */
+void dp_mon_set_reset_mon_mac_filter_1_0(struct dp_pdev *pdev, bool val);
 
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 /**
@@ -122,7 +150,7 @@ void dp_mon_filter_setup_mon_mode_1_0(struct dp_pdev *pdev);
  */
 void dp_mon_filter_reset_mon_mode_1_0(struct dp_pdev *pdev);
 
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
+#ifdef WDI_EVENT_ENABLE
 /**
  * dp_mon_filter_setup_rx_pkt_log_full_1_0() - Setup the Rx pktlog full mode
  * filter in the radio object.

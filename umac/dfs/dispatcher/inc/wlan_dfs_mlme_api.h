@@ -2,6 +2,7 @@
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
+ *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
@@ -390,11 +391,4 @@ void dfs_mlme_release_radar_mode_switch_lock(struct wlan_objmgr_pdev *pdev)
  * @pdev: Pointer to struct wlan_objmgr_pdev
  */
 bool dfs_mlme_is_pdev_valid(struct wlan_objmgr_pdev *pdev);
-
-/**
- * dfs_send_nol_remove_ind() - Send nol remove indication
- *
- * Return: void
- */
-void dfs_send_nol_remove_ind(void);
 #endif /* _WLAN_DFS_MLME_API_H_ */

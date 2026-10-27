@@ -267,17 +267,6 @@
 /* Firmware capability to use STA vdev for P2P device */
 #define WLAN_SOC_USE_STA_VDEV_FOR_P2P_DEVICE   0x00001000
 
-/* Firmware capability to handle roam triggers for
- * host based EAPOL 4-way handshake
- */
-#define WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE   0x00002000
-
-/* Firmware capability to skip PMK match-based delete during OKC roam */
-#define WLAN_ROAM_SKIP_PMK_MATCH_DELETE_SUPPORT   0x00008000
-
-/* Firmware capability to support delete all peer */
-#define WLAN_VDEV_DELETE_ALL_PEER_SUPPORT_BITMAP  0x00004000
-
 /* PSOC op flags */
 
 	/* Invalid VHT cap */
@@ -369,10 +358,6 @@ struct wlan_objmgr_psoc_nif {
  * @wlan_pdev_list:       PDEV list
  * @wlan_vdev_list:       VDEV list
  * @wlan_vdev_id_map:     VDEV id map, to allocate free ids
- * @wlan_vdev_id_defer_clear: Per vdev id, defer wlan_vdev_id_map clear
- *                        to the caller invoking
- *                        wlan_objmgr_psoc_vdev_id_clear_map() instead of
- *                        clearing it in wlan_objmgr_psoc_vdev_detach()
  * @peer_list:            Peer list
  * @ref_cnt:              Ref count
  * @ref_id_dbg:           Array to track Ref count
@@ -391,7 +376,6 @@ struct wlan_objmgr_psoc_objmgr {
 	struct wlan_objmgr_pdev *wlan_pdev_list[WLAN_UMAC_MAX_PDEVS];
 	struct wlan_objmgr_vdev *wlan_vdev_list[WLAN_UMAC_PSOC_MAX_VDEVS];
 	qdf_bitmap(wlan_vdev_id_map, WLAN_UMAC_PSOC_MAX_VDEVS);
-	qdf_bitmap(wlan_vdev_id_defer_clear, WLAN_UMAC_PSOC_MAX_VDEVS);
 	struct wlan_peer_list peer_list;
 	qdf_atomic_t ref_cnt;
 	qdf_atomic_t ref_id_dbg[WLAN_REF_ID_MAX];
@@ -1225,33 +1209,6 @@ struct wlan_objmgr_vdev *wlan_objmgr_get_vdev_by_macaddr_from_psoc_no_state(
 		struct wlan_objmgr_psoc *psoc, uint8_t pdev_id,
 		const uint8_t *macaddr, wlan_objmgr_ref_dbgid dbg_id);
 #endif
-
-/**
- * wlan_objmgr_psoc_vdev_id_clear_map() - clear vdev id map bit for vdev id
- * @psoc: PSOC object
- * @vdev_id: vdev id whose map bit is to be cleared
- *
- * API to free up the vdev id slot in the psoc's vdev id map so it can be
- * reused by a subsequent vdev create
- *
- * Return: void
- */
-void wlan_objmgr_psoc_vdev_id_clear_map(struct wlan_objmgr_psoc *psoc,
-					uint8_t vdev_id);
-
-/**
- * wlan_objmgr_psoc_vdev_id_set_defer_clear() - set/clear defer flag for a
- *                                              vdev id's map bit
- * @psoc: PSOC object
- * @vdev_id: vdev id whose defer flag is to be set/cleared
- * @defer: true to defer the vdev id map bit clear to
- *         wlan_objmgr_psoc_vdev_id_clear_map(), false to let
- *         wlan_objmgr_psoc_vdev_detach() clear it immediately
- *
- * Return: void
- */
-void wlan_objmgr_psoc_vdev_id_set_defer_clear(struct wlan_objmgr_psoc *psoc,
-					      uint8_t vdev_id, bool defer);
 
 /**
  * wlan_psoc_obj_lock() - Acquire PSOC spinlock

@@ -174,7 +174,7 @@ qdf_str_ncmp(const char *str1, const char *str2, qdf_size_t limit)
 /**
  * qdf_str_sep - extract token from string
  * @str: String buffer
- * @delim: Delimiter
+ * @delim: Delimitter
  * Return: Pointer to the first token
  *
  */

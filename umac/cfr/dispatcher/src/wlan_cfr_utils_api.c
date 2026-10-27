@@ -180,10 +180,9 @@ QDF_STATUS cfr_deinitialize_pdev(struct wlan_objmgr_pdev *pdev)
 }
 qdf_export_symbol(cfr_deinitialize_pdev);
 
-uint8_t count_set_bits(unsigned long *bitmap)
+uint8_t count_set_bits(unsigned long value)
 {
 	uint8_t count = 0;
-	unsigned long value = bitmap[0];
 
 	while (value) {
 		value &= (value - 1);

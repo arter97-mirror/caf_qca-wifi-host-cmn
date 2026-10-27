@@ -179,7 +179,7 @@ static int
 afc_expiry_event_update_or_get_len(struct sk_buff *vendor_event,
 				   struct wlan_afc_host_request *afc_req)
 {
-	struct nlattr *nla_attr = NULL;
+	struct nlattr *nla_attr;
 	struct nlattr *freq_info;
 	struct nlattr *opclass_info = NULL;
 	struct nlattr *chan_list = NULL;
@@ -377,10 +377,10 @@ afc_power_event_update_or_get_len(struct sk_buff *vendor_event,
 {
 	struct afc_chan_obj *pow_evt_chan_info = NULL;
 	struct chan_eirp_obj *pow_evt_eirp_info = NULL;
-	struct nlattr *nla_attr = NULL;
+	struct nlattr *nla_attr;
 	struct nlattr *freq_info;
-	struct nlattr *opclass_info = NULL;
-	struct nlattr *chan_list = NULL;
+	struct nlattr *opclass_info;
+	struct nlattr *chan_list;
 	struct nlattr *chan_info = NULL;
 	int i, j, len = NLMSG_HDRLEN;
 

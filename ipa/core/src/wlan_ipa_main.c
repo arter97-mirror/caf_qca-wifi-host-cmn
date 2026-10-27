@@ -26,7 +26,6 @@
 #include "wlan_ipa_tgt_api.h"
 #include "cfg_ucfg_api.h"
 #include "wlan_ipa_obj_mgmt_api.h"
-#include "qdf_str.h"
 
 static struct wlan_ipa_config *g_ipa_config;
 static bool g_ipa_hw_support;
@@ -114,13 +113,6 @@ bool ipa_config_is_uc_enabled(void)
 	return g_ipa_config ? wlan_ipa_uc_is_enabled(g_ipa_config) : 0;
 }
 
-uint32_t ipa_get_l3_hdr_padding_len(void)
-{
-	struct wlan_ipa_priv *ipa_ctx = wlan_ipa_get_obj_context();
-
-	return ipa_ctx ? ipa_ctx->l3_hdr_padding_len : L3_HEADER_PADDING_LEN;
-}
-
 bool ipa_config_is_opt_wifi_dp_enabled(void)
 {
 	return g_ipa_config ? wlan_ipa_is_opt_wifi_dp_enabled(g_ipa_config) : 0;
@@ -162,12 +154,6 @@ ipa_send_intrabss_enable_disable(struct wlan_objmgr_psoc *psoc,
 				 struct ipa_intrabss_control_params *req)
 {
 	return tgt_ipa_intrabss_enable_disable(psoc, req);
-}
-
-QDF_STATUS
-ipa_send_l3_hdr_padding_cfg(struct wlan_objmgr_psoc *psoc, bool enable)
-{
-	return tgt_ipa_l3_hdr_padding_cfg(psoc, enable);
 }
 
 void ipa_set_dp_handle(struct wlan_objmgr_psoc *psoc, void *dp_soc)
@@ -257,8 +243,7 @@ void ipa_uc_stat(struct wlan_objmgr_pdev *pdev)
 
 #ifdef IPA_OPT_WIFI_DP_CTRL
 void ipa_set_opt_dp_ctrl_flt(struct wlan_objmgr_pdev *pdev,
-			     struct ipa_wdi_opt_dpath_flt_add_cb_params *flt,
-			     uint8_t opr)
+			     struct ipa_wdi_opt_dpath_flt_add_cb_params *flt)
 {
 	struct wlan_ipa_priv *ipa_obj;
 	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
@@ -277,25 +262,11 @@ void ipa_set_opt_dp_ctrl_flt(struct wlan_objmgr_pdev *pdev,
 		return;
 	}
 
-	switch (opr) {
-	case IPA_OPT_DP_RESV:
-		wlan_ipa_wdi_opt_dpath_flt_rsrv_cb(ipa_obj, NULL);
-		break;
-	case IPA_OPT_DP_ADD:
-		wlan_ipa_wdi_opt_dpath_flt_add_cb(ipa_obj, flt);
-		break;
-	case IPA_OPT_DP_CTRL_ADD:
-		wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb_wrapper(ipa_obj, flt);
-		break;
-	default:
-		ipa_err("invalid operation %d", opr);
-		break;
-	}
+	wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(ipa_obj, flt);
 }
 
 void ipa_set_opt_dp_ctrl_flt_rm(struct wlan_objmgr_pdev *pdev,
-				struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt,
-				uint8_t opr)
+				struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt)
 {
 	struct wlan_ipa_priv *ipa_obj;
 	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
@@ -314,32 +285,16 @@ void ipa_set_opt_dp_ctrl_flt_rm(struct wlan_objmgr_pdev *pdev,
 		return;
 	}
 
-	switch (opr) {
-	case IPA_OPT_DP_RELEASE:
-		wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb_wrapper(ipa_obj);
-		break;
-	case IPA_OPT_DP_REM:
-		wlan_ipa_wdi_opt_dpath_flt_rem_cb(ipa_obj, flt);
-		break;
-	case IPA_OPT_DP_CTRL_REM:
-		wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb_wrapper(ipa_obj,
-							       flt);
-		break;
-	default:
-		ipa_err("invalid operation %d", opr);
-		break;
-	}
+	wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb_wrapper(ipa_obj, flt);
 }
 #else
 void ipa_set_opt_dp_ctrl_flt(struct wlan_objmgr_pdev *pdev,
-			     struct ipa_wdi_opt_dpath_flt_add_cb_params *flt,
-			     uint8_t opr)
+			     struct ipa_wdi_opt_dpath_flt_add_cb_params *flt)
 {
 }
 
 void ipa_set_opt_dp_ctrl_flt_rm(struct wlan_objmgr_pdev *pdev,
-				struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt,
-				uint8_t opr)
+				struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt)
 {
 }
 #endif
@@ -648,36 +603,6 @@ void ipa_flush(struct wlan_objmgr_pdev *pdev)
 	return wlan_ipa_flush(ipa_obj);
 }
 
-#ifdef WLAN_STA_SEAMLESS_ROAMING
-void ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
-			qdf_netdev_t net_dev, uint8_t device_mode,
-			uint8_t session_id, uint8_t *mac_addr,
-			bool is_enable)
-{
-	struct wlan_ipa_priv *ipa_obj;
-	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
-
-	if (!ipa_config_is_enabled()) {
-		ipa_info("ipa is disabled");
-		return;
-	}
-
-	if (!ipa_cb_is_ready()) {
-		ipa_info("ipa is not ready");
-		return;
-	}
-
-	ipa_obj = ipa_psoc_get_priv_obj(psoc);
-	if (!ipa_obj) {
-		ipa_err("IPA object is NULL");
-		return;
-	}
-
-	wlan_ipa_sw_routing_set(ipa_obj, net_dev, device_mode,
-				session_id, mac_addr, is_enable);
-}
-#endif
-
 QDF_STATUS ipa_suspend(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_ipa_priv *ipa_obj;
@@ -833,7 +758,6 @@ QDF_STATUS ipa_send_mcc_scc_msg(struct wlan_objmgr_pdev *pdev,
 
 QDF_STATUS ipa_wlan_evt(struct wlan_objmgr_pdev *pdev, qdf_netdev_t net_dev,
 			uint8_t device_mode, uint8_t session_id,
-			bool is_seamless_roam,
 			enum wlan_ipa_wlan_event ipa_event_type,
 			const uint8_t *mac_addr, bool is_2g_iface)
 {
@@ -850,8 +774,8 @@ QDF_STATUS ipa_wlan_evt(struct wlan_objmgr_pdev *pdev, qdf_netdev_t net_dev,
 	}
 
 	return wlan_ipa_wlan_evt(net_dev, device_mode, session_id,
-				 is_seamless_roam, ipa_event_type,
-				 mac_addr, is_2g_iface, ipa_obj);
+				 ipa_event_type, mac_addr, is_2g_iface,
+				 ipa_obj);
 }
 
 int ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
@@ -859,9 +783,10 @@ int ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 	return wlan_ipa_uc_smmu_map(map, num_buf, buf_arr);
 }
 
-bool ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc)
+bool ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_ipa_priv *ipa_obj;
+	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
 
 	if (!ipa_config_is_enabled()) {
 		ipa_debug_rl("ipa is disabled");
@@ -1039,8 +964,6 @@ void ipa_component_config_update(struct wlan_objmgr_psoc *psoc)
 		cfg_get(psoc, CFG_DP_IPA_WDS_STATUS);
 	g_ipa_config->ipa_vlan_support =
 		cfg_get(psoc, CFG_DP_IPA_ENABLE_VLAN_SUPPORT);
-	g_ipa_config->l3_hdr_padding_support =
-		cfg_get(psoc, CFG_DP_IPA_L3_HDR_PADDING);
 }
 
 void ipa_component_config_free(void)
@@ -1239,7 +1162,7 @@ void wlan_ipa_obj_ipa_evt_wq_handler(void *ctx)
 		}
 		ipa_wlan_evt(ipa_ctx->pdev_obj, ipa_ctx->net_dev,
 			     ipa_ctx->device_mode, ipa_ctx->vdev_id,
-			     false, ipa_ctx->event, ipa_ctx->mac_addr,
+			     ipa_ctx->event, ipa_ctx->mac_addr,
 			     ipa_ctx->ch_freq);
 
 		/* Clean Interface for STA/AP disconnect event */
@@ -1338,65 +1261,3 @@ void wlan_psoc_ipa_evt_wq_detach(struct wlan_objmgr_psoc *psoc)
 
 qdf_export_symbol(wlan_psoc_ipa_evt_wq_detach);
 #endif
-
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-void
-ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev, wlan_ipa_is_mlo_vdev cb)
-{
-	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
-	struct wlan_ipa_priv *ipa_obj;
-
-	if (!ipa_config_is_enabled()) {
-		ipa_debug("ipa is disabled");
-		return;
-	}
-
-	if (!ipa_cb_is_ready())
-		return;
-
-	ipa_obj = ipa_psoc_get_priv_obj(psoc);
-	if (!ipa_obj) {
-		ipa_err("IPA object is NULL");
-		return;
-	}
-
-	wlan_ipa_reg_is_mlo_vdev_cb(ipa_obj, cb);
-}
-#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
-
-#ifdef IPA_SIM
-int ipa_get_psoc_idx(void)
-{
-	unsigned char module_name_str[QDF_MAX_NAME_SIZE];
-
-	qdf_str_lcopy(module_name_str, THIS_MODULE->name,
-		      sizeof(module_name_str));
-
-	if (!qdf_str_cmp(module_name_str, "wlan"))
-		return 0;
-	else if (!qdf_str_cmp(module_name_str, "wlan1"))
-		return 1;
-	else if (!qdf_str_cmp(module_name_str, "wlan2"))
-		return 2;
-
-	ipa_debug("Unrecognized module name: %s, defaulting to index 0",
-		  module_name_str);
-
-	return 0;
-}
-#else
-int ipa_get_psoc_idx(void)
-{
-	return 0;
-}
-#endif
-
-void ipa_ps_suspend_resume(bool suspend)
-{
-	if (!ipa_config_is_enabled()) {
-		ipa_debug("ipa is disabled");
-		return;
-	}
-
-	return wlan_ipa_ps_suspend_resume(suspend);
-}

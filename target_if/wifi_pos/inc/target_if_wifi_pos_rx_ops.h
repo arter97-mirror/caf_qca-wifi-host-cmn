@@ -103,6 +103,7 @@ int target_if_wifi_pos_pasn_peer_create_ev_handler(ol_scn_t scn,
 int target_if_wifi_pos_pasn_peer_delete_ev_handler(ol_scn_t scn,
 						   uint8_t *buf,
 						   uint32_t len);
+
 #else
 static inline
 int target_if_wifi_pos_pasn_peer_create_ev_handler(ol_scn_t scn,
@@ -120,27 +121,4 @@ int target_if_wifi_pos_pasn_peer_delete_ev_handler(ol_scn_t scn,
 	return 0;
 }
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
-
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
-/**
- * target_if_wifi_pos_rtt_peer_meas_report_ev_handler() - Handle
- * wmi_rtt_peer_meas_report_eventid event from firmware
- * @scn: scn handle
- * @buf: event buffer
- * @len: event buffer length
- *
- * Return: zero if success, non-zero status on failure
- */
-int target_if_wifi_pos_rtt_peer_meas_report_ev_handler(ol_scn_t scn,
-						       uint8_t *buf,
-						       uint32_t len);
-#else
-static inline
-int target_if_wifi_pos_rtt_peer_meas_report_ev_handler(ol_scn_t scn,
-						       uint8_t *buf,
-						       uint32_t len)
-{
-	return 0;
-}
-#endif
 #endif /* _WIFI_POS_TGT_IF_RX_OPS_H_ */

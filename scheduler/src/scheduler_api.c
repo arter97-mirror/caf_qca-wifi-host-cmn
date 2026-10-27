@@ -22,9 +22,6 @@
 #include <qdf_atomic.h>
 #include <qdf_module.h>
 #include <qdf_platform.h>
-#ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
-#include "hif_main.h"
-#endif
 
 struct sched_qdf_mc_timer_cb_wrapper {
 	qdf_mc_timer_callback_t timer_callback;
@@ -92,7 +89,7 @@ static void scheduler_watchdog_timeout(void *arg)
 	if (qdf_atomic_test_bit(MC_SHUTDOWN_EVENT_MASK, &sched->sch_event_flag))
 		return;
 
-	sched_err("Triggering self recovery on scheduler timeout");
+	sched_err("Triggering self recovery on sheduler timeout");
 	qdf_trigger_self_recovery(NULL, QDF_SCHED_TIMEOUT);
 }
 
@@ -546,6 +543,25 @@ QDF_STATUS scheduler_timer_q_mq_handler(struct scheduler_msg *msg)
 	return sched_mc_timer_callback(msg);
 }
 
+QDF_STATUS scheduler_mlme_mq_handler(struct scheduler_msg *msg)
+{
+	scheduler_msg_process_fn_t mlme_msg_handler;
+
+	QDF_BUG(msg);
+	if (!msg)
+		return QDF_STATUS_E_FAILURE;
+
+	mlme_msg_handler = msg->callback;
+
+	QDF_BUG(mlme_msg_handler);
+	if (!mlme_msg_handler)
+		return QDF_STATUS_E_FAILURE;
+
+	mlme_msg_handler(msg);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 QDF_STATUS scheduler_scan_mq_handler(struct scheduler_msg *msg)
 {
 	QDF_STATUS (*scan_q_msg_handler)(struct scheduler_msg *);
@@ -780,48 +796,3 @@ QDF_STATUS scheduler_post_message_debug(QDF_MODULE_ID src_id,
 }
 
 qdf_export_symbol(scheduler_post_message_debug);
-
-#ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
-void scheduler_perfd_clear_cpumask(void)
-{
-	qdf_cpu_mask new_mask;
-	struct scheduler_ctx *sched_ctx = scheduler_get_context();
-
-	if (!sched_ctx || !sched_ctx->sch_thread) {
-		sched_err("Failed to get scheduler thread context");
-		return;
-	}
-
-	qdf_cpumask_clear(&new_mask);
-	qdf_cpumask_setall(&new_mask);
-	qdf_thread_set_cpus_allowed_mask(sched_ctx->sch_thread, &new_mask);
-}
-
-void scheduler_perfd_set_cpumask(void)
-{
-	unsigned int cpus;
-	int package_id;
-	char new_mask_str[10];
-	qdf_cpu_mask new_mask;
-	int perf_cpu_cluster = hif_get_perf_cluster_bitmap();
-	struct scheduler_ctx *sched_ctx = scheduler_get_context();
-
-	if (!sched_ctx || !sched_ctx->sch_thread) {
-		sched_err("Failed to get scheduler thread context");
-		return;
-	}
-
-	qdf_cpumask_clear(&new_mask);
-	qdf_for_each_online_cpu(cpus) {
-		package_id = qdf_topology_physical_package_id(cpus);
-		if (package_id >= 0 &&
-		    QDF_HAS_PARAM(perf_cpu_cluster, package_id))
-			qdf_cpumask_set_cpu(cpus, &new_mask);
-	}
-
-	qdf_thread_set_cpus_allowed_mask(sched_ctx->sch_thread, &new_mask);
-
-	qdf_thread_cpumap_print_to_pagebuf(false, new_mask_str, &new_mask);
-	sched_debug("Set scheduler thread CPU mask : %s", new_mask_str);
-}
-#endif

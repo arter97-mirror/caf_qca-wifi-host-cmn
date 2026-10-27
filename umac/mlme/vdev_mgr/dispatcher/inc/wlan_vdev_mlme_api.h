@@ -232,6 +232,26 @@ QDF_STATUS wlan_vdev_is_restart_progress(struct wlan_objmgr_vdev *vdev);
 QDF_STATUS wlan_vdev_is_dfs_cac_wait(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * wlan_vdev_mlme_cmd_lock - Acquire lock for command queuing atomicity
+ * @vdev: Object manager VDEV object
+ *
+ * API to take VDEV MLME command lock
+ *
+ * Return: void
+ */
+void wlan_vdev_mlme_cmd_lock(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wlan_vdev_mlme_cmd_unlock - Release lock for command queuing atomicity
+ * @vdev: Object manager VDEV object
+ *
+ * API to release VDEV MLME command lock
+ *
+ * Return: void
+ */
+void wlan_vdev_mlme_cmd_unlock(struct wlan_objmgr_vdev *vdev);
+
+/**
  * wlan_vdev_mlme_is_scan_allowed() - Checks whether scan is allowed
  * @vdev: Object manager VDEV object
  *
@@ -263,17 +283,6 @@ QDF_STATUS wlan_vdev_mlme_is_init_state(struct wlan_objmgr_vdev *vdev);
  *         FAILURE: otherwise failure
  */
 QDF_STATUS wlan_vdev_is_up_active_state(struct wlan_objmgr_vdev *vdev);
-
-/**
- * wlan_vdev_is_link_removal_state() - Check whether vdev is in up removal state
- * @vdev: Object manager VDEV object
- *
- * API to checks the VDEV MLME SM state is in UP REMOVAL state
- *
- * Return: SUCCESS: if vdev is in UP REMOVAL state
- *         FAILURE: otherwise failure
- */
-QDF_STATUS wlan_vdev_is_link_removal_state(struct wlan_objmgr_vdev *vdev);
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
@@ -323,7 +332,7 @@ wlan_vdev_mlme_get_is_mlo_vdev(struct wlan_objmgr_psoc *psoc,
  *
  * API to Update SR value based on AP advertisement and provided by userspace
  *
- * Return: true/false
+ * Return: true/flase
  */
 void
 wlan_mlme_update_sr_data(struct wlan_objmgr_vdev *vdev, int *val,
@@ -348,7 +357,7 @@ void wlan_mlme_disable_fd_in_6ghz_band(struct wlan_objmgr_vdev *vdev,
 				       bool disable_fd);
 
 /**
- * wlan_mlme_is_fd_disabled_in_6ghz_band() - Get fd disabled flag from vdev
+ * wlan_mlme_is_fd_disabled_in_6ghz_band() - Get fd disabled flag fom vdev
  * @vdev: vdev obj
  *
  * Return: true/false

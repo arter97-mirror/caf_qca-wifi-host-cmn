@@ -139,9 +139,6 @@ dp_rx_mon_populate_cfr_ppdu_info(struct dp_pdev *pdev,
 	}
 
 	qdf_assert_always(num_users <= CDP_MU_MAX_USERS);
-	if (num_users == 0)
-		return;
-
 	dp_rx_mon_handle_cfr_mu_info(pdev, ppdu_info, cdp_rx_ppdu);
 	rx_user_status = &ppdu_info->rx_user_status[num_users - 1];
 	sw_peer_id = rx_user_status->sw_peer_id;
@@ -1699,6 +1696,58 @@ end:
 }
 #endif /* QCA_MCOPY_SUPPORT */
 
+int
+dp_rx_handle_smart_mesh_mode(struct dp_soc *soc, struct dp_pdev *pdev,
+			      struct hal_rx_ppdu_info *ppdu_info,
+			      qdf_nbuf_t nbuf, uint8_t mac_id)
+{
+	uint8_t size = 0;
+	struct dp_mon_vdev *mon_vdev;
+	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
+
+	if (!mon_mac->mvdev) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			  "[%s]:[%d] Monitor vdev is NULL !!",
+			  __func__, __LINE__);
+		return 1;
+	}
+
+	mon_vdev = mon_mac->mvdev->monitor_vdev;
+
+	if (!ppdu_info->msdu_info.first_msdu_payload) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			  "[%s]:[%d] First msdu payload not present",
+			  __func__, __LINE__);
+		return 1;
+	}
+
+	/* Adding 4 bytes to get to start of 802.11 frame after phy_ppdu_id */
+	size = (ppdu_info->msdu_info.first_msdu_payload -
+		qdf_nbuf_data(nbuf)) + 4;
+	ppdu_info->msdu_info.first_msdu_payload = NULL;
+
+	if (!qdf_nbuf_pull_head(nbuf, size)) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			  "[%s]:[%d] No header present",
+			  __func__, __LINE__);
+		return 1;
+	}
+
+	/* Only retain RX MSDU payload in the skb */
+	qdf_nbuf_trim_tail(nbuf, qdf_nbuf_len(nbuf) -
+			   ppdu_info->msdu_info.payload_len);
+	if (!qdf_nbuf_update_radiotap(&mon_mac->ppdu_info.rx_status, nbuf,
+				      qdf_nbuf_headroom(nbuf))) {
+		DP_STATS_INC(pdev, dropped.mon_radiotap_update_err, 1);
+		return 1;
+	}
+
+	mon_vdev->osif_rx_mon(mon_mac->mvdev->osif_vdev,
+			      nbuf, NULL);
+	mon_mac->ppdu_info.rx_status.monitor_direct_used = 0;
+	return 0;
+}
+
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
 static bool
 dp_rx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
@@ -1763,42 +1812,15 @@ dp_rx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
 #endif
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
-
-/**
- * dp_rx_mon_remove_mic_data() - API to remove mic placeholder data added by
- * CRYPTO
- * @mon_mac: mon_mac handle
- * @buf: pointer to mpdu buffer
- *
- * Return: void
- */
-
-static void
-dp_rx_mon_remove_mic_data(struct dp_mon_mac *mon_mac, qdf_nbuf_t buf)
-{
-	uint8_t user_id;
-	uint8_t mic_len;
-	struct mon_rx_user_status *rx_user_status;
-
-	user_id = mon_mac->ppdu_info.user_id;
-	rx_user_status = &mon_mac->ppdu_info.rx_user_status[user_id];
-	mic_len = hal_get_rx_status_mic_len(rx_user_status);
-	if (mic_len > 0)
-		qdf_nbuf_trim_tail(buf, mic_len);
-}
-
 /**
  * dp_rx_mon_stitch_mpdu() - Stich MPDU from MSDU
- * @mon_pdev: mon_pdev handle
  * @mon_mac: mon_mac handle
  * @tail: 1st MSDU of next MPDU
  *
  * Return: mpdu buf
  */
 static qdf_nbuf_t
-dp_rx_mon_stitch_mpdu(struct dp_mon_pdev *mon_pdev,
-		      struct dp_mon_mac *mon_mac,
-		      qdf_nbuf_t tail)
+dp_rx_mon_stitch_mpdu(struct dp_mon_mac *mon_mac, qdf_nbuf_t tail)
 {
 	qdf_nbuf_t head, nbuf, next;
 	qdf_nbuf_t mpdu_buf = NULL, head_frag_list = NULL;
@@ -1837,10 +1859,8 @@ dp_rx_mon_stitch_mpdu(struct dp_mon_pdev *mon_pdev,
 		 * 4 bytes of RX FCS in the tail to avoid parsing issue.
 		 */
 		if (!head_frag_list &&
-		    qdf_nbuf_len(mpdu_buf) < mon_pdev->rx_hdr_dma_length) {
+		    qdf_nbuf_len(mpdu_buf) < LPC_RX_HDR_DMA_LENGTH)
 			qdf_nbuf_trim_tail(mpdu_buf, HAL_RX_FCS_LEN);
-			dp_rx_mon_remove_mic_data(mon_mac, mpdu_buf);
-		}
 
 		qdf_nbuf_append_ext_list(mpdu_buf, head_frag_list,
 					 frag_list_sum_len);
@@ -2009,7 +2029,7 @@ int dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
 
 		/* last nbuf of queue points to 1st MSDU of next MPDU */
 		last = qdf_nbuf_queue_last(&mon_mac->msdu_queue);
-		buf = dp_rx_mon_stitch_mpdu(mon_pdev, mon_mac, last);
+		buf = dp_rx_mon_stitch_mpdu(mon_mac, last);
 		/* Add MPDU to queue */
 		if (qdf_likely(buf))
 			qdf_nbuf_queue_add(&mon_mac->mpdu_queue, buf);
@@ -2051,7 +2071,7 @@ int dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
 			dp_rx_mon_send_mpdu(pdev, mon_mac, buf);
 
 		/* Stich and send Last MPDU of PPDU */
-		buf = dp_rx_mon_stitch_mpdu(mon_pdev, mon_mac, NULL);
+		buf = dp_rx_mon_stitch_mpdu(mon_mac, NULL);
 		if (buf)
 			dp_rx_mon_send_mpdu(pdev, mon_mac, buf);
 
@@ -2202,7 +2222,6 @@ dp_send_mgmt_packet_to_stack(struct dp_soc *soc,
 }
 #endif /* QCA_MCOPY_SUPPORT */
 
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS dp_rx_mon_process_dest_pktlog(struct dp_soc *soc,
 					 uint32_t mac_id,
 					 qdf_nbuf_t mpdu)
@@ -2248,7 +2267,6 @@ QDF_STATUS dp_rx_mon_process_dest_pktlog(struct dp_soc *soc,
 	}
 	return QDF_STATUS_SUCCESS;
 }
-#endif
 
 QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 			     qdf_nbuf_t head_msdu, qdf_nbuf_t tail_msdu)
@@ -2258,18 +2276,21 @@ QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 	qdf_nbuf_t mon_skb, skb_next;
 	qdf_nbuf_t mon_mpdu = NULL;
 	struct dp_mon_vdev *mon_vdev;
+	struct dp_mon_pdev *mon_pdev;
 	struct dp_mon_mac *mon_mac;
 
 	if (!pdev)
 		goto mon_deliver_fail;
 
 	mon_mac = dp_get_mon_mac(pdev, mac_id);
+	mon_pdev = pdev->monitor_pdev;
+	rs = &mon_mac->rx_mon_recv_status;
 
-	if (!mon_mac || !mon_mac->mvdev ||
+	if (!mon_mac && !mon_mac->mvdev && !mon_pdev->mcopy_mode &&
+	    !mon_pdev->rx_pktlog_cbf &&
 	    mon_mac->mon_chan_num == INVALID_MON_CHAN_NUM)
 		goto mon_deliver_fail;
 
-	rs = &mon_mac->rx_mon_recv_status;
 	/* restitch mon MPDU for delivery via monitor interface */
 	mon_mpdu = dp_rx_mon_restitch_mpdu(soc, mac_id, head_msdu,
 					   tail_msdu, rs);
@@ -2281,6 +2302,13 @@ QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 	}
 
 	dp_rx_mon_process_dest_pktlog(soc, mac_id, mon_mpdu);
+
+	/* monitor vap cannot be present when mcopy is enabled
+	 * hence same skb can be consumed
+	 */
+	if (mon_pdev->mcopy_mode)
+		return dp_send_mgmt_packet_to_stack(soc, mon_mpdu,
+						    pdev, mon_mac);
 
 	if (mon_mac->mvdev &&
 	    mon_mac->mvdev->osif_vdev &&
@@ -2332,9 +2360,110 @@ mon_deliver_fail:
 	return QDF_STATUS_E_INVAL;
 }
 
-#if defined(QCA_MONITOR_2_0_PKT_SUPPORT) &&\
-defined(WLAN_SUPPORT_RX_PROTOCOL_TYPE_TAG) &&\
-defined(WLAN_SUPPORT_RX_TAG_STATISTICS)
+QDF_STATUS dp_rx_mon_deliver_non_std(struct dp_soc *soc,
+				     uint32_t mac_id)
+{
+	struct dp_pdev *pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
+	ol_txrx_rx_mon_fp osif_rx_mon;
+	qdf_nbuf_t dummy_msdu;
+	struct dp_mon_pdev *mon_pdev;
+	struct dp_mon_vdev *mon_vdev;
+	struct dp_mon_mac *mon_mac;
+
+	/* Sanity checking */
+	if (!pdev || !pdev->monitor_pdev)
+		goto mon_deliver_non_std_fail;
+
+	mon_pdev = pdev->monitor_pdev;
+	mon_mac = dp_get_mon_mac(pdev, mac_id);
+	if (!mon_mac || !mon_mac->mvdev ||
+	    !mon_mac->mvdev->monitor_vdev ||
+	    !mon_mac->mvdev->monitor_vdev->osif_rx_mon)
+		goto mon_deliver_non_std_fail;
+
+	mon_vdev = mon_mac->mvdev->monitor_vdev;
+	/* Generate a dummy skb_buff */
+	osif_rx_mon = mon_vdev->osif_rx_mon;
+	dummy_msdu = qdf_nbuf_alloc(soc->osdev, MAX_MONITOR_HEADER,
+				    MAX_MONITOR_HEADER, 4, FALSE);
+	if (!dummy_msdu)
+		goto allocate_dummy_msdu_fail;
+
+	qdf_nbuf_set_pktlen(dummy_msdu, 0);
+	qdf_nbuf_set_next(dummy_msdu, NULL);
+
+	mon_mac->ppdu_info.rx_status.ppdu_id =
+		mon_mac->ppdu_info.com_info.ppdu_id;
+
+	/* Apply the radio header to this dummy skb */
+	if (!qdf_nbuf_update_radiotap(&mon_mac->ppdu_info.rx_status, dummy_msdu,
+				      qdf_nbuf_headroom(dummy_msdu))) {
+		DP_STATS_INC(pdev, dropped.mon_radiotap_update_err, 1);
+		qdf_nbuf_free(dummy_msdu);
+		goto mon_deliver_non_std_fail;
+	}
+
+	/* deliver to the user layer application */
+	osif_rx_mon(mon_mac->mvdev->osif_vdev,
+		    dummy_msdu, NULL);
+
+	return QDF_STATUS_SUCCESS;
+
+allocate_dummy_msdu_fail:
+		 dp_rx_mon_dest_debug("%pK: mon_skb=%pK ",
+				      soc, dummy_msdu);
+
+mon_deliver_non_std_fail:
+	return QDF_STATUS_E_INVAL;
+}
+
+/**
+ * dp_rx_process_peer_based_pktlog() - Process Rx pktlog if peer based
+ *                                     filtering enabled
+ * @soc: core txrx main context
+ * @ppdu_info: Structure for rx ppdu info
+ * @status_nbuf: Qdf nbuf abstraction for linux skb
+ * @pdev_id: mac_id/pdev_id correspondinggly for MCL and WIN
+ *
+ * Return: none
+ */
+void
+dp_rx_process_peer_based_pktlog(struct dp_soc *soc,
+				struct hal_rx_ppdu_info *ppdu_info,
+				qdf_nbuf_t status_nbuf, uint32_t pdev_id)
+{
+	struct dp_peer *peer;
+	struct mon_rx_user_status *rx_user_status;
+	uint32_t num_users = ppdu_info->com_info.num_users;
+	uint16_t sw_peer_id;
+
+	/* Sanity check for num_users */
+	if (!num_users)
+		return;
+
+	qdf_assert_always(num_users <= CDP_MU_MAX_USERS);
+	rx_user_status = &ppdu_info->rx_user_status[num_users - 1];
+
+	sw_peer_id = rx_user_status->sw_peer_id;
+
+	peer = dp_peer_get_ref_by_id(soc, sw_peer_id,
+				     DP_MOD_ID_RX_PPDU_STATS);
+
+	if (!peer)
+		return;
+
+	if ((peer->peer_id != HTT_INVALID_PEER) && (peer->monitor_peer) &&
+	    (peer->monitor_peer->peer_based_pktlog_filter)) {
+		dp_wdi_event_handler(
+				     WDI_EVENT_RX_DESC, soc,
+				     status_nbuf,
+				     peer->peer_id,
+				     WDI_NO_VAL, pdev_id);
+	}
+	dp_peer_unref_delete(peer,
+			     DP_MOD_ID_RX_PPDU_STATS);
+}
+
 uint32_t
 dp_mon_rx_add_tlv(uint8_t id, uint16_t len, void *value, qdf_nbuf_t mpdu_nbuf)
 {
@@ -2364,7 +2493,6 @@ dp_mon_rx_add_tlv(uint8_t id, uint16_t len, void *value, qdf_nbuf_t mpdu_nbuf)
 
 	return num_bytes_pushed;
 }
-#endif
 
 void
 dp_mon_rx_stats_update_rssi_dbm_params(struct dp_mon_pdev *mon_pdev,

@@ -30,11 +30,6 @@
 #include <crypto/aes.h>
 #include <crypto/skcipher.h>
 #include <crypto/aead.h>
-#ifdef WLAN_FEATURE_11BN_SMD
-#include <crypto/kpp.h>
-#include <crypto/ecdh.h>
-#include <linux/random.h>
-#endif /* WLAN_FEATURE_11BN_SMD */
 #include <linux/ieee80211.h>
 #include <qdf_module.h>
 
@@ -56,16 +51,17 @@ static void xor(uint8_t *a, const uint8_t *b, size_t len)
 }
 
 int qdf_get_hash(uint8_t *type,
-		 uint8_t element_cnt, uint8_t *addr[], uint32_t *addr_len,
-		 int8_t *hash)
+		uint8_t element_cnt, uint8_t *addr[], uint32_t *addr_len,
+		int8_t *hash)
 {
 	return qdf_get_hmac_hash(type, NULL, 0, element_cnt,
 				 addr, addr_len, hash);
 }
 
-int qdf_get_hmac_hash(const uint8_t *type, uint8_t *key,
-		      uint32_t keylen, uint8_t element_cnt, uint8_t *addr[],
-		      uint32_t *addr_len, int8_t *hash)
+int qdf_get_hmac_hash(uint8_t *type, uint8_t *key,
+		uint32_t keylen,
+		uint8_t element_cnt, uint8_t *addr[], uint32_t *addr_len,
+		int8_t *hash)
 {
 	int i;
 	size_t src_len[MAX_HMAC_ELEMENT_CNT];
@@ -177,39 +173,9 @@ static inline void leftshift_onebit(const uint8_t *input, uint8_t *output)
 	}
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(7, 0, 0))
-typedef struct aes_enckey qdf_aes_ctx_t;
-
-static inline int qdf_aes_preparekey(qdf_aes_ctx_t *ctx,
-				     const uint8_t *key, unsigned int len)
-{
-	return aes_prepareenckey(ctx, key, len);
-}
-
-static inline void qdf_aes_encrypt(qdf_aes_ctx_t *ctx,
-				   uint8_t *dst, const uint8_t *src)
-{
-	aes_encrypt(ctx, dst, src);
-}
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
-typedef struct crypto_aes_ctx qdf_aes_ctx_t;
-
-static inline int qdf_aes_preparekey(qdf_aes_ctx_t *ctx,
-				     const uint8_t *key, unsigned int len)
-{
-	return aes_expandkey(ctx, key, len);
-}
-
-static inline void qdf_aes_encrypt(qdf_aes_ctx_t *ctx,
-				   uint8_t *dst, const uint8_t *src)
-{
-	aes_encrypt(ctx, dst, src);
-}
-#endif
-
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 static void
-generate_subkey(qdf_aes_ctx_t *aes_ctx, uint8_t *k1, uint8_t *k2)
+generate_subkey(struct crypto_aes_ctx *aes_ctx, uint8_t *k1, uint8_t *k2)
 {
 	uint8_t l[AES_BLOCK_SIZE] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -225,7 +191,7 @@ generate_subkey(qdf_aes_ctx_t *aes_ctx, uint8_t *k1, uint8_t *k2)
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
 
-	qdf_aes_encrypt(aes_ctx, l, const_zero);
+	aes_encrypt(aes_ctx, l, const_zero);
 
 	if ((l[0] & 0x80) == 0) {       /* If MSB(l) = 0, then k1 = l << 1 */
 		leftshift_onebit(l, k1);
@@ -297,15 +263,15 @@ int qdf_crypto_aes_128_cmac(const uint8_t *key, const uint8_t *data,
 	uint8_t k1[AES_KEYSIZE_128], k2[AES_KEYSIZE_128];
 	int cmp_blk;
 	int i, num_block = (len + 15) / AES_BLOCK_SIZE;
-	qdf_aes_ctx_t aes_ctx;
+	struct crypto_aes_ctx aes_ctx;
 	int ret;
 
 	/*
 	 * Calculate MIC and then copy
 	 */
-	ret = qdf_aes_preparekey(&aes_ctx, key, AES_KEYSIZE_128);
+	ret = aes_expandkey(&aes_ctx, key, AES_KEYSIZE_128);
 	if (ret) {
-		qdf_err("qdf_aes_preparekey failed (%d)", ret);
+		qdf_err("aes_expandkey failed (%d)", ret);
 		return ret;
 	}
 
@@ -335,11 +301,11 @@ int qdf_crypto_aes_128_cmac(const uint8_t *key, const uint8_t *data,
 		/* y = Mi (+) x */
 		xor_128(x, &data[AES_BLOCK_SIZE * i], y);
 		/* x = AES-128(KEY, y) */
-		qdf_aes_encrypt(&aes_ctx, x, y);
+		aes_encrypt(&aes_ctx, x, y);
 	}
 
 	xor_128(x, m_last, y);
-	qdf_aes_encrypt(&aes_ctx, x, y);
+	aes_encrypt(&aes_ctx, x, y);
 	memzero_explicit(&aes_ctx, sizeof(aes_ctx));
 
 	memcpy(mic, x, CMAC_TLEN);
@@ -776,462 +742,3 @@ int qdf_crypto_aes_gmac(uint8_t *key, uint16_t key_length,
 	return -EINVAL;
 }
 #endif
-
-#if defined(WLAN_FEATURE_11BN_SMD) && defined(FEATURE_WLAN_SUPPORT_CRYPTO)
-QDF_STATUS qdf_crypto_ecdh_init(void)
-{
-	struct crypto_kpp *test_tfm;
-
-	/* Verify ECDH support is available */
-	test_tfm = crypto_alloc_kpp("ecdh-nist-p256", 0, 0);
-	if (IS_ERR(test_tfm)) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "ECDH not supported: %ld", PTR_ERR(test_tfm));
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	crypto_free_kpp(test_tfm);
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
-		  "ECDH crypto initialized successfully");
-	return QDF_STATUS_SUCCESS;
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_init);
-
-void qdf_crypto_ecdh_deinit(void)
-{
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
-		  "ECDH crypto deinitialized");
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_deinit);
-
-/**
- * qdf_crypto_ecdh_set_secret() - Set private key in transform
- * @tfm: KPP transform
- * @private_key: Private key buffer
- * @key_size: Size of private key
- *
- * Internal helper to encode and set private key in crypto transform.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-static QDF_STATUS qdf_crypto_ecdh_set_secret(struct crypto_kpp *tfm,
-					     const uint8_t *private_key,
-					     size_t key_size)
-{
-	char *key_buf = NULL;
-	unsigned int buf_size;
-	int ret;
-	QDF_STATUS status = QDF_STATUS_E_FAILURE;
-	struct ecdh params = {0};
-
-	params.key = (char *)private_key;
-	params.key_size = key_size;
-
-	buf_size = crypto_ecdh_key_len(&params);
-	if (buf_size == 0) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Invalid ECDH key buffer size");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	key_buf = qdf_mem_malloc(buf_size);
-	if (!key_buf)
-		return QDF_STATUS_E_NOMEM;
-
-	ret = crypto_ecdh_encode_key(key_buf, buf_size, &params);
-	if (ret < 0) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to encode ECDH key: %d", ret);
-		goto out;
-	}
-
-	ret = crypto_kpp_set_secret(tfm, key_buf, buf_size);
-	if (ret < 0) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to set ECDH secret: %d", ret);
-		goto out;
-	}
-
-	status = QDF_STATUS_SUCCESS;
-
-out:
-	if (key_buf) {
-		qdf_mem_zero(key_buf, buf_size);
-		qdf_mem_free(key_buf);
-	}
-	return status;
-}
-
-QDF_STATUS qdf_crypto_ecdh_generate_private_key(uint8_t *private_key,
-						size_t key_size)
-{
-	int attempts = 0;
-	int ret;
-	char *key_buf = NULL;
-	unsigned int buf_size;
-	struct ecdh params = {0};
-	struct crypto_kpp *test_tfm = NULL;
-	const int MAX_ATTEMPTS = 10;
-
-	if (!private_key || key_size != QDF_ECDH_PRIVATE_KEY_SIZE) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Invalid parameters for private key generation");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	test_tfm = crypto_alloc_kpp("ecdh-nist-p256", 0, 0);
-	if (IS_ERR(test_tfm)) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to allocate test transform");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	params.key_size = key_size;
-	buf_size = crypto_ecdh_key_len(&params);
-
-	key_buf = qdf_mem_malloc(buf_size);
-	if (!key_buf) {
-		crypto_free_kpp(test_tfm);
-		return QDF_STATUS_E_NOMEM;
-	}
-
-	/* Generate and validate private key */
-	do {
-		get_random_bytes(private_key, key_size);
-		attempts++;
-
-		params.key = (char *)private_key;
-		params.key_size = key_size;
-
-		ret = crypto_ecdh_encode_key(key_buf, buf_size, &params);
-		if (ret < 0)
-			continue;
-
-		ret = crypto_kpp_set_secret(test_tfm, key_buf, buf_size);
-		if (ret == 0)
-			break;  /* Valid key found */
-
-	} while (attempts < MAX_ATTEMPTS);
-
-	qdf_mem_zero(key_buf, buf_size);
-	qdf_mem_free(key_buf);
-	crypto_free_kpp(test_tfm);
-
-	if (ret < 0) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to generate valid private key after %d attempts",
-			  attempts);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
-		  "Generated ECDH private key (%zu bytes) in %d attempt(s)",
-		  key_size, attempts);
-	return QDF_STATUS_SUCCESS;
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_generate_private_key);
-
-QDF_STATUS qdf_crypto_ecdh_generate_public_key(const uint8_t *private_key,
-					       size_t private_key_size,
-					       uint8_t *public_key,
-					       size_t *public_key_size)
-{
-	struct crypto_kpp *tfm = NULL;
-	struct kpp_request *req = NULL;
-	struct scatterlist *sg_out = NULL;
-	uint8_t *output_buf = NULL;
-	unsigned int output_buf_size;
-	QDF_STATUS status = QDF_STATUS_E_FAILURE;
-	int ret;
-
-	if (!private_key || !public_key || !public_key_size ||
-	    private_key_size != QDF_ECDH_PRIVATE_KEY_SIZE) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Invalid parameters for public key generation");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	/* Allocate transform */
-	tfm = crypto_alloc_kpp("ecdh-nist-p256", 0, 0);
-	if (IS_ERR(tfm)) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to allocate KPP transform");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	/* Set private key */
-	status = qdf_crypto_ecdh_set_secret(tfm, private_key, private_key_size);
-	if (status != QDF_STATUS_SUCCESS) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to set private key");
-		goto out;
-	}
-
-	/* Get required output buffer size */
-	output_buf_size = crypto_kpp_maxsize(tfm);
-	if (output_buf_size == 0) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Invalid output buffer size");
-		status = QDF_STATUS_E_FAILURE;
-		goto out;
-	}
-
-	/* Allocate output buffer on heap (CONFIG_VMAP_STACK) */
-	output_buf = qdf_mem_malloc(output_buf_size);
-	if (!output_buf) {
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	/* Allocate scatterlist on heap (CONFIG_VMAP_STACK) */
-	sg_out = qdf_mem_malloc(sizeof(*sg_out));
-	if (!sg_out) {
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	sg_init_one(sg_out, output_buf, output_buf_size);
-
-	/* Allocate request */
-	req = kpp_request_alloc(tfm, GFP_KERNEL);
-	if (!req) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to allocate KPP request");
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	kpp_request_set_input(req, NULL, 0);
-	kpp_request_set_output(req, sg_out, output_buf_size);
-
-	/* Generate public key */
-	ret = crypto_kpp_generate_public_key(req);
-	if (ret < 0) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to generate public key: %d", ret);
-		status = QDF_STATUS_E_FAILURE;
-		goto out;
-	}
-
-	/* Copy public key to output buffer */
-	if (output_buf_size > *public_key_size) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Output buffer too small: need %u, have %zu",
-			  output_buf_size, *public_key_size);
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	qdf_mem_copy(public_key, output_buf, output_buf_size);
-	*public_key_size = output_buf_size;
-
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
-		  "Generated ECDH public key (%zu bytes)", *public_key_size);
-	status = QDF_STATUS_SUCCESS;
-
-out:
-	if (req)
-		kpp_request_free(req);
-	if (sg_out)
-		qdf_mem_free(sg_out);
-	if (output_buf) {
-		qdf_mem_zero(output_buf, output_buf_size);
-		qdf_mem_free(output_buf);
-	}
-	if (tfm)
-		crypto_free_kpp(tfm);
-
-	return status;
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_generate_public_key);
-
-QDF_STATUS qdf_crypto_ecdh_compute_shared_secret(const uint8_t *private_key,
-						 size_t private_key_size,
-						 const uint8_t *peer_public_key,
-						 size_t peer_public_key_size,
-						 uint8_t *shared_secret,
-						 size_t *shared_secret_size)
-{
-	struct crypto_kpp *tfm = NULL;
-	struct kpp_request *req = NULL;
-	struct scatterlist *sg_in = NULL;
-	struct scatterlist *sg_out = NULL;
-	uint8_t *input_buf = NULL;
-	uint8_t *output_buf = NULL;
-	unsigned int output_buf_size;
-	QDF_STATUS status = QDF_STATUS_E_FAILURE;
-	int ret;
-
-	if (!private_key || !peer_public_key || !shared_secret ||
-	    !shared_secret_size ||
-	    private_key_size != QDF_ECDH_PRIVATE_KEY_SIZE) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Invalid parameters for shared secret computation");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	/* Allocate transform */
-	tfm = crypto_alloc_kpp("ecdh-nist-p256", 0, 0);
-	if (IS_ERR(tfm)) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to allocate KPP transform");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	/* Set private key */
-	status = qdf_crypto_ecdh_set_secret(tfm, private_key, private_key_size);
-	if (status != QDF_STATUS_SUCCESS) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to set private key");
-		goto out;
-	}
-
-	/* Get required output buffer size */
-	output_buf_size = crypto_kpp_maxsize(tfm);
-	if (output_buf_size == 0) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Invalid output buffer size");
-		status = QDF_STATUS_E_FAILURE;
-		goto out;
-	}
-
-	/* Allocate input buffer on heap (CONFIG_VMAP_STACK) */
-	input_buf = qdf_mem_malloc(peer_public_key_size);
-	if (!input_buf) {
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-	qdf_mem_copy(input_buf, peer_public_key, peer_public_key_size);
-
-	/* Allocate output buffer on heap (CONFIG_VMAP_STACK) */
-	output_buf = qdf_mem_malloc(output_buf_size);
-	if (!output_buf) {
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	/* Allocate scatterlists on heap (CONFIG_VMAP_STACK) */
-	sg_in = qdf_mem_malloc(sizeof(*sg_in));
-	if (!sg_in) {
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	sg_out = qdf_mem_malloc(sizeof(*sg_out));
-	if (!sg_out) {
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	sg_init_one(sg_in, input_buf, peer_public_key_size);
-	sg_init_one(sg_out, output_buf, output_buf_size);
-
-	/* Allocate request */
-	req = kpp_request_alloc(tfm, GFP_KERNEL);
-	if (!req) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to allocate KPP request");
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	kpp_request_set_input(req, sg_in, peer_public_key_size);
-	kpp_request_set_output(req, sg_out, output_buf_size);
-
-	/* Compute shared secret */
-	ret = crypto_kpp_compute_shared_secret(req);
-	if (ret < 0) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Failed to compute shared secret: %d", ret);
-		status = QDF_STATUS_E_FAILURE;
-		goto out;
-	}
-
-	/* Copy shared secret to output buffer */
-	if (output_buf_size > *shared_secret_size) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
-			  "Output buffer too small: need %u, have %zu",
-			  output_buf_size, *shared_secret_size);
-		status = QDF_STATUS_E_NOMEM;
-		goto out;
-	}
-
-	qdf_mem_copy(shared_secret, output_buf, output_buf_size);
-	*shared_secret_size = output_buf_size;
-
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
-		  "Computed ECDH shared secret (%zu bytes)",
-		  *shared_secret_size);
-	status = QDF_STATUS_SUCCESS;
-
-out:
-	if (req)
-		kpp_request_free(req);
-	if (sg_out)
-		qdf_mem_free(sg_out);
-	if (sg_in)
-		qdf_mem_free(sg_in);
-	if (output_buf) {
-		qdf_mem_zero(output_buf, output_buf_size);
-		qdf_mem_free(output_buf);
-	}
-	if (input_buf) {
-		qdf_mem_zero(input_buf, peer_public_key_size);
-		qdf_mem_free(input_buf);
-	}
-	if (tfm)
-		crypto_free_kpp(tfm);
-
-	return status;
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_compute_shared_secret);
-
-#elif defined(WLAN_FEATURE_11BN_SMD)
-QDF_STATUS qdf_crypto_ecdh_init(void)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_init);
-
-void qdf_crypto_ecdh_deinit(void)
-{
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_deinit);
-
-QDF_STATUS qdf_crypto_ecdh_generate_private_key(uint8_t *private_key,
-						size_t key_size)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_generate_private_key);
-
-QDF_STATUS qdf_crypto_ecdh_generate_public_key(const uint8_t *private_key,
-					       size_t private_key_size,
-					       uint8_t *public_key,
-					       size_t *public_key_size)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_generate_public_key);
-
-QDF_STATUS qdf_crypto_ecdh_compute_shared_secret(const uint8_t *private_key,
-						 size_t private_key_size,
-						 const uint8_t *peer_public_key,
-						 size_t peer_public_key_size,
-						 uint8_t *shared_secret,
-						 size_t *shared_secret_size)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-qdf_export_symbol(qdf_crypto_ecdh_compute_shared_secret);
-#endif /* WLAN_FEATURE_11BN_SMD */

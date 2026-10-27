@@ -25,8 +25,6 @@
 #include "dp_be_tx.h"
 #include "dp_be_rx.h"
 #include "dp_tx_desc.h"
-#include "dp_be_tx.h"
-#include "bn/dp_bn_tx.h"
 #ifdef WIFI_MONITOR_SUPPORT
 #if !defined(DISABLE_MON_CONFIG) && (defined(WLAN_PKT_CAPTURE_TX_2_0) || \
 	defined(WLAN_PKT_CAPTURE_RX_2_0))
@@ -40,7 +38,6 @@
 #include <ppe_vp_public.h>
 #include <ppe_drv_sc.h>
 #endif
-#include "dp_dal.h"
 
 #ifdef WLAN_SUPPORT_PPEDS
 static const char *ring_usage_dump[RING_USAGE_MAX] = {
@@ -58,17 +55,6 @@ static const char *ring_usage_dump[RING_USAGE_MAX] = {
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 #define DP_TX_VDEV_ID_CHECK_ENABLE 0
 
-#ifdef CONFIG_BORON
-/* This is indeed TCL to TQM mapping */
-static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RINGS] = {
-	{.tcl_ring_num = 0, .wbm_ring_num = 0, .wbm_rbm_id = HAL_BE_WBM_SW0_BM_ID, .for_ipa = 0},
-	{1, 1, HAL_BE_WBM_SW1_BM_ID, 0},
-	{2, 2, HAL_BE_WBM_SW2_BM_ID, 0},
-	{3, 3, HAL_BE_WBM_SW3_BM_ID, 0},
-	{4, 4, HAL_BE_WBM_SW4_BM_ID, 0},
-	{6, 6, HAL_BE_WBM_SW6_BM_ID, 0}
-};
-#else /* CONFIG_BORON */
 static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RINGS] = {
 	{.tcl_ring_num = 0, .wbm_ring_num = 0, .wbm_rbm_id = HAL_BE_WBM_SW0_BM_ID, .for_ipa = 0},
 	{1, 4, HAL_BE_WBM_SW4_BM_ID, 0},
@@ -82,8 +68,7 @@ static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RIN
 	{4, 7, HAL_BE_WBM_SW6_BM_ID, 0}
 #endif
 };
-#endif /* CONFIG_BORON */
-#else /* WLAN_MAX_PDEVS == 1 */
+#else
 #if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 #define DP_TX_VDEV_ID_CHECK_ENABLE 0
 #else
@@ -97,7 +82,7 @@ static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RIN
 	{3, 3, HAL_BE_WBM_SW3_BM_ID, 0},
 	{4, 4, HAL_BE_WBM_SW4_BM_ID, 0}
 };
-#endif /* WLAN_MAX_PDEVS != 1 */
+#endif
 
 #ifdef WLAN_SUPPORT_PPEDS
 static struct cdp_ppeds_txrx_ops dp_ops_ppeds_be = {
@@ -112,6 +97,7 @@ static struct cdp_ppeds_txrx_ops dp_ops_ppeds_be = {
 	.ppeds_vp_setup_recovery = dp_ppeds_vp_setup_on_fw_recovery,
 	.ppeds_stats_sync = dp_ppeds_stats_sync_be,
 	.ppeds_get_node_id = dp_ppeds_get_node_id_be,
+	.ppeds_process_mpsk_exception = dp_ppeds_process_mpsk_exception,
 };
 
 static void dp_ppeds_rings_status(struct dp_soc *soc)
@@ -322,67 +308,6 @@ static void dp_initialize_arch_ops_be_fisa(struct dp_arch_ops *arch_ops)
 #endif
 
 #ifdef DP_FEATURE_HW_COOKIE_CONVERSION
-#ifdef CONFIG_BORON
-
-#ifdef IPA_OPT_WIFI_DP
-static inline
-void dp_ipa_disable_cc_tqm(struct hal_hw_cc_config *cc_cfg)
-{
-	cc_cfg->tqm2sw6_cc_en = 0;
-}
-
-static inline
-void dp_ipa_disable_cc_reo(struct hal_hw_cc_config *cc_cfg)
-{
-	cc_cfg->reo2sw9_cc_en = 0;
-}
-#else
-static inline
-void dp_ipa_disable_cc_tqm(struct hal_hw_cc_config *cc_cfg)
-{
-}
-
-static inline
-void dp_ipa_disable_cc_reo(struct hal_hw_cc_config *cc_cfg)
-{
-}
-#endif
-static inline
-void dp_cc_wbm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
-{
-}
-
-static inline
-void dp_cc_tqm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
-{
-	cc_cfg->tqm2sw6_cc_en = 1;
-	cc_cfg->tqm2sw5_cc_en = 1;
-	cc_cfg->tqm2sw4_cc_en = 1;
-	cc_cfg->tqm2sw3_cc_en = 1;
-	cc_cfg->tqm2sw2_cc_en = 1;
-	cc_cfg->tqm2sw1_cc_en = 1;
-	cc_cfg->tqm2sw0_cc_en = 1;
-	cc_cfg->tqm2fw_cc_en = 0;
-	dp_ipa_disable_cc_tqm(cc_cfg);
-}
-
-static inline
-void dp_cc_reo_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
-{
-	cc_cfg->reo2sw9_cc_en = 1;
-	cc_cfg->reo2sw8_cc_en = 1;
-	cc_cfg->reo2sw7_cc_en = 1;
-	cc_cfg->reo2sw6_cc_en = 1;
-	cc_cfg->reo2sw5_cc_en = 1;
-	cc_cfg->reo2sw4_cc_en = 1;
-	cc_cfg->reo2sw3_cc_en = 1;
-	cc_cfg->reo2sw2_cc_en = 1;
-	cc_cfg->reo2sw1_cc_en = 1;
-	cc_cfg->reo2sw0_cc_en = 1;
-	cc_cfg->reo2fw_cc_en = 0;
-	dp_ipa_disable_cc_reo(cc_cfg);
-}
-#else /* CONFIG_BORON */
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 /**
  * dp_cc_wbm_sw_en_cfg() - configure HW cookie conversion enablement
@@ -436,40 +361,6 @@ void dp_cc_wbm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
 }
 #endif
 
-static inline
-void dp_cc_tqm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
-{
-}
-
-static inline
-void dp_cc_reo_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
-{
-}
-#endif /* !CONFIG_BORON */
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * dp_hw_cc_is_enabled() - Check if HW CC should be enabled
- * @soc: SOC handle
- *
- * Return: true if HW CC should be enabled, false otherwise
- */
-static inline bool dp_hw_cc_is_enabled(struct dp_soc *soc)
-{
-	if (wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
-		dp_info("DAL feature enabled, disable HW CC");
-		return false;
-	}
-
-	return soc->wlan_cfg_ctx->hw_cc_enabled;
-}
-#else
-static inline bool dp_hw_cc_is_enabled(struct dp_soc *soc)
-{
-	return soc->wlan_cfg_ctx->hw_cc_enabled;
-}
-#endif /* FEATURE_DAL_DP_SUPPORT */
-
 /**
  * dp_cc_reg_cfg_init() - initialize and configure HW cookie
  *			  conversion register
@@ -489,7 +380,7 @@ static void dp_cc_reg_cfg_init(struct dp_soc *soc,
 	    soc->cdp_soc.ol_ops->get_con_mode() == QDF_GLOBAL_FTM_MODE)
 		return;
 
-	if (!dp_hw_cc_is_enabled(soc)) {
+	if (!soc->wlan_cfg_ctx->hw_cc_enabled) {
 		dp_info("INI skip HW CC register setting");
 		return;
 	}
@@ -505,8 +396,6 @@ static void dp_cc_reg_cfg_init(struct dp_soc *soc,
 	cc_cfg.error_path_cookie_conv_en = true;
 	cc_cfg.release_path_cookie_conv_en = true;
 	dp_cc_wbm_sw_en_cfg(&cc_cfg);
-	dp_cc_tqm_sw_en_cfg(&cc_cfg);
-	dp_cc_reo_sw_en_cfg(&cc_cfg);
 
 	hal_cookie_conversion_reg_cfg_be(soc->hal_soc, &cc_cfg);
 }
@@ -2130,7 +2019,8 @@ dp_rxdma_ring_sel_cfg_be(struct dp_soc *soc)
 	htt_tlv_filter.ppdu_end_user_stats_ext = 0;
 	htt_tlv_filter.ppdu_end_status_done = 0;
 	htt_tlv_filter.enable_fp = 1;
-
+	htt_tlv_filter.enable_md = 0;
+	htt_tlv_filter.enable_md = 0;
 	htt_tlv_filter.enable_mo = 0;
 
 	htt_tlv_filter.fp_mgmt_filter = 0;
@@ -2143,6 +2033,7 @@ dp_rxdma_ring_sel_cfg_be(struct dp_soc *soc)
 	htt_tlv_filter.mo_mgmt_filter = 0;
 	htt_tlv_filter.mo_ctrl_filter = 0;
 	htt_tlv_filter.mo_data_filter = 0;
+	htt_tlv_filter.md_data_filter = 0;
 
 	htt_tlv_filter.offset_valid = true;
 
@@ -2167,26 +2058,6 @@ dp_rxdma_ring_sel_cfg_be(struct dp_soc *soc)
 				hal_rx_mpdu_start_offset_get(soc->hal_soc);
 	htt_tlv_filter.rx_msdu_end_offset =
 				hal_rx_msdu_end_offset_get(soc->hal_soc);
-	dp_info("TLV subscription\n"
-		"msdu_start %d, mpdu_end %d, attention %d "
-		"mpdu_start %d, msdu_end %d, pkt_hdr %d, pkt %d\n"
-		"TLV offsets\n"
-		"msdu_start %d, mpdu_end %d, attention %d "
-		"mpdu_start %d, msdu_end %d, pkt_hdr %d, pkt %d\n",
-		htt_tlv_filter.msdu_start,
-		htt_tlv_filter.mpdu_end,
-		htt_tlv_filter.attention,
-		htt_tlv_filter.mpdu_start,
-		htt_tlv_filter.msdu_end,
-		htt_tlv_filter.packet_header,
-		htt_tlv_filter.packet,
-		htt_tlv_filter.rx_msdu_start_offset,
-		htt_tlv_filter.rx_mpdu_end_offset,
-		htt_tlv_filter.rx_attn_offset,
-		htt_tlv_filter.rx_mpdu_start_offset,
-		htt_tlv_filter.rx_msdu_end_offset,
-		htt_tlv_filter.rx_header_offset,
-		htt_tlv_filter.rx_packet_offset);
 
 	dp_htt_rxdma_ring_wmask_cfg(soc, &htt_tlv_filter);
 
@@ -2257,7 +2128,8 @@ dp_rxdma_ring_sel_cfg_be(struct dp_soc *soc)
 	htt_tlv_filter.ppdu_end_user_stats_ext = 0;
 	htt_tlv_filter.ppdu_end_status_done = 0;
 	htt_tlv_filter.enable_fp = 1;
-
+	htt_tlv_filter.enable_md = 0;
+	htt_tlv_filter.enable_md = 0;
 	htt_tlv_filter.enable_mo = 0;
 
 	htt_tlv_filter.fp_mgmt_filter = 0;
@@ -2270,6 +2142,7 @@ dp_rxdma_ring_sel_cfg_be(struct dp_soc *soc)
 	htt_tlv_filter.mo_mgmt_filter = 0;
 	htt_tlv_filter.mo_ctrl_filter = 0;
 	htt_tlv_filter.mo_data_filter = 0;
+	htt_tlv_filter.md_data_filter = 0;
 
 	htt_tlv_filter.offset_valid = true;
 
@@ -2492,56 +2365,27 @@ static void dp_soc_interrupt_detach_be(struct cdp_soc_t *txrx_soc)
 	return dp_soc_interrupt_detach(txrx_soc);
 }
 
-#ifdef CONFIG_BORON
-static inline bool
-dp_service_srngs_be_wbm_rel(struct dp_intr *int_ctx, struct dp_soc *soc,
-			    uint8_t rx_wbm_rel_mask, int *budget,
-			    uint32_t *remaining_quota)
+#ifdef WLAN_MLO_MULTI_CHIP
+static inline
+uint32_t dp_tx_comp_handler_wrapper(struct dp_intr *int_ctx, struct dp_soc *soc,
+				    hal_ring_handle_t hal_ring_hdl,
+				    uint8_t ring_id, uint32_t quota)
 {
-	return false;
-}
-
-static inline void
-dp_service_srngs_be_reo_status(struct dp_intr *int_ctx, struct dp_soc *soc,
-			       uint8_t reo_status_mask)
-{
+	return dp_tx_comp_handler_be(int_ctx, soc,
+				     hal_ring_hdl,
+				     ring_id, quota);
 }
 #else
-static inline bool
-dp_service_srngs_be_wbm_rel(struct dp_intr *int_ctx, struct dp_soc *soc,
-			    uint8_t rx_wbm_rel_mask, int *budget,
-			    uint32_t *remaining_quota)
+static inline
+uint32_t dp_tx_comp_handler_wrapper(struct dp_intr *int_ctx, struct dp_soc *soc,
+				    hal_ring_handle_t hal_ring_hdl,
+				    uint8_t ring_id, uint32_t quota)
 {
-	uint32_t work_done;
-
-	if (!rx_wbm_rel_mask)
-		return false;
-
-	work_done = dp_rx_wbm_err_process(int_ctx, soc,
-					  soc->rx_rel_ring.hal_srng,
-					  *remaining_quota);
-	if (work_done) {
-		int_ctx->intr_stats.num_rx_wbm_rel_ring_masks++;
-		dp_verbose_debug("WBM Release Ring: work_done %d budget %d",
-				 work_done, *budget);
-	}
-	*budget -= work_done;
-	if (*budget <= 0)
-		return true;
-	*remaining_quota = *budget;
-	return false;
+	return dp_tx_comp_handler(int_ctx, soc,
+				  hal_ring_hdl,
+				  ring_id, quota);
 }
-
-static inline void
-dp_service_srngs_be_reo_status(struct dp_intr *int_ctx, struct dp_soc *soc,
-			       uint8_t reo_status_mask)
-{
-	if (reo_status_mask) {
-		if (dp_reo_status_ring_handler(int_ctx, soc))
-			int_ctx->intr_stats.num_reo_status_ring_masks++;
-	}
-}
-#endif /* CONFIG_BORON */
+#endif /* WLAN_MLO_MULTI_CHIP */
 
 static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 {
@@ -2578,7 +2422,7 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 	for (index = 0; index < soc->num_tx_comp_rings; index++) {
 		if (!(1 << wlan_cfg_get_wbm_ring_num_for_index(soc->wlan_cfg_ctx, index) & tx_mask))
 			continue;
-		work_done = dp_tx_comp_handler(
+		work_done = dp_tx_comp_handler_wrapper(
 					int_ctx,
 					soc,
 					soc->tx_comp_ring[index].hal_srng,
@@ -2598,10 +2442,9 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 
 	/* Process REO Exception ring interrupt */
 	if (rx_err_mask) {
-		work_done = dp_rx_err_process_be_bn(
-					int_ctx, soc,
-					soc->reo_exception_ring.hal_srng,
-					remaining_quota);
+		work_done = dp_rx_err_process(int_ctx, soc,
+					      soc->reo_exception_ring.hal_srng,
+					      remaining_quota);
 
 		if (work_done) {
 			intr_stats->num_rx_err_ring_masks++;
@@ -2616,16 +2459,29 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 	}
 
 	/* Process Rx WBM release ring interrupt */
-	if (dp_service_srngs_be_wbm_rel(int_ctx, soc, rx_wbm_rel_mask,
-					&budget, &remaining_quota))
-		goto budget_done;
+	if (rx_wbm_rel_mask) {
+		work_done = dp_rx_wbm_err_process(int_ctx, soc,
+						  soc->rx_rel_ring.hal_srng,
+						  remaining_quota);
+
+		if (work_done) {
+			intr_stats->num_rx_wbm_rel_ring_masks++;
+			dp_verbose_debug("WBM Release Ring: work_done %d budget %d",
+					 work_done, budget);
+		}
+
+		budget -=  work_done;
+		if (budget <= 0)
+			goto budget_done;
+		remaining_quota = budget;
+	}
 
 	/* Process Rx interrupts */
 	if (rx_mask) {
 		for (ring = 0; ring < soc->num_reo_dest_rings; ring++) {
 			if (!(rx_mask & (1 << ring)))
 				continue;
-			work_done = dp_rx_process_be_bn(
+			work_done = dp_rx_process_be(
 					int_ctx,
 					soc->reo_dest_ring[ring].hal_srng,
 					ring,
@@ -2643,7 +2499,10 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 		}
 	}
 
-	dp_service_srngs_be_reo_status(int_ctx, soc, reo_status_mask);
+	if (reo_status_mask) {
+		if (dp_reo_status_ring_handler(int_ctx, soc))
+			int_ctx->intr_stats.num_reo_status_ring_masks++;
+	}
 
 	if (qdf_unlikely(!dp_monitor_is_vdev_timer_running(soc))) {
 		work_done = dp_process_lmac_rings(int_ctx, remaining_quota);
@@ -3589,7 +3448,7 @@ void dp_mlo_dev_ctxt_list_detach(dp_mlo_dev_obj_t mlo_dev_obj)
 			if (mld_ctxt) {
 				dp_alert("MLD MAC " QDF_MAC_ADDR_FMT " ",
 					 QDF_MAC_ADDR_REF(
-						mld_ctxt->mld_mac_addr.raw));
+						&mld_ctxt->mld_mac_addr.raw));
 				qdf_mem_free(mld_ctxt);
 			}
 		}
@@ -4091,48 +3950,6 @@ static void dp_peer_get_reo_hash_be(struct dp_vdev *vdev,
 	dp_vdev_get_default_reo_hash(vdev, reo_dest, hash_based);
 }
 
-#if defined(CONFIG_BORON) || defined(FEATURE_DAL_DP_SUPPORT)
-static bool dp_reo_remap_config_be(struct dp_soc *soc,
-				   uint32_t *remap0,
-				   uint32_t *remap1,
-				   uint32_t *remap2)
-{
-	uint32_t reo_config =
-		wlan_cfg_get_reo_rings_mapping(soc->wlan_cfg_ctx);
-
-	dp_info("original reo_cfg 0x%x", reo_config);
-	/* MSB index in reo_config should <= num of rings initialized */
-	if (qdf_fls(reo_config) > soc->num_reo_dest_rings) {
-		dp_err("incorrect re_config 0x%x beyond rings initialed %d",
-		       reo_config, soc->num_reo_dest_rings);
-		goto err_def;
-	}
-
-	/* Exclude the rings dedicated for IPA or LSR or DAL*/
-	DP_REO_DST_REMAP_REMOVE_IPA(reo_config);
-	DP_REO_DST_REMAP_REMOVE_LSR(reo_config);
-	if (wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx))
-		DP_REO_DST_REMAP_REMOVE_DAL(reo_config);
-
-	if (!reo_config) {
-		dp_err("no valid reo remap left");
-		goto err_def;
-	}
-
-	hal_reo_remap_ix1_value_get_be(remap0);
-
-	hal_reo_remap_ix2_ix3_value_get_be(soc->hal_soc, reo_config,
-					   remap1, remap2);
-
-	dp_info("reo_config 0x%x, remap0 0x%x, remap1 0x%x, remap2 0x%x",
-		reo_config, *remap0, *remap1, *remap2);
-
-	return true;
-
-err_def:
-	return false;
-}
-#else
 static bool dp_reo_remap_config_be(struct dp_soc *soc,
 				   uint32_t *remap0,
 				   uint32_t *remap1,
@@ -4140,7 +3957,6 @@ static bool dp_reo_remap_config_be(struct dp_soc *soc,
 {
 	return dp_reo_remap_config(soc, remap0, remap1, remap2);
 }
-#endif /* CONFIG_BORON */
 #endif
 
 #if defined(CONFIG_MLO_SINGLE_DEV) || defined(WLAN_MCAST_MLO_SAP)
@@ -4206,173 +4022,12 @@ void dp_initialize_arch_ops_be_ipa_opt_dp_ctrl(struct dp_arch_ops *arch_ops)
 }
 #endif
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * dp_initialize_arch_ops_be_dal() - Initialize DAL specific arch ops
- * @arch_ops: arch ops handle
- *
- * Return: none
- */
-static inline
-void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
-{
-	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_be_bn;
-	arch_ops->dp_tx_hw_desc_sync = dp_tx_hw_desc_sync_be_bn;
-	arch_ops->dp_tx_desc_update_buffer_info =
-					dp_tx_desc_update_buffer_info_be_bn;
-	arch_ops->dp_dal_rx_process_nbuf_list =
-					dp_dal_rx_process_nbuf_list_be_bn;
-	arch_ops->dp_rx_validate_and_fetch_rx_desc =
-					dp_rx_validate_and_fetch_rx_desc_be_bn;
-	arch_ops->dp_dal_tx_comp_check_reserved_cookie =
-					dp_dal_tx_comp_check_reserved_cookie_be;
-}
-
-#else
-static inline
-void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
-{
-}
-
-#endif
-
-#ifdef WLAN_FEATURE_11BE
-static const struct cdp_rate_debug
-dp_mu_be_rate_string[TXRX_TYPE_MU_MAX][MAX_MCS] = {
-	{
-		{"EHT MU-MIMO MCS 0 (BPSK 1/2)     ", MCS_VALID},
-		{"EHT MU-MIMO MCS 1 (QPSK 1/2)     ", MCS_VALID},
-		{"EHT MU-MIMO MCS 2 (QPSK 3/4)     ", MCS_VALID},
-		{"EHT MU-MIMO MCS 3 (16-QAM 1/2)   ", MCS_VALID},
-		{"EHT MU-MIMO MCS 4 (16-QAM 3/4)   ", MCS_VALID},
-		{"EHT MU-MIMO MCS 5 (64-QAM 2/3)   ", MCS_VALID},
-		{"EHT MU-MIMO MCS 6 (64-QAM 3/4)   ", MCS_VALID},
-		{"EHT MU-MIMO MCS 7 (64-QAM 5/6)   ", MCS_VALID},
-		{"EHT MU-MIMO MCS 8 (256-QAM 3/4)  ", MCS_VALID},
-		{"EHT MU-MIMO MCS 9 (256-QAM 5/6)  ", MCS_VALID},
-		{"EHT MU-MIMO MCS 10 (1024-QAM 3/4)", MCS_VALID},
-		{"EHT MU-MIMO MCS 11 (1024-QAM 5/6)", MCS_VALID},
-		{"EHT MU-MIMO MCS 12 (4096-QAM 3/4)", MCS_VALID},
-		{"EHT MU-MIMO MCS 13 (4096-QAM 5/6)", MCS_VALID},
-		{"EHT MU-MIMO MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
-		{"EHT MU-MIMO MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
-		{"INVALID ", MCS_INVALID},
-	},
-	{
-		{"EHT OFDMA MCS 0 (BPSK 1/2)     ", MCS_VALID},
-		{"EHT OFDMA MCS 1 (QPSK 1/2)     ", MCS_VALID},
-		{"EHT OFDMA MCS 2 (QPSK 3/4)     ", MCS_VALID},
-		{"EHT OFDMA MCS 3 (16-QAM 1/2)   ", MCS_VALID},
-		{"EHT OFDMA MCS 4 (16-QAM 3/4)   ", MCS_VALID},
-		{"EHT OFDMA MCS 5 (64-QAM 2/3)   ", MCS_VALID},
-		{"EHT OFDMA MCS 6 (64-QAM 3/4)   ", MCS_VALID},
-		{"EHT OFDMA MCS 7 (64-QAM 5/6)   ", MCS_VALID},
-		{"EHT OFDMA MCS 8 (256-QAM 3/4)  ", MCS_VALID},
-		{"EHT OFDMA MCS 9 (256-QAM 5/6)  ", MCS_VALID},
-		{"EHT OFDMA MCS 10 (1024-QAM 3/4)", MCS_VALID},
-		{"EHT OFDMA MCS 11 (1024-QAM 5/6)", MCS_VALID},
-		{"EHT OFDMA MCS 12 (4096-QAM 3/4)", MCS_VALID},
-		{"EHT OFDMA MCS 13 (4096-QAM 5/6)", MCS_VALID},
-		{"EHT OFDMA MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
-		{"EHT OFDMA MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
-		{"INVALID ", MCS_INVALID},
-	}
-};
-
-#else
-#endif
-
-/**
- * dp_print_mu_be_ppdu_rates_info(): Print mu be rate for tx or rx
- * @pkt_type_array: rate type array contains rate info
- *
- * Return: void
- */
-static void
-dp_print_mu_be_ppdu_rates_info(struct cdp_pkt_type *pkt_type_array)
-{
-	uint8_t mcs, pkt_type;
-
-	DP_PRINT_STATS("PPDU Count");
-	for (pkt_type = 0; pkt_type < TXRX_TYPE_MU_MAX; pkt_type++) {
-		for (mcs = 0; mcs < MAX_MCS; mcs++) {
-			if (!dp_mu_be_rate_string[pkt_type][mcs].valid)
-				continue;
-
-			DP_PRINT_STATS("	%s = %d",
-				       dp_mu_be_rate_string[pkt_type][mcs].mcs_type,
-				       pkt_type_array[pkt_type].mcs_count[mcs]);
-		}
-
-		DP_PRINT_STATS("\n");
-	}
-}
-
-/**
- * dp_print_peer_txrx_stats_be() - Print BE specific peer stats
- * @peer_stats: cdp peer stats
- * @stats_type: stats type tx or rx
- *
- * Return: void
- */
-static void dp_print_peer_txrx_stats_be(struct cdp_peer_stats *peer_stats,
-					enum peer_stats_type stats_type)
-{
-	uint8_t i;
-
-	if (stats_type == PEER_TX_STATS) {
-		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d 320MHZ %d\n",
-			       peer_stats->tx.bw[CMN_BW_20MHZ],
-			       peer_stats->tx.bw[CMN_BW_40MHZ],
-			       peer_stats->tx.bw[CMN_BW_80MHZ],
-			       peer_stats->tx.bw[CMN_BW_160MHZ],
-			       peer_stats->tx.bw[CMN_BW_320MHZ]);
-		DP_PRINT_STATS("Punctured BW Counts = NO_PUNC %d 20MHz %d 40MHz %d 80MHz %d 120MHz %d\n",
-			       peer_stats->tx.punc_bw[NO_PUNCTURE],
-			       peer_stats->tx.punc_bw[PUNCTURED_20MHZ],
-			       peer_stats->tx.punc_bw[PUNCTURED_40MHZ],
-			       peer_stats->tx.punc_bw[PUNCTURED_80MHZ],
-			       peer_stats->tx.punc_bw[PUNCTURED_120MHZ]);
-		DP_PRINT_STATS("RU Locations");
-		for (i = 0; i < RU_INDEX_MAX; i++)
-			DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-				       cdp_ru_string[i].ru_type,
-				       peer_stats->tx.ru_loc[i].num_msdu,
-				       peer_stats->tx.ru_loc[i].num_mpdu,
-				       peer_stats->tx.ru_loc[i].mpdu_tried);
-		dp_print_common_ppdu_rates_info(&peer_stats->tx.su_be_ppdu_cnt,
-						DOT11_BE);
-		dp_print_mu_be_ppdu_rates_info(&peer_stats->tx.mu_be_ppdu_cnt[0]);
-
-	} else {
-		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d 320MHZ %d",
-			       peer_stats->rx.bw[CMN_BW_20MHZ],
-			       peer_stats->rx.bw[CMN_BW_40MHZ],
-			       peer_stats->rx.bw[CMN_BW_80MHZ],
-			       peer_stats->rx.bw[CMN_BW_160MHZ],
-			       peer_stats->rx.bw[CMN_BW_320MHZ]);
-		DP_PRINT_STATS("Punctured BW Counts = NO_PUNC %d 20MHz %d 40MHz %d 80MHz %d 120MHz %d\n",
-			       peer_stats->rx.punc_bw[NO_PUNCTURE],
-			       peer_stats->rx.punc_bw[PUNCTURED_20MHZ],
-			       peer_stats->rx.punc_bw[PUNCTURED_40MHZ],
-			       peer_stats->rx.punc_bw[PUNCTURED_80MHZ],
-			       peer_stats->rx.punc_bw[PUNCTURED_120MHZ]);
-		dp_print_common_ppdu_rates_info(&peer_stats->rx.su_be_ppdu_cnt,
-						DOT11_BE);
-		dp_print_mu_be_ppdu_rates_info(&peer_stats->rx.mu_be_ppdu_cnt[0]);
-	}
-}
-
 void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 {
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
-	arch_ops->tx_hw_enqueue = dp_tx_hw_enqueue_be_bn;
-	arch_ops->dp_rx_process = dp_rx_process_be_bn;
-#if defined(CONFIG_BORON) && defined(QCA_DP_TX_NBUF_LIST_FREE)
-	arch_ops->dp_tx_send_fast = dp_tx_fast_send_bn;
-#else
-	arch_ops->dp_tx_send_fast = dp_tx_send;
-#endif
+	arch_ops->tx_hw_enqueue = dp_tx_hw_enqueue_be;
+	arch_ops->dp_rx_process = dp_rx_process_be;
+	arch_ops->dp_tx_send_fast = dp_tx_fast_send_be;
 	arch_ops->tx_comp_get_params_from_hal_desc =
 		dp_tx_comp_get_params_from_hal_desc_be;
 	arch_ops->tx_comp_ring_desc_mark_invalid =
@@ -4485,14 +4140,11 @@ void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 	arch_ops->dp_mlo_tx_pool_map = dp_mlo_tx_pool_map_be;
 	arch_ops->dp_mlo_tx_pool_unmap = dp_mlo_tx_pool_unmap_be;
 	arch_ops->dp_tx_override_flow_pool_id = dp_tx_override_flow_pool_id_be;
-	arch_ops->dp_srng_rx_ring_desc_mark_invalid =
-				dp_srng_rx_ring_desc_mark_invalid_be;
 
 	dp_initialize_arch_ops_be_ipa(arch_ops);
 	dp_initialize_arch_ops_be_single_dev(arch_ops);
 	dp_initialize_arch_ops_be_fisa(arch_ops);
 	dp_initialize_arch_ops_be_ipa_opt_dp_ctrl(arch_ops);
-	dp_initialize_arch_ops_be_dal(arch_ops);
 }
 
 #ifdef QCA_SUPPORT_PRIMARY_LINK_MIGRATE
@@ -4539,7 +4191,7 @@ dp_primary_link_migration(struct dp_soc *soc, void *cb_ctxt,
 
 	hw_peer_id = pr_peer_info->hw_peer_id;
 	ast_hash = pr_peer_info->ast_hash;
-	/* Add ast entries for new primary peer */
+	/* Add ast enteries for new primary peer */
 	if (pr_soc->ast_offload_support && pr_soc->host_ast_db_enable) {
 		dp_peer_host_add_map_ast(pr_soc, mld_peer->peer_id, mld_peer->mac_addr.raw,
 					 hw_peer_id, new_primary_peer->vdev->vdev_id,

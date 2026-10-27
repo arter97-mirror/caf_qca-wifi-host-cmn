@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -165,35 +164,4 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_unregister(
  */
 void target_if_vdev_mgr_rsp_timer_cb(void *arg);
 
-/**
- * target_if_vdev_mgr_start_response_common() - Common vdev start response
- * processing api
- * @psoc: psoc object
- * @vdev_start_resp: vdev start response structure
- *
- * This function handles the common processing for vdev start responses
- * that doesn't depend on firmware events. It can be called both from
- * firmware response handlers and when operations are skipped due to
- * conditions like link switch in progress.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS target_if_vdev_mgr_start_response_common(
-				struct wlan_objmgr_psoc *psoc,
-				struct vdev_start_response *vdev_start_resp);
-
-/**
- * target_if_vdev_mgr_stop_response_process() - Process vdev stop response
- * @psoc: Pointer to psoc object
- * @vdev_id: vdev id
- *
- * This function handles the non-firmware-dependent processing of vdev stop
- * response, including stopping the response timer and calling the response
- * callback. This API can be called independently without WMI event data.
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
- */
-QDF_STATUS
-target_if_vdev_mgr_stop_response_process(struct wlan_objmgr_psoc *psoc,
-					 uint32_t vdev_id);
 #endif /* __TARGET_IF_VDEV_MGR_RX_OPS_H__ */

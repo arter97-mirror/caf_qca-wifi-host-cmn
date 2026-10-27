@@ -35,7 +35,7 @@
 	(((const uint8_t *)(addr))[QDF_MAC_ADDR_SIZE - 1] % SCAN_HASH_SIZE)
 
 #define ADJACENT_CHANNEL_RSSI_THRESHOLD -80
-#define ADJACENT_CHANNEL_RSSI_DIFF_THRESHOLD 30
+#define ADJACENT_CHANNEL_RSSI_DIFF_THRESHOLD 40
 
 /**
  * struct scan_dbs - scan cache data base definition
@@ -311,25 +311,6 @@ scm_filter_rnr_flag_pno(struct wlan_objmgr_vdev *vdev,
 #endif
 
 /**
- * scm_update_assoc_state_con_for_bss() - Update assoc_state to
- *                                         SCAN_ENTRY_CON_STATE_ASSOC for
- *                                         the given BSS
- * @pdev: pdev object
- * @bssid: BSSID of the BSS
- * @ssid: SSID of the BSS
- * @freq: operating frequency of the BSS
- *
- * Helper to mark a specific scan entry as connected by setting its
- * assoc_state to SCAN_ENTRY_CON_STATE_ASSOC.
- *
- * Return: void
- */
-void scm_update_assoc_state_con_for_bss(struct wlan_objmgr_pdev *pdev,
-					struct qdf_mac_addr *bssid,
-					struct wlan_ssid *ssid,
-					uint32_t freq);
-
-/**
  * scm_scan_update_mlme_by_bssinfo() - updates scan entry with mlme data
  * @pdev: pdev object
  * @bss_info: BSS information
@@ -392,7 +373,6 @@ scm_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
  * @pdev: pdev object
  * @bssid: bssid to be fetched from scan db
  * @vdev_id: vdev id
- * @ch_freq: channel frequency
  *
  * This API returns the scan entry with proper security_info.
  *
@@ -401,8 +381,7 @@ scm_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 struct scan_cache_entry *
 scm_scan_get_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 					 struct qdf_mac_addr *bssid,
-					 uint8_t vdev_id,
-					 qdf_freq_t ch_freq);
+					 uint8_t vdev_id);
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
@@ -441,27 +420,6 @@ scm_get_mld_addr_by_link_addr(struct wlan_objmgr_pdev *pdev,
  */
 bool scm_scan_entries_contain_cmn_akm(struct scan_cache_entry *entry1,
 				      struct scan_cache_entry *entry2);
-
-/**
- * scm_fetch_entry_chan_linkid_params_for_rnr() - API to fetch basic RNR fields
- * related to BSSID
- * @pdev: Pointer to PDEV
- * @bssid: BSSID of the corresponding RNR values
- * @entry_chan_num: Pointer to hold chan num
- * @entry_op_class: Pointer to hold op_class
- * @entry_link_id: Pointer to hold link id
- *
- * Filters scan entry with @bssid and fills the entry's chan_num, op_class
- * and link_id
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-scm_fetch_entry_chan_linkid_params_for_rnr(struct wlan_objmgr_pdev *pdev,
-					   struct qdf_mac_addr *bssid,
-					   uint8_t *entry_chan_num,
-					   uint8_t *entry_op_class,
-					   uint8_t *entry_link_id);
 
 #ifdef CONFIG_BAND_6GHZ
 /**

@@ -76,28 +76,4 @@ tgt_ipa_intrabss_enable_disable(struct wlan_objmgr_psoc *psoc,
 	IPA_EXIT();
 	return status;
 }
-
-QDF_STATUS
-tgt_ipa_l3_hdr_padding_cfg(struct wlan_objmgr_psoc *psoc, bool enable)
-{
-	struct wlan_lmac_if_tx_ops *tx_ops;
-	QDF_STATUS status = QDF_STATUS_E_NOSUPPORT;
-
-	IPA_ENTER();
-
-	if (!psoc) {
-		ipa_err("NULL psoc");
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-
-	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
-	if (!tx_ops)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	if (tx_ops->ipa_ops.ipa_l3_hdr_padding_cfg_req)
-		status = tx_ops->ipa_ops.ipa_l3_hdr_padding_cfg_req(psoc,
-								    enable);
-	IPA_EXIT();
-	return status;
-}
 #endif

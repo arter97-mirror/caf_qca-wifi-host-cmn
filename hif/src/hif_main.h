@@ -26,7 +26,7 @@
 /*
  * This holds all state needed to process a pending send/recv interrupt.
  * The information is saved here as soon as the interrupt occurs (thus
- * allowing the underlying CE to reuse the ring descriptor). The
+ * allowing the underlying CE to re-use the ring descriptor). The
  * information here is eventually processed by a completion processing
  * thread.
  */
@@ -116,7 +116,6 @@
 #define WCN6450_DEVICE_ID (0x1108)
 
 #define WCN7750_DEVICE_ID (0x1110)
-#define WCN8750_DEVICE_ID (0x1113)
 
 #define QCC2072_DEVICE_ID (0x1112)
 
@@ -225,12 +224,12 @@ struct hif_latency_detect {
 	qdf_time_t credit_report_time;
 };
 #endif
+
 /*
  * Note: For MCL, #if defined (HIF_CONFIG_SLUB_DEBUG_ON) needs to be checked
  * for defined here
  */
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
-	defined(RECORD_DP_CE_EVTS)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
 
 #define HIF_CE_MAX_LATEST_HIST 2
 #define HIF_CE_MAX_LATEST_EVTS 2
@@ -251,9 +250,6 @@ struct ce_desc_hist {
 	uint8_t ce_id_hist_map[CE_COUNT_MAX];
 	bool enable[CE_COUNT_MAX];
 	bool data_enable[CE_COUNT_MAX];
-#ifdef RECORD_DP_CE_EVTS
-	uint64_t evt_mask[CE_COUNT_MAX];
-#endif
 	qdf_mutex_t ce_dbg_datamem_lock[CE_COUNT_MAX];
 	uint32_t hist_index;
 	uint32_t hist_id;
@@ -265,43 +261,7 @@ void hif_record_latest_evt(struct ce_desc_hist *ce_hist,
 			   uint8_t type,
 			   int ce_id, uint64_t time,
 			   uint32_t hp, uint32_t tp);
-#endif /*HIF_CONFIG_SLUB_DEBUG_ON || HIF_CE_DEBUG_DATA_BUF|| RECORD_DP_CE_EVTS*/
-
-#ifdef HIF_CE_TX_DESC_DATA_DEBUG
-/*
- * Must be a power of 2 -- hif_ce_tx_desc_data_next_record_index() masks
- * the atomic index with (HIF_CE_TX_DESC_DATA_HIST_MAX - 1) to derive the
- * next record index, which only wraps correctly within
- * [0, HIF_CE_TX_DESC_DATA_HIST_MAX) when this is a power of 2.
- */
-#define HIF_CE_TX_DESC_DATA_HIST_MAX 8
-#define HIF_CE_TX_DESC_DATA_BYTES 8
-
-/**
- * struct ce_tx_desc_data_event - CE3 tx completion debug data record
- * @dma_addr: dma address reaped from the CE3 source descriptor
- * @pa: physical address corresponding to @dma_addr
- * @skb_data8: first 8 bytes of skb->data for the completed tx buffer
- * @va_data8: first 8 bytes read from the VA derived from @pa
- */
-struct ce_tx_desc_data_event {
-	qdf_dma_addr_t dma_addr;
-	qdf_dma_addr_t pa;
-	uint8_t skb_data8[HIF_CE_TX_DESC_DATA_BYTES];
-	uint8_t va_data8[HIF_CE_TX_DESC_DATA_BYTES];
-};
-
-/**
- * struct ce_tx_desc_data_hist - circular history of CE3 tx completion
- *  debug data records
- * @event: ring of debug data records
- * @index: next slot to be written into @event
- */
-struct ce_tx_desc_data_hist {
-	struct ce_tx_desc_data_event event[HIF_CE_TX_DESC_DATA_HIST_MAX];
-	qdf_atomic_t index;
-};
-#endif /* HIF_CE_TX_DESC_DATA_DEBUG */
+#endif /*defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)*/
 
 /**
  * struct hif_cfg() - store ini config parameters in hif layer
@@ -389,7 +349,6 @@ struct hif_reg_write_soc_stats {
  * @work_scheduled_time: work scheduled time (qdf_log_timestamp)
  * @dequeue_time: dequeue time (qdf_log_timestamp)
  * @cpu_id: record cpuid when schedule work
- * @ce_cmn_reg_cfg_support_qmi: support of ce common reg config over qmi.
  */
 struct hif_reg_write_q_elem {
 	struct CE_state *ce_state;
@@ -486,15 +445,9 @@ struct hif_softc {
  * Note: For MCL, #if defined (HIF_CONFIG_SLUB_DEBUG_ON) needs to be checked
  * for defined here
  */
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
-	defined(RECORD_DP_CE_EVTS)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
 	struct ce_desc_hist hif_ce_desc_hist;
-#endif /* defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||
-	* defined(RECORD_DP_CE_EVTS)
-	*/
-#ifdef HIF_CE_TX_DESC_DATA_DEBUG
-	struct ce_tx_desc_data_hist ce_tx_desc_data_hist;
-#endif
+#endif /*defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)*/
 #ifdef IPA_OFFLOAD
 	qdf_shared_mem_t *ipa_ce_ring;
 #endif
@@ -554,15 +507,7 @@ struct hif_softc {
 #endif
 #ifdef FEATURE_DIRECT_LINK
 	struct qdf_mem_multi_page_t dl_recv_pages;
-#endif
-#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 	int dl_recv_pipe_num;
-#endif
-#ifdef FEATURE_WIFI_TRANSPORT
-	struct CE_handle  *wt_tx_ce; /* PIPEDIR_OUT set by register_callbacks */
-	struct CE_handle  *wt_rx_ce; /* PIPEDIR_IN  set by register_callbacks */
-	hif_wt_tx_done_cb  wt_tx_done_cb;
-	hif_wt_rx_ready_cb wt_rx_ready_cb;
 #endif
 #ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
 	struct wbuff_mod_handle *wbuff_handle;
@@ -583,12 +528,6 @@ struct hif_softc {
 #endif /* FEATURE_HIF_DELAYED_REG_WRITE */
 #ifdef WLAN_DP_LOAD_BALANCE_SUPPORT
 	bool is_load_balance_enabled;
-#endif
-#ifdef CE_CMN_REG_CFG_QMI
-	bool ce_cmn_reg_cfg_support_qmi;
-#endif
-#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
-	bool is_affinity_override_enabled;
 #endif
 };
 
@@ -662,7 +601,11 @@ static inline int hif_get_num_active_oom_work(struct hif_softc *scn)
  * Max waiting time during Runtime PM suspend to finish all
  * the tasks. This is in the multiple of 10ms.
  */
+#ifdef PANIC_ON_BUG
 #define HIF_TASK_DRAIN_WAIT_CNT 200
+#else
+#define HIF_TASK_DRAIN_WAIT_CNT 25
+#endif
 
 /**
  * hif_try_complete_tasks() - Try to complete all the pending tasks
@@ -947,20 +890,4 @@ static inline bool hif_is_ep_vote_access_disabled(struct hif_softc *scn)
 	return false;
 }
 #endif
-#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
-static inline bool hif_affinity_override_enabled(struct hif_softc *scn)
-{
-	return scn->is_affinity_override_enabled;
-}
-#else
-static inline bool hif_affinity_override_enabled(struct hif_softc *scn)
-{
-	return false;
-}
-#endif
-
-#define BUSY_PRINT	0
-#define FULL_PRINT	1
-#define DIAG_PRINT	2
-QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type);
 #endif /* __HIF_MAIN_H__ */

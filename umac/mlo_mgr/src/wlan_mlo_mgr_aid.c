@@ -597,7 +597,7 @@ QDF_STATUS mlo_peer_free_aid(struct wlan_mlo_dev_context *ml_dev,
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	if (!ml_dev->ap_ctx) {
-		mlo_debug("ml_dev->ap_ctx is null");
+		mlo_err("ml_dev->ap_ctx is null");
 		return QDF_STATUS_E_INVAL;
 	}
 

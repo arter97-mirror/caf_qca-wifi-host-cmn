@@ -104,6 +104,7 @@ void dp_mon_filter_show_filter(struct dp_mon_pdev *mon_pdev,
 			    tlv_filter->ppdu_start_user_info);
 	DP_MON_FILTER_PRINT("header_per_msdu: %d", tlv_filter->header_per_msdu);
 	DP_MON_FILTER_PRINT("enable_fp: %d", tlv_filter->enable_fp);
+	DP_MON_FILTER_PRINT("enable_md: %d", tlv_filter->enable_md);
 	DP_MON_FILTER_PRINT("enable_mo: %d", tlv_filter->enable_mo);
 	DP_MON_FILTER_PRINT("fp_mgmt_filter: 0x%x", tlv_filter->fp_mgmt_filter);
 	DP_MON_FILTER_PRINT("mo_mgmt_filter: 0x%x", tlv_filter->mo_mgmt_filter);
@@ -111,6 +112,9 @@ void dp_mon_filter_show_filter(struct dp_mon_pdev *mon_pdev,
 	DP_MON_FILTER_PRINT("mo_ctrl_filter: 0x%x", tlv_filter->mo_ctrl_filter);
 	DP_MON_FILTER_PRINT("fp_data_filter: 0x%x", tlv_filter->fp_data_filter);
 	DP_MON_FILTER_PRINT("mo_data_filter: 0x%x", tlv_filter->mo_data_filter);
+	DP_MON_FILTER_PRINT("md_data_filter: 0x%x", tlv_filter->md_data_filter);
+	DP_MON_FILTER_PRINT("md_mgmt_filter: 0x%x", tlv_filter->md_mgmt_filter);
+	DP_MON_FILTER_PRINT("md_ctrl_filter: 0x%x", tlv_filter->md_ctrl_filter);
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	DP_MON_FILTER_PRINT("fp_phy_err: %d", tlv_filter->fp_phy_err);
 	DP_MON_FILTER_PRINT("fp_phy_err_buf_src: %d",
@@ -284,7 +288,6 @@ void dp_mon_filter_h2t_setup(struct dp_soc *soc, struct dp_pdev *pdev,
 	dp_mon_filter_show_filter(mon_pdev, 0, filter);
 }
 
-#ifdef BORON_MONITOR
 /**
  * dp_update_num_mac_rings() - Update number of MAC rings based on connection
  *                             mode and DBS check
@@ -293,12 +296,6 @@ void dp_mon_filter_h2t_setup(struct dp_soc *soc, struct dp_pdev *pdev,
  *
  * Return: None
  */
-static inline
-void dp_update_num_mac_rings(struct dp_soc *soc, int *mon_mac_rings)
-{
-	dp_update_num_mac_rings_for_dbs(soc, mon_mac_rings);
-}
-#else
 static void
 dp_update_num_mac_rings(struct dp_soc *soc, int *mon_mac_rings)
 {
@@ -311,7 +308,6 @@ dp_update_num_mac_rings(struct dp_soc *soc, int *mon_mac_rings)
 		dp_update_num_mac_rings_for_dbs(soc, mon_mac_rings);
 	}
 }
-#endif
 
 QDF_STATUS
 dp_mon_ht2_rx_ring_cfg(struct dp_soc *soc,
@@ -333,7 +329,8 @@ dp_mon_ht2_rx_ring_cfg(struct dp_soc *soc,
 	/*
 	 * Overwrite the max_mac_rings for the status rings.
 	 */
-	dp_update_num_mac_rings(soc, &max_mac_rings);
+	if (srng_type == DP_MON_FILTER_SRNG_TYPE_RXDMA_MONITOR_STATUS)
+		dp_update_num_mac_rings(soc, &max_mac_rings);
 
 	dp_mon_filter_info("%pK: srng type %d Max_mac_rings %d ",
 			   soc, srng_type, max_mac_rings);
@@ -475,6 +472,34 @@ void dp_mon_filter_reset_mcopy_mode(struct dp_pdev *pdev)
 }
 #endif /* QCA_MCOPY_SUPPORT */
 
+#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
+void dp_mon_filter_setup_smart_monitor(struct dp_pdev *pdev)
+{
+	struct dp_mon_ops *mon_ops = NULL;
+
+	mon_ops = dp_mon_ops_get(pdev->soc);
+	if (mon_ops && mon_ops->mon_filter_setup_smart_monitor)
+		mon_ops->mon_filter_setup_smart_monitor(pdev);
+}
+
+void dp_mon_filter_reset_smart_monitor(struct dp_pdev *pdev)
+{
+	struct dp_mon_ops *mon_ops = NULL;
+
+	mon_ops = dp_mon_ops_get(pdev->soc);
+	if (mon_ops && mon_ops->mon_filter_reset_smart_monitor)
+		mon_ops->mon_filter_reset_smart_monitor(pdev);
+}
+#endif /* ATH_SUPPORT_NAC_RSSI || ATH_SUPPORT_NAC */
+
+void dp_mon_filter_set_reset_mon_mac_filter(struct dp_pdev *pdev, bool val)
+{
+	struct dp_mon_ops *mon_ops = NULL;
+
+	mon_ops = dp_mon_ops_get(pdev->soc);
+	if (mon_ops && mon_ops->mon_filter_set_reset_mon_mac_filter)
+		mon_ops->mon_filter_set_reset_mon_mac_filter(pdev, val);
+}
 
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 void dp_mon_filter_setup_rx_enh_capture(struct dp_pdev *pdev)
@@ -550,7 +575,7 @@ void dp_rx_mon_hdr_length_set(uint32_t *msg_word,
 }
 #endif
 
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
+#ifdef WDI_EVENT_ENABLE
 void dp_mon_filter_setup_rx_pkt_log_full(struct dp_pdev *pdev)
 {
 	struct dp_mon_ops *mon_ops = NULL;
@@ -701,7 +726,6 @@ void dp_mon_filter_adjust(struct dp_pdev *pdev, struct dp_mon_filter *filter)
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
-	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
 		filter->tlv_filter.msdu_start = 0;
@@ -764,7 +788,7 @@ void dp_mon_filter_set_status_cmn(struct dp_mon_pdev *mon_pdev,
 	filter->tlv_filter.ppdu_end_status_done = 1;
 	filter->tlv_filter.ppdu_start_user_info = 1;
 	filter->tlv_filter.enable_fp = 1;
-
+	filter->tlv_filter.enable_md = 0;
 	filter->tlv_filter.fp_mgmt_filter = FILTER_MGMT_ALL;
 	filter->tlv_filter.fp_ctrl_filter = FILTER_CTRL_ALL;
 	filter->tlv_filter.fp_data_filter = FILTER_DATA_ALL;
@@ -780,7 +804,6 @@ void dp_mon_filter_set_status_cmn(struct dp_mon_pdev *mon_pdev,
 	}
 }
 
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 void dp_mon_filter_set_status_cbf(struct dp_pdev *pdev,
 				  struct dp_mon_filter *filter)
 {
@@ -797,7 +820,7 @@ void dp_mon_filter_set_status_cbf(struct dp_pdev *pdev,
 	filter->tlv_filter.ppdu_end_status_done = 1;
 	filter->tlv_filter.ppdu_start_user_info = 1;
 	filter->tlv_filter.enable_fp = 1;
-
+	filter->tlv_filter.enable_md = 0;
 	filter->tlv_filter.fp_mgmt_filter = FILTER_MGMT_ACT_NO_ACK;
 	filter->tlv_filter.fp_ctrl_filter = 0;
 	filter->tlv_filter.fp_data_filter = 0;
@@ -805,7 +828,6 @@ void dp_mon_filter_set_status_cbf(struct dp_pdev *pdev,
 	filter->tlv_filter.enable_mo = 0;
 }
 
-#ifdef QCA_MONITOR_PKT_SUPPORT
 void dp_mon_filter_set_cbf_cmn(struct dp_pdev *pdev,
 			       struct dp_mon_filter *filter)
 {
@@ -822,13 +844,12 @@ void dp_mon_filter_set_cbf_cmn(struct dp_pdev *pdev,
 	filter->tlv_filter.ppdu_end_status_done = 0;
 	filter->tlv_filter.ppdu_start_user_info = 0;
 	filter->tlv_filter.enable_fp = 1;
-
+	filter->tlv_filter.enable_md = 0;
 	filter->tlv_filter.fp_mgmt_filter = FILTER_MGMT_ACT_NO_ACK;
 	filter->tlv_filter.offset_valid = false;
 	filter->tlv_filter.enable_mo = 0;
 }
-#endif
-#endif
+
 void dp_mon_filter_dealloc(struct dp_mon_pdev *mon_pdev)
 {
 	enum dp_mon_filter_mode mode;
@@ -938,35 +959,6 @@ bool dp_mon_get_is_local_pkt_capture_running(struct cdp_soc_t *cdp_soc,
 	return mon_pdev->is_local_pkt_capture_running;
 }
 
-#ifdef BORON_MONITOR
-static inline void
-dp_mon_lpc_rx_hdr_filter_cfg(struct dp_mon_pdev *mon_pdev,
-			     struct dp_mon_filter *dst_filter,
-			     struct cdp_monitor_filter *src_filter)
-{
-	dst_filter->tlv_filter.header_per_msdu = 0;
-	dst_filter->tlv_filter.rx_hdr_length =
-		src_filter->mode & MON_FILTER_OTHER ?
-		RX_HDR_DMA_LENGTH_512B : RX_HDR_DMA_LENGTH_MAX;
-	mon_pdev->rx_hdr_dma_length =
-			dp_convert_rx_hdr_dma_len_to_bytes(
-				dst_filter->tlv_filter.rx_hdr_length);
-}
-#else
-static inline void
-dp_mon_lpc_rx_hdr_filter_cfg(struct dp_mon_pdev *mon_pdev,
-			     struct dp_mon_filter *dst_filter,
-			     struct cdp_monitor_filter *src_filter)
-{
-	dst_filter->tlv_filter.header_per_msdu =
-			src_filter->mode & MON_FILTER_OTHER ? 0 : 1;
-	dst_filter->tlv_filter.rx_hdr_length = RX_HDR_DMA_LENGTH_256B;
-	mon_pdev->rx_hdr_dma_length =
-			dp_convert_rx_hdr_dma_len_to_bytes(
-				dst_filter->tlv_filter.rx_hdr_length);
-}
-#endif
-
 static void
 dp_mon_set_local_pkt_capture_rx_filter(struct dp_pdev *pdev,
 				       struct cdp_monitor_filter *src_filter)
@@ -980,7 +972,9 @@ dp_mon_set_local_pkt_capture_rx_filter(struct dp_pdev *pdev,
 	dp_mon_filter_set_status_cmn(mon_pdev, &dst_filter);
 
 	dst_filter.tlv_filter.packet_header = 1;
-	dp_mon_lpc_rx_hdr_filter_cfg(mon_pdev, &dst_filter, src_filter);
+	dst_filter.tlv_filter.header_per_msdu =
+			src_filter->mode & MON_FILTER_OTHER ? 0 : 1;
+	dst_filter.tlv_filter.rx_hdr_length = RX_HDR_DMA_LENGTH_256B;
 	if (src_filter->mode & MON_FILTER_PASS) {
 		dst_filter.tlv_filter.fp_mgmt_filter = src_filter->fp_mgmt;
 		dst_filter.tlv_filter.fp_ctrl_filter = src_filter->fp_ctrl;
@@ -993,6 +987,7 @@ dp_mon_set_local_pkt_capture_rx_filter(struct dp_pdev *pdev,
 		dst_filter.tlv_filter.mo_data_filter = src_filter->mo_data;
 		dst_filter.tlv_filter.enable_mo = 1;
 	}
+	dst_filter.tlv_filter.enable_md = 0;
 
 	dp_mon_filter_show_filter(mon_pdev, mode, &dst_filter);
 
@@ -1131,9 +1126,7 @@ QDF_STATUS dp_mon_start_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 		filter->fp_subfilter.ctrl_rx_frame_filter;
 	mon_pdev->fp_subfilter.connected_beacon_interval =
 		filter->fp_subfilter.connected_beacon_interval;
-	dp_mon_update_nth_beacon(pdev);
 #endif
-
 	qdf_spin_lock_bh(&mon_mac->mon_lock);
 	dp_mon_filter_setup_tx_mon_mode(pdev);
 	status = dp_tx_mon_filter_update(pdev);
@@ -1245,7 +1238,6 @@ bool dp_mon_is_mgmt_filter_en(struct dp_pdev *pdev,
 	enum dp_mon_mgmt_frame_type frame_type = DP_MON_MGMT_MAX_FILTER;
 	struct dp_mon_subfilter *filter = &pdev->monitor_pdev->fp_subfilter;
 	struct dp_mon_mac *mon_mac =  dp_get_mon_mac(pdev, 0);
-	uint64_t filter_mask;
 
 	if (direction == IEEE80211_FC1_DIR_TODS)
 		mgmt_filter = filter->mgmt_tx_frame_filter;
@@ -1253,13 +1245,8 @@ bool dp_mon_is_mgmt_filter_en(struct dp_pdev *pdev,
 		mgmt_filter = filter->mgmt_rx_frame_filter;
 
 	if (mgmt_filter) {
-		if (mgmt_filter == DP_MON_MGMT_FRAME_TYPE_ALL) {
-			if (!filter->connected_beacon_interval)
-				return true;
-			filter_mask = DP_MON_MGMT_MAX_FILTER - 1;
-		} else {
-			filter_mask = mgmt_filter;
-		}
+		if (mgmt_filter == DP_MON_MGMT_FRAME_TYPE_ALL)
+			return true;
 
 		subtype = dot11hdr->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_MASK;
 		connected_bssid = dp_mon_is_connected_bssid(pdev,
@@ -1268,7 +1255,7 @@ bool dp_mon_is_mgmt_filter_en(struct dp_pdev *pdev,
 		if (subtype != QDF_IEEE80211_FC0_SUBTYPE_BEACON) {
 			frame_type = DP_MON_MGMT_CONNECT_NO_BEACON;
 		} else if (subtype == QDF_IEEE80211_FC0_SUBTYPE_BEACON &&
-			   connected_bssid) {
+			connected_bssid) {
 			if (filter->connected_beacon_interval) {
 				if (bcn_cnt >= mon_mac->nth_beacon) {
 					frame_type = DP_MON_MGMT_CONNECT_BEACON;
@@ -1283,7 +1270,7 @@ bool dp_mon_is_mgmt_filter_en(struct dp_pdev *pdev,
 			frame_type = DP_MON_MGMT_CONNECT_SCAN_BEACON;
 		}
 
-		if (filter_mask & frame_type)
+		if (frame_type & mgmt_filter)
 			return true;
 	}
 	return false;

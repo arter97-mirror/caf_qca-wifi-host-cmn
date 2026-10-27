@@ -210,17 +210,3 @@ int32_t wlan_crypto_get_random_pmkid(struct wlan_crypto_params *crypto_params)
 {
 	return crypto_params->random_pmkid_cnt;
 }
-
-QDF_STATUS
-wlan_crypto_set_auth_algo(struct wlan_crypto_params *crypto_params,
-			  uint32_t value)
-{
-	crypto_params->auth_algo = value;
-
-	return QDF_STATUS_SUCCESS;
-}
-
-int32_t wlan_crypto_get_auth_algo(struct wlan_crypto_params *crypto_params)
-{
-	return crypto_params->auth_algo;
-}

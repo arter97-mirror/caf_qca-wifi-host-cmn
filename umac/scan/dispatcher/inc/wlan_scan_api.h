@@ -42,16 +42,6 @@ void wlan_scan_get_feature_info(struct wlan_objmgr_psoc *psoc,
 #endif
 
 /**
- * wlan_scan_get_scan_cache_report_max_time_in_sec() - Get scan cache report
- * max time in second info
- * @psoc: pointer to psoc object
- *
- * Return: scan cache report max time in min value
- */
-uint64_t
-wlan_scan_get_scan_cache_report_max_time_in_sec(struct wlan_objmgr_psoc *psoc);
-
-/**
  * wlan_scan_get_scan_entry_by_mac_freq() - API to get scan entry
  * info from scan db by mac addr
  * @pdev: pointer to pdev object
@@ -71,7 +61,6 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
  * @pdev: pointer to pdev object
  * @bssid: pointer to mac addr
  * @vdev_id: vdev id
- * @ch_freq: channel frequency
  *
  * Return: scan entry if found, else NULL
  *
@@ -80,8 +69,7 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
 struct scan_cache_entry *
 wlan_scan_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 				      struct qdf_mac_addr *bssid,
-				      uint8_t vdev_id,
-				      qdf_freq_t ch_freq);
+				      uint8_t vdev_id);
 
 /**
  * wlan_scan_cfg_set_active_2g_dwelltime() - API to set scan active 2g dwelltime
@@ -217,6 +205,7 @@ void wlan_scan_cfg_set_passive_dwelltime(struct wlan_objmgr_psoc *psoc,
 void wlan_scan_cfg_get_passive_dwelltime(struct wlan_objmgr_psoc *psoc,
 					 uint32_t *dwell_time);
 
+#ifdef WLAN_POLICY_MGR_ENABLE
 /*
  * wlan_scan_update_pno_dwell_time() - update active and passive dwell time
  * depending on active concurrency modes
@@ -240,6 +229,15 @@ void wlan_scan_update_pno_dwell_time(struct wlan_objmgr_vdev *vdev,
 void wlan_scan_update_low_latency_profile_chnlist(
 				struct wlan_objmgr_vdev *vdev,
 				struct scan_start_request *req);
+#else
+static inline
+void wlan_scan_update_low_latency_profile_chnlist(
+				struct wlan_objmgr_vdev *vdev,
+				struct scan_start_request *req)
+{
+}
+
+#endif
 
 /**
  * wlan_scan_cfg_get_conc_active_dwelltime() - Get concurrent active dwelltime
@@ -562,6 +560,28 @@ struct scan_cache_entry *
 wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 			     struct qdf_mac_addr *bssid);
 
+/*
+ * wlan_scan_is_localy_gen_non_tx_mbssid_entry() - function to check
+ * non tx mbssid entry
+ * @pdev: pdev object
+ * @bssid: bssid to be fetched from scan db
+ *
+ *  Return : true if non tx mbssid scan entry found, else false
+ */
+bool wlan_scan_is_localy_gen_non_tx_mbssid_entry(struct wlan_objmgr_pdev *pdev,
+						 struct qdf_mac_addr *bssid);
+
+/*
+ * wlan_scan_is_locally_generated_entry() - Function to check
+ * locally generated scan entry
+ * @pdev: pdev object
+ * @bssid: bssid to be fetched from scan db
+ *
+ * Return : true if non tx mbssid scan entry found, else false
+ */
+bool wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
+					  struct qdf_mac_addr *bssid);
+
 /**
  * wlan_scan_get_mld_addr_by_link_addr() - Function to get MLD address
  * in the scan entry from the link BSSID.
@@ -691,39 +711,4 @@ wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
  * Returun: void
  */
 void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev);
-
-/**
- * wlan_scan_fetch_chan_linkid_params_for_rnr() - Wrapper API to fetch basic
- * fields related to RNR
- * @pdev: Pointer to PDEV
- * @bssid: BSSID to of the entry
- * @entry_chan_num: Pointer to hold entry chan_num
- * @entry_op_class: Pointer to hold entry op_class
- * @entry_link_id: Pointer to hold entry's MLO (IEEE 802.11be) link ID
- *
- * Filters scan entry with @bssid and fills the entry's chan_num, op_class
- * and link_id
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_scan_fetch_chan_linkid_params_for_rnr(struct wlan_objmgr_pdev *pdev,
-					   struct qdf_mac_addr *bssid,
-					   uint8_t *entry_chan_num,
-					   uint8_t *entry_op_class,
-					   uint8_t *entry_link_id);
-
-/**
- * wlan_scan_flush_results() - Flush scan results from the scan cache
- * @pdev: pointer to pdev object
- * @filter: filter to apply for flushing results
- *
- * This function flushes scan results from the scan cache based on the
- * provided filter. If filter is NULL, all scan results for the pdev
- * will be flushed.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise.
- */
-QDF_STATUS wlan_scan_flush_results(struct wlan_objmgr_pdev *pdev,
-				   struct scan_filter *filter);
 #endif

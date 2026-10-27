@@ -28,15 +28,9 @@
 #include <i_qdf_util.h>
 
 #ifdef QCA_CONFIG_SMP
-/*
- * WLAN_MAX_CPUS is configured via Kconfig (CONFIG_WLAN_MAX_CPUS)
- * with a default of 8. It caps NR_CPUS to avoid excessive static
- * memory allocation when NR_CPUS is large on upstream kernels.
- */
-#define QDF_MAX_AVAILABLE_CPU \
-	(NR_CPUS < WLAN_MAX_CPUS ? NR_CPUS : WLAN_MAX_CPUS)
+#define QDF_MAX_AVAILABLE_CPU	NR_CPUS
 #else
-#define QDF_MAX_AVAILABLE_CPU 1
+#define QDF_MAX_AVAILABLE_CPU	1
 #endif
 
 typedef __qdf_wait_queue_head_t qdf_wait_queue_head_t;
@@ -154,8 +148,6 @@ typedef __qdf_page_t qdf_page_t;
 	((mac1)->bytes[3] == (mac2)->bytes[3] && \
 	 (mac1)->bytes[4] == (mac2)->bytes[4] && \
 	 (mac1)->bytes[5] == (mac2)->bytes[5])
-
-#define BITS_IN_A_BYTE 8
 
 /* Get number of bits from the index bit */
 #define QDF_GET_BITS(_val, _index, _num_bits) \
@@ -426,7 +418,7 @@ static inline bool qdf_is_macaddr_group(struct qdf_mac_addr *mac_addr)
  * is a "broadcast" address.
  *
  * Return: true if the input MacAddress is a broadcast address
- * false if the input MacAddress is not a broadcast address
+ * flase if the input MacAddress is not a broadcast address
  */
 static inline bool qdf_is_macaddr_broadcast(const struct qdf_mac_addr *mac_addr)
 {
@@ -788,28 +780,6 @@ unsigned int qdf_get_hweight32(unsigned int w)
 }
 
 /**
- * qdf_get_hamming_weight() - count num of 1's in a given number
- * @w: input bitmap
- *
- * Count num of bits set to 1 in number, supports upto 64-bit
- *
- * Return: num of 1's
- */
-static inline
-unsigned int qdf_get_hamming_weight(uint64_t w)
-{
-	uint8_t count = 0;
-	uint64_t temp = w;
-
-	while (temp) {
-		count++;
-		temp &= temp - 1;
-	}
-
-	return count;
-}
-
-/**
  * qdf_device_init_wakeup() - allow a device to wake up the aps system
  * @qdf_dev: the qdf device context
  * @enable: enable/disable the device as a wakeup source
@@ -1018,19 +988,6 @@ static inline int qdf_get_smp_processor_id(void)
 }
 
 /**
- * qdf_get_raw_smp_processor_id() - Get the current CPU id
- *
- * This API should be called with pre-emption disabled,
- * otherwise the value will be stale at use.
- *
- * Return: current CPU id
- */
-static inline int qdf_get_raw_smp_processor_id(void)
-{
-	return __qdf_get_raw_smp_processor_id();
-}
-
-/**
  * qdf_in_atomic: Check whether current thread running in atomic context
  *
  * Return: true if current thread is running in the atomic context
@@ -1065,28 +1022,5 @@ static inline uint64_t qdf_siphash(const void *data, size_t len,
 static inline qdf_page_t qdf_virt_to_head_page(void *addr)
 {
 	return __qdf_virt_to_head_page(addr);
-}
-
-/**
- * qdf_log2_ceil() - Calculate ceil(log2(value))
- *
- * @value: input integer
- *
- * Return: calculated value of ceil(log2(value))
- */
-static inline int qdf_log2_ceil(unsigned int value)
-{
-	unsigned int tmp = value;
-	int log2 = -1;
-
-	if (qdf_unlikely(value == 0))
-		return 0;
-	while (tmp) {
-		log2++;
-		tmp >>= 1;
-	}
-	if (1U << log2 != value)
-		log2++;
-	return log2;
 }
 #endif /*_QDF_UTIL_H*/

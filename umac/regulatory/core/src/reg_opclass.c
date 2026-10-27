@@ -146,11 +146,13 @@ static const uint8_t opcls_136_cfis_arr[] = {
 };
 
 /* CFIs for global opclass 137: (start Freq=5950 BW=320MHz) */
+#ifdef WLAN_FEATURE_11BE
 static const uint8_t opcls_137_cfis_arr[] = {
 #ifdef CONFIG_AFC_SUPPORT
 	31, 63, 95, 127, 159, 191,
 #endif
 };
+#endif
 
 /* Create the CFIS static constant lists */
 CREATE_CFIS_LST(131);
@@ -159,7 +161,9 @@ CREATE_CFIS_LST(133);
 CREATE_CFIS_LST(134);
 CREATE_CFIS_LST(135);
 CREATE_CFIS_LST(136);
+#ifdef WLAN_FEATURE_11BE
 CREATE_CFIS_LST(137);
+#endif
 
 static const struct reg_dmn_op_class_map_t global_op_class[] = {
 	{81, 25, BW20, BIT(BEHAV_NONE), 2407,
@@ -280,6 +284,7 @@ static const struct reg_dmn_op_class_map_t global_op_class[] = {
 	{136, 20, BW20, BIT(BEHAV_NONE), 5925,
 	 {2},
 	&CFISLST(136)},
+#ifdef WLAN_FEATURE_11BE
 	{137, 320, BW20, BIT(BEHAV_NONE), 5950,
 	 {1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41,
 	  45, 49, 53, 57, 61, 65, 69, 73, 77, 81,
@@ -289,6 +294,7 @@ static const struct reg_dmn_op_class_map_t global_op_class[] = {
 	  185, 189, 193, 197, 201, 205, 209, 213,
 	  217, 221, 225, 229, 233},
 	&CFISLST(137)},
+#endif
 #endif
 	{0, 0, 0, 0, 0, {0},
 	NULL_CFIS_LST },
@@ -1004,8 +1010,6 @@ uint16_t reg_dmn_get_chanwidth_from_opclass_auto(uint8_t *country,
 	ret = reg_dmn_get_chanwidth_from_opclass(country, channel, opclass);
 
 	if (!ret) {
-		global_country[0] = '0';
-		global_country[1] = '0';
 		global_country[2] = OP_CLASS_GLOBAL;
 		ret = reg_dmn_get_chanwidth_from_opclass(global_country,
 							 channel, opclass);
@@ -1219,8 +1223,10 @@ reg_is_country_opclass_global(struct wlan_objmgr_pdev *pdev)
 	}
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
-	if (!reg_tx_ops)
+	if (!reg_tx_ops) {
+		reg_err("reg_tx_ops is NULL");
 		return false;
+	}
 
 	if (reg_tx_ops->get_opclass_tbl_idx) {
 		reg_tx_ops->get_opclass_tbl_idx(pdev, &opclass_tbl_idx);
@@ -2138,9 +2144,17 @@ bool reg_is_2ghz_op_class(const uint8_t *country, uint8_t op_class)
 	return reg_is_opclass_band_found(country, op_class, BIT(REG_BAND_2G));
 }
 
+/**
+ * reg_convert_chan_spacing_to_width() - Convert channel spacing to
+ * channel width.
+ * @chan_spacing: Channel spacing
+ * @opclass_chwidth: Opclass channel width
+ *
+ * Return: None
+ */
 #ifdef WLAN_FEATURE_11BE
-void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
-				       uint16_t *opclass_chwidth)
+static void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
+					      uint16_t *opclass_chwidth)
 {
 	switch (chan_spacing) {
 	case BW_20_MHZ:
@@ -2164,8 +2178,8 @@ void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
 	}
 }
 #else
-void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
-				       uint16_t *opclass_chwidth)
+static void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
+					      uint16_t *opclass_chwidth)
 {
 	switch (chan_spacing) {
 	case BW_20_MHZ:

@@ -130,29 +130,4 @@ QDF_STATUS
 target_if_vdev_mgr_rsp_timer_start(struct wlan_objmgr_psoc *psoc,
 				   struct vdev_response_timer *vdev_rsp,
 				   enum wlan_vdev_mgr_tgt_if_rsp_bit set_bit);
-
-/**
- * target_if_vdev_mgr_unified_disconnect_timer_start() - Start timer for
- * unified disconnect
- * @vdev: pointer to vdev object
- * @psoc: pointer to psoc object
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
- */
-QDF_STATUS target_if_vdev_mgr_unified_disconnect_timer_start(
-					struct wlan_objmgr_vdev *vdev,
-					struct wlan_objmgr_psoc *psoc);
-
-/**
- * target_if_vdev_mgr_unified_disconnect_timer_stop() - Stop timer for
- * unified disconnect
- * @psoc: pointer to psoc object
- * @vdev_id: vdev id
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
- */
-QDF_STATUS target_if_vdev_mgr_unified_disconnect_timer_stop(
-					struct wlan_objmgr_psoc *psoc,
-					uint8_t vdev_id);
-
 #endif /* __TARGET_IF_VDEV_MGR_TX_OPS_H__ */

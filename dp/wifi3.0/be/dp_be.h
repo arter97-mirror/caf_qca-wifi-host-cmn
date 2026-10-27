@@ -21,11 +21,7 @@
 
 #include <dp_types.h>
 #include <dp_tx.h>
-#ifdef CONFIG_BORON
-#include <hal_bn_tx.h>
-#else
 #include <hal_be_tx.h>
-#endif
 #ifdef WLAN_MLO_MULTI_CHIP
 #include "mlo/dp_mlo.h"
 #else
@@ -76,33 +72,11 @@ enum CMEM_MEM_CLIENTS {
 /* higher 11 bits in Desc ID for offset in CMEM of PPT */
 #define DP_CC_DESC_ID_PPT_PAGE_OS_LSB 9
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/* Reduce to 10 bits when DAL feature is enabled */
-#define DP_CC_DESC_ID_PPT_PAGE_OS_MSB 18
-#define DP_CC_DESC_ID_PPT_PAGE_OS_MASK 0x7FE00
-#else
 #define DP_CC_DESC_ID_PPT_PAGE_OS_MSB 19
-#define DP_CC_DESC_ID_PPT_PAGE_OS_MASK 0xFFE00
-#endif
 
 #define DP_CC_DESC_ID_PPT_PAGE_OS_SHIFT 9
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/* DAL reserved bit - bit 19 (MSB of 20-bit SW cookie) for DAL use only */
-#define DP_DAL_COOKIE_RESERVED_BIT 19
-#define DP_DAL_COOKIE_RESERVED_MASK BIT(DP_DAL_COOKIE_RESERVED_BIT)
-
-/**
- * dp_dal_is_reserved_cookie() - Check if SW cookie has DAL reserved bit set
- * @cookie: SW cookie to check
- *
- * Return: true if DAL reserved bit is set, false otherwise
- */
-static inline bool dp_dal_is_reserved_cookie(uint32_t cookie)
-{
-	return !!(cookie & DP_DAL_COOKIE_RESERVED_MASK);
-}
-#endif /* FEATURE_DAL_DP_SUPPORT */
+#define DP_CC_DESC_ID_PPT_PAGE_OS_MASK 0xFFE00
 
 /*
  * page 4K unaligned case, single SPT page physical address
@@ -873,18 +847,6 @@ static inline uint32_t dp_cc_desc_id_generate(uint32_t ppt_index,
 		spt_index);
 }
 
-static inline void dp_cc_desc_find_page_id(struct dp_soc_be *be_soc,
-					   uint32_t desc_id,
-					   uint16_t *ppt_page_id,
-					   uint16_t *spt_va_id)
-{
-	*ppt_page_id = (desc_id & DP_CC_DESC_ID_PPT_PAGE_OS_MASK) >>
-			DP_CC_DESC_ID_PPT_PAGE_OS_SHIFT;
-
-	*spt_va_id = (desc_id & DP_CC_DESC_ID_SPT_VA_OS_MASK) >>
-			DP_CC_DESC_ID_SPT_VA_OS_SHIFT;
-}
-
 /**
  * dp_cc_desc_find() - find TX/RX Descs virtual address by ID
  * @soc: be soc handle
@@ -900,8 +862,12 @@ static inline uintptr_t dp_cc_desc_find(struct dp_soc *soc,
 	uint8_t *spt_page_va;
 
 	be_soc = dp_get_be_soc_from_dp_soc(soc);
-	dp_cc_desc_find_page_id(be_soc, desc_id, &ppt_page_id,
-				&spt_va_id);
+	ppt_page_id = (desc_id & DP_CC_DESC_ID_PPT_PAGE_OS_MASK) >>
+			DP_CC_DESC_ID_PPT_PAGE_OS_SHIFT;
+
+	spt_va_id = (desc_id & DP_CC_DESC_ID_SPT_VA_OS_MASK) >>
+			DP_CC_DESC_ID_SPT_VA_OS_SHIFT;
+
 	/*
 	 * ppt index in cmem is same order where the page in the
 	 * page desc array during initialization.
@@ -912,34 +878,6 @@ static inline uintptr_t dp_cc_desc_find(struct dp_soc *soc,
 
 	return (*((uintptr_t *)(spt_page_va  +
 				spt_va_id * DP_CC_HW_READ_BYTES)));
-}
-
-static inline uintptr_t dp_cc_desc_find_validate(struct dp_soc *soc,
-						 uint32_t desc_id)
-{
-	struct dp_soc_be *be_soc;
-	uint16_t ppt_page_id, spt_va_id;
-	uint8_t *spt_page_va;
-
-	be_soc = dp_get_be_soc_from_dp_soc(soc);
-	dp_cc_desc_find_page_id(be_soc, desc_id, &ppt_page_id,
-				&spt_va_id);
-
-	if (ppt_page_id >= DP_CC_PPT_MAX_ENTRIES) {
-		dp_err("invalid primary page id, ppt_page_id %u, desc_id - %u",
-		       ppt_page_id, desc_id);
-		return 0;
-	}
-
-	spt_page_va = be_soc->page_desc_base[ppt_page_id].page_v_addr;
-	if (!spt_page_va) {
-		dp_err("invalid secondary page vadd, ppt_page_id - %u, desc_id - %u",
-		       ppt_page_id, desc_id);
-		return 0;
-	}
-
-	return (*((uintptr_t *)(spt_page_va  +
-					spt_va_id * DP_CC_HW_READ_BYTES)));
 }
 
 /**

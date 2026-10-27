@@ -92,25 +92,13 @@ typedef struct __qdf_spinlock {
 typedef struct semaphore __qdf_semaphore_t;
 
 /**
- * enum wake_lifetime - wakelock lifetime type
- * @QDF_WAKE_TIME_UNDEFINED: wake locks with undefined lifetime
- * @QDF_WAKE_TIME_DEFINED: wake locks with defined lifetime
- */
-enum wake_lifetime {
-	QDF_WAKE_TIME_UNDEFINED,
-	QDF_WAKE_TIME_DEFINED
-};
-
-/**
  * typedef qdf_wake_lock_t - wakelock abstraction
  * @lock: this lock needs to be used in kernel version < 5.4
  * @priv: this lock pointer needs to be used in kernel version >= 5.4
- * @wake_lifetime: wakelock expected lifetime
  */
 typedef struct qdf_wake_lock {
 	struct wakeup_source lock;
 	struct wakeup_source *priv;
-	enum wake_lifetime wake_lifetime;
 } qdf_wake_lock_t;
 
 struct hif_pm_runtime_lock;
@@ -300,7 +288,7 @@ static inline int __qdf_spin_is_locked(__qdf_spinlock_t *lock)
  */
 static inline int __qdf_spin_trylock_bh(__qdf_spinlock_t *lock)
 {
-	if (likely(irqs_disabled() || qdf_in_irq() || in_softirq()))
+	if (likely(irqs_disabled() || in_irq() || in_softirq()))
 		return spin_trylock(&lock->spinlock);
 
 	if (spin_trylock_bh(&lock->spinlock)) {
@@ -330,7 +318,7 @@ static inline int __qdf_spin_trylock(__qdf_spinlock_t *lock)
  */
 static inline void __qdf_spin_lock_bh(__qdf_spinlock_t *lock)
 {
-	if (likely(irqs_disabled() || qdf_in_irq() || in_softirq())) {
+	if (likely(irqs_disabled() || in_irq() || in_softirq())) {
 		spin_lock(&lock->spinlock);
 	} else {
 		spin_lock_bh(&lock->spinlock);

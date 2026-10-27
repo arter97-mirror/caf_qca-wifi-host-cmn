@@ -77,33 +77,6 @@ bool ucfg_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 #endif
 #endif
 
-QDF_STATUS
-ucfg_cp_stats_set_enhanced_stats_support(struct wlan_objmgr_psoc *psoc_obj,
-					 bool is_enhanced_stats_support)
-{
-	return wlan_cp_stats_set_enhanced_stats_support(psoc_obj,
-							is_enhanced_stats_support);
-}
-
-bool
-ucfg_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc_obj)
-{
-	return wlan_cp_stats_get_enhanced_stats_support(psoc_obj);
-}
-
-#ifdef WLAN_CHIPSET_STATS
-void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
-					      bool direct_log_dispatch)
-{
-	wlan_cp_stats_enable_direct_log_dispatch(psoc, direct_log_dispatch);
-}
-
-void ucfg_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
-{
-	wlan_cp_stats_flush_host_buffer_if_pending(psoc);
-}
-#endif
-
 void ucfg_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops)
 {
 	wlan_cp_stats_cstats_register_tx_rx_ops(ops);
@@ -113,16 +86,3 @@ int ucfg_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 {
 	return wlan_cp_stats_cstats_send_buffer_to_user(type);
 }
-
-bool ucfg_cp_stats_is_bcn_rssi_history_report_cfg_enable(
-				struct wlan_objmgr_psoc *psoc)
-{
-	return wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable(psoc);
-}
-
-#ifdef FEATURE_SNR_STATS
-bool ucfg_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc)
-{
-	return wlan_cp_stats_is_snr_stats_report_cfg_enable(psoc);
-}
-#endif /* FEATURE_SNR_STATS */

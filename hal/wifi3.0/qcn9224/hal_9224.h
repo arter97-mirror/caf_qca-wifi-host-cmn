@@ -1951,7 +1951,7 @@ static void hal_reo_setup_9224(struct hal_soc *soc, void *reoparams,
 				       REO_REG_REG_BASE)));
 	}
 
-	/* TODO: Check if the following registers should be setup by host:
+	/* TODO: Check if the following registers shoould be setup by host:
 	 * AGING_CONTROL
 	 * HIGH_MEMORY_THRESHOLD
 	 * GLOBAL_LINK_DESC_COUNT_THRESH_IX_0[1,2]

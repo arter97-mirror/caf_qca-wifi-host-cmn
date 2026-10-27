@@ -124,7 +124,7 @@ QDF_STATUS wmi_extract_p2p_lo_stop_ev_param(wmi_unified_t wmi_handle,
 }
 #endif /* End of FEATURE_P2P_LISTEN_OFFLOAD*/
 
-#if defined(FEATURE_WLAN_SUPPORT_USD) || defined(FEATURE_WLAN_SUPPORT_P2P_R2)
+#ifdef FEATURE_WLAN_SUPPORT_USD
 QDF_STATUS
 wmi_unified_send_p2p_usd_req_cmd(wmi_unified_t wmi_handle,
 				 struct p2p_usd_attr_params *param)
@@ -134,7 +134,7 @@ wmi_unified_send_p2p_usd_req_cmd(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
-#endif /* FEATURE_WLAN_SUPPORT_USD || FEATURE_WLAN_SUPPORT_P2P_R2 */
+#endif /* FEATURE_WLAN_SUPPORT_USD */
 
 QDF_STATUS
 wmi_unified_p2p_send_ap_assist_dfs_group_params(wmi_unified_t wmi_handle,

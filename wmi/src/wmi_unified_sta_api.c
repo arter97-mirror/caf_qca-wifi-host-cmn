@@ -180,30 +180,6 @@ QDF_STATUS wmi_extract_vdev_tdls_ev_param(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
-
-QDF_STATUS wmi_unified_tdls_request_stats_info_cmd(wmi_unified_t wmi_handle,
-						   uint8_t vdev_id,
-						   uint32_t enable)
-{
-	if (wmi_handle->ops->send_tdls_request_stats_info_cmd)
-		return wmi_handle->ops->send_tdls_request_stats_info_cmd(
-						wmi_handle, vdev_id, enable);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_extract_tdls_stats_event(wmi_unified_t wmi_handle,
-					void *evt_buf,
-					struct wmi_host_tdls_stats_event
-					*stats_event)
-{
-	if (wmi_handle->ops->extract_tdls_stats_event)
-		return wmi_handle->ops->extract_tdls_stats_event(
-						wmi_handle, evt_buf,
-						stats_event);
-
-	return QDF_STATUS_E_FAILURE;
-}
 #endif /* FEATURE_WLAN_TDLS */
 
 #if defined(WLAN_FEATURE_ROAM_OFFLOAD) && defined(FEATURE_DENYLIST_MGR)
@@ -381,6 +357,7 @@ QDF_STATUS wmi_unified_pdev_set_pcl_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef WLAN_POLICY_MGR_ENABLE
 QDF_STATUS wmi_unified_pdev_set_dual_mac_config_cmd(
 		wmi_unified_t wmi_handle,
 		struct policy_mgr_dual_mac_config *msg)
@@ -392,6 +369,7 @@ QDF_STATUS wmi_unified_pdev_set_dual_mac_config_cmd(
 
 	return QDF_STATUS_E_FAILURE;
 }
+#endif /* WLAN_POLICY_MGR_ENABLE */
 
 QDF_STATUS wmi_unified_send_adapt_dwelltime_params_cmd(
 			wmi_unified_t wmi_handle,
@@ -449,30 +427,3 @@ QDF_STATUS wmi_unified_peer_unmap_conf_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-#ifdef FEATURE_CQM_RSSI
-QDF_STATUS
-wmi_unified_set_cqm_rssi_config_cmd(wmi_unified_t wmi_handle,
-				    struct cqm_rssi_config_param *req)
-{
-	if (wmi_handle->ops->send_set_cqm_rssi_config_cmd)
-		return wmi_handle->ops->send_set_cqm_rssi_config_cmd(wmi_handle,
-								     req);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_rssi_adaptive_breach_event(wmi_unified_t wmi_handle,
-				       void *evt_buf,
-				       struct vdev_cqm_rssi_breach_event *event)
-{
-	QDF_STATUS (*extract)(wmi_unified_t wmi_handle, void *evt_buf,
-			      struct vdev_cqm_rssi_breach_event *event);
-
-	extract = wmi_handle->ops->extract_rssi_adaptive_breach_event;
-	if (extract)
-		return extract(wmi_handle, evt_buf, event);
-
-	return QDF_STATUS_E_FAILURE;
-}
-#endif /* FEATURE_CQM_RSSI */

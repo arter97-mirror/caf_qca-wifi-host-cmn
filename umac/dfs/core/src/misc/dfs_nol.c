@@ -201,10 +201,8 @@ dfs_remove_from_nol(qdf_hrtimer_data_t *arg)
 
 	utils_dfs_save_nol(dfs->dfs_pdev_obj);
 
-	if (dfs->dfs_use_puncture) {
+	if (dfs->dfs_use_puncture)
 		dfs_handle_nol_puncture(dfs, nolfreq);
-		dfs_send_nol_remove_ind();
-	}
 	/*
 	 * Check if a channel is configured by the user to which we have to
 	 * switch after it's NOL expiry. If that is the case, change

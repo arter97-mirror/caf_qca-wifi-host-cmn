@@ -213,8 +213,6 @@ struct wlan_logging {
 	bool is_active;
 	/* Flush completion check */
 	bool is_flush_complete;
-	/* This flag tracks the active state of a dump_in_progress request */
-	bool is_dump_in_progress;
 	/* parameters  for pkt stats */
 	struct list_head pkt_stat_free_list;
 	struct list_head pkt_stat_filled_list;
@@ -321,7 +319,7 @@ static int wlan_queue_logmsg_for_app(void)
 
 static const char *current_process_name(void)
 {
-	if (qdf_in_irq())
+	if (in_irq())
 		return "irq";
 
 	if (in_softirq())
@@ -509,18 +507,8 @@ static int nl_srv_bcast_host_logs(struct sk_buff *skb)
 {
 	return nl_srv_bcast(skb, CLD80211_MCGRP_HOST_LOGS, ANI_NL_MSG_LOG);
 }
-
-static int nl_srv_bcast_apf(struct sk_buff *skb)
-{
-	return nl_srv_bcast(skb, CLD80211_MCGRP_HOST_LOGS, ANI_NL_MSG_LOG);
-}
 #else
 static int nl_srv_bcast_host_logs(struct sk_buff *skb)
-{
-	return nl_srv_bcast(skb);
-}
-
-static int nl_srv_bcast_apf(struct sk_buff *skb)
 {
 	return nl_srv_bcast(skb);
 }
@@ -810,8 +798,8 @@ void wlan_report_log_completion(uint32_t is_fatal,
  */
 static void send_flush_completion_to_user(uint8_t ring_id)
 {
-	uint32_t is_fatal = 0, indicator = 0, reason_code = 0;
-	bool recovery_needed = false;
+	uint32_t is_fatal, indicator, reason_code;
+	bool recovery_needed;
 
 	cds_get_and_reset_log_completion(&is_fatal,
 		&indicator, &reason_code, &recovery_needed);
@@ -929,6 +917,7 @@ static int wlan_logging_thread(void *Arg)
 		if (gwlan_logging.exit)
 			break;
 
+
 		if (qdf_atomic_test_and_clear_bit(HOST_LOG_DRIVER_MSG,
 						  gwlan_logging.event_flag)) {
 			ret = send_filled_buffers_to_user();
@@ -950,9 +939,11 @@ static int wlan_logging_thread(void *Arg)
 				msleep(200);
 		}
 
-		if (qdf_atomic_test_and_clear_bit(HOST_LOG_CHIPSET_STATS,
-						  gwlan_logging.event_flag) &&
+		if (qdf_atomic_test_bit(HOST_LOG_CHIPSET_STATS,
+					gwlan_logging.event_flag) &&
 		    gwlan_logging.is_flush_complete) {
+			qdf_atomic_test_and_clear_bit(HOST_LOG_CHIPSET_STATS,
+						      gwlan_logging.event_flag);
 			ret = wlan_logging_cstats_send_host_buf_to_usr();
 			if (-ENOMEM == ret) {
 				QDF_TRACE_ERROR(QDF_MODULE_ID_QDF,
@@ -961,9 +952,11 @@ static int wlan_logging_thread(void *Arg)
 			}
 		}
 
-		if (qdf_atomic_test_and_clear_bit(FW_LOG_CHIPSET_STATS,
-						  gwlan_logging.event_flag) &&
+		if (qdf_atomic_test_bit(FW_LOG_CHIPSET_STATS,
+					gwlan_logging.event_flag) &&
 		    gwlan_logging.is_flush_complete) {
+			qdf_atomic_test_and_clear_bit(FW_LOG_CHIPSET_STATS,
+						      gwlan_logging.event_flag);
 			ret = wlan_logging_cstats_send_fw_buf_to_usr();
 			if (-ENOMEM == ret) {
 				QDF_TRACE_ERROR(QDF_MODULE_ID_QDF,
@@ -980,8 +973,6 @@ static int wlan_logging_thread(void *Arg)
 			 * to flush any residual data in them
 			 */
 			if (gwlan_logging.is_flush_complete == true) {
-				qdf_debug("reset is_flush_complete");
-
 				gwlan_logging.is_flush_complete = false;
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 				send_flush_completion_to_user(
@@ -989,35 +980,19 @@ static int wlan_logging_thread(void *Arg)
 #endif
 				wlan_logging_set_flush_log_completion();
 			} else {
-				qdf_debug("set is_flush_complete");
-
 				gwlan_logging.is_flush_complete = true;
-				/* flush all current host logs */
+				/* Flush all current host logs*/
 				spin_lock_irqsave(&gwlan_logging.spin_lock,
 					flags);
 				wlan_queue_logmsg_for_app();
 				spin_unlock_irqrestore(&gwlan_logging.spin_lock,
 					flags);
-
 				qdf_atomic_set_bit(HOST_LOG_DRIVER_MSG,
 						   gwlan_logging.event_flag);
 				qdf_atomic_set_bit(HOST_LOG_PER_PKT_STATS,
 						   gwlan_logging.event_flag);
 				qdf_atomic_set_bit(HOST_LOG_FW_FLUSH_COMPLETE,
 						   gwlan_logging.event_flag);
-
-				if (gwlan_logging.is_dump_in_progress) {
-					qdf_debug("setting chipset stats event flags");
-					gwlan_logging.is_dump_in_progress =
-									false;
-					qdf_atomic_set_bit(
-						HOST_LOG_CHIPSET_STATS,
-						gwlan_logging.event_flag);
-					qdf_atomic_set_bit(
-						FW_LOG_CHIPSET_STATS,
-						gwlan_logging.event_flag);
-				}
-
 				wake_up_interruptible(
 						&gwlan_logging.wait_queue);
 			}
@@ -1320,7 +1295,6 @@ int wlan_logging_sock_init_svc(void)
 
 	gwlan_logging.is_active = true;
 	gwlan_logging.is_flush_complete = false;
-	gwlan_logging.is_dump_in_progress = false;
 
 	status = qdf_event_create(&gwlan_logging.flush_log_completion);
 	if (!QDF_IS_STATUS_SUCCESS(status)) {
@@ -1373,7 +1347,6 @@ int wlan_logging_sock_deinit_svc(void)
 	cds_set_multicast_logging(0);
 #endif
 	gwlan_logging.is_flush_complete = false;
-	gwlan_logging.is_dump_in_progress = false;
 	qdf_atomic_clear_bit(HOST_LOG_DRIVER_MSG, gwlan_logging.event_flag);
 	qdf_atomic_clear_bit(HOST_LOG_PER_PKT_STATS, gwlan_logging.event_flag);
 	qdf_atomic_clear_bit(HOST_LOG_FW_FLUSH_COMPLETE,
@@ -1545,7 +1518,6 @@ void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data)
 	int total_stats_len = 0;
 	bool wake_up_thread = false;
 	unsigned long flags;
-	unsigned int drop_cnt;
 	struct sk_buff *ptr;
 	int hdr_size;
 
@@ -1561,16 +1533,6 @@ void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data)
 					pktlog_hdr->size;
 
 	spin_lock_irqsave(&gwlan_logging.pkt_stats_lock, flags);
-
-	/* Validate total packet size against MAX_PKTSTATS_LENGTH */
-	if (total_stats_len > MAX_PKTSTATS_LENGTH) {
-		drop_cnt = ++gwlan_logging.pkt_stat_drop_cnt;
-		spin_unlock_irqrestore(&gwlan_logging.pkt_stats_lock, flags);
-		qdf_rl_err("incoming stat size %d exceeds %zu, drop_count = %u",
-			   total_stats_len, MAX_PKTSTATS_LENGTH,
-			   drop_cnt);
-		return;
-	}
 
 	if (!gwlan_logging.pkt_stats_pcur_node) {
 		spin_unlock_irqrestore(&gwlan_logging.pkt_stats_lock, flags);
@@ -1906,105 +1868,10 @@ void wlan_register_txrx_packetdump(uint8_t pdev_id)
 }
 #endif /* CONNECTIVITY_PKTLOG */
 #ifdef WLAN_CHIPSET_STATS
-void wlan_set_chipset_stats_bit(bool is_drv_dump_in_progress_valid,
-				uint8_t dump_in_progress)
+void wlan_set_chipset_stats_bit(void)
 {
-	uint8_t final_dump_inprogress_val = 0;
-	QDF_STATUS status;
-
-	if (is_drv_dump_in_progress_valid) {
-		final_dump_inprogress_val = dump_in_progress;
-	} else {
-		status = qdf_get_dump_inprogress(&final_dump_inprogress_val);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			qdf_err("Failed to get dump_inprogress from cnss");
-			return;
-		}
-	}
-
-	if (final_dump_inprogress_val) {
-		qdf_debug("setting chipset stats event flags");
-		gwlan_logging.is_dump_in_progress = true;
-		qdf_atomic_set_bit(HOST_LOG_CHIPSET_STATS,
-				   gwlan_logging.event_flag);
-		qdf_atomic_set_bit(FW_LOG_CHIPSET_STATS,
-				   gwlan_logging.event_flag);
-	}
+	qdf_atomic_set_bit(HOST_LOG_CHIPSET_STATS, gwlan_logging.event_flag);
+	qdf_atomic_set_bit(FW_LOG_CHIPSET_STATS, gwlan_logging.event_flag);
 }
 #endif /* WLAN_CHIPSET_STATS */
-/**
- * wlan_log_apf_to_user() - Send APF data to userspace
- * @data: Pointer to data buffer
- * @len: Length of data
- *
- * This function packs the APF data into a tAniMsgHdr and sends it
- * to userspace via Netlink broadcast using ANI_NL_MSG_LOG protocol.
- *
- * Return: 0 on success, error code on failure
- */
-int wlan_log_apf_to_user(void *data, uint16_t len)
-{
-	struct sk_buff *skb;
-	struct nlmsghdr *nlh;
-	tAniNlHdr *wnl;
-	tAniMsgHdr *aniHdr;
-	int payload_len;
-	static int nlmsg_seq;
-	int ret;
-
-	if (!data || len == 0) {
-		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
-			  "APF: Invalid data or length for APF event");
-		return -EINVAL;
-	}
-
-	/*
-	 * Calculate total payload length: Radio(4) + Header + Data
-	 * ANI_NL_MSG_LOG expects 'radio' field before tAniMsgHdr
-	 */
-	payload_len = sizeof(int) + sizeof(tAniMsgHdr) + len;
-
-	/*
-	 * Allocate SKB.
-	 * NLMSG_SPACE includes alignment padding.
-	 */
-	skb = dev_alloc_skb(NLMSG_SPACE(payload_len));
-	if (!skb) {
-		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
-			  "APF: Failed to allocate SKB for APF event");
-		return -ENOMEM;
-	}
-
-	/* Initialize Netlink Header */
-	nlh = nlmsg_put(skb, 0, nlmsg_seq++, ANI_NL_MSG_LOG, payload_len, NLM_F_REQUEST);
-	if (!nlh) {
-		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
-			  "APF: Failed to put netlink header");
-		dev_kfree_skb(skb);
-		return -ENOMEM;
-	}
-
-	/* Populate Payload */
-	wnl = (tAniNlHdr *)nlh;
-	wnl->radio = 0; /* Default radio ID */
-
-	aniHdr = &wnl->wmsg;
-	aniHdr->type = ANI_NL_MSG_APF_LOG_TYPE;
-	aniHdr->length = len;
-
-	/* Copy Data Payload after tAniMsgHdr */
-	qdf_mem_copy((uint8_t *)(aniHdr + 1), data, len);
-
-	QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_INFO,
-		  "APF: Sending APF Log (len=%d)", len);
-
-	/* Broadcast */
-	ret = nl_srv_bcast_apf(skb);
-	if (ret < 0) {
-		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
-			  "APF: Send Failed %d", ret);
-	}
-
-	return ret;
-}
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */

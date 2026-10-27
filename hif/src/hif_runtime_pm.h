@@ -134,16 +134,12 @@ struct hif_rtpm_client {
  * @prevent_list:
  * @prevent_cnt:
  * @pm_state: Current runtime pm state
- * @suspend_owner_pid: pid of the thread that drove pm_state into
- *                      HIF_RTPM_STATE_SUSPENDING, -1 if none
  * @pending_job: bitmap to set the client job to be called at resume
  * @monitor_wake_intr: Monitor waking MSI for runtime PM
  * @stats: Runtime PM stats
  * @pm_dentry: debug fs entry
  * @cfg_delay:
  * @delay:
- * @tbtt_nack_delay_active: set while @delay holds the short TBTT-nack
- *  retry override, so it can be dropped on the next WMI tx/rx
  * @busy_hist: busy histogram
  */
 struct hif_rtpm_ctx {
@@ -157,18 +153,16 @@ struct hif_rtpm_ctx {
 	struct list_head prevent_list;
 	uint32_t prevent_cnt;
 	qdf_atomic_t pm_state;
-	qdf_atomic_t suspend_owner_pid;
 	unsigned long pending_job;
 	qdf_atomic_t monitor_wake_intr;
 	struct hif_rtpm_state_stats stats;
 	struct dentry *pm_dentry;
 	int cfg_delay;
 	int delay;
-	qdf_atomic_t tbtt_nack_delay_active;
 	struct hif_rtpm_last_busy_hist *busy_hist[CE_COUNT_MAX];
 };
 
-#define HIF_RTPM_DELAY_MIN 44
+#define HIF_RTPM_DELAY_MIN 100
 #define HIF_RTPM_DELAY_MAX 10000
 
 /**

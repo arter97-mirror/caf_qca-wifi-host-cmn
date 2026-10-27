@@ -72,10 +72,6 @@
  *                                        RSO stop response is received
  * @WLAN_CM_SM_EV_BEARER_SWITCH_COMPLETE: Event to continue connect after bearer
  *                                       switch complete
- * @WLAN_CM_SM_EV_SMD_EXEC_COMPLETE:      SMD roaming execution complete. All
- *                                        link switches done. Host-internal event
- *                                        delivered to vdev in SMD_ROAM_SYNC to
- *                                        trigger old-link cleanup.
  * @WLAN_CM_SM_EV_MAX:                    Max event
  */
 enum wlan_cm_sm_evt {
@@ -118,7 +114,6 @@ enum wlan_cm_sm_evt {
 	WLAN_CM_SM_EV_HO_ROAM_DISCONNECT_DONE = 36,
 	WLAN_CM_SM_EV_RSO_STOP_RSP = 37,
 	WLAN_CM_SM_EV_BEARER_SWITCH_COMPLETE = 38,
-	WLAN_CM_SM_EV_SMD_EXEC_COMPLETE = 39,
 	WLAN_CM_SM_EV_MAX,
 };
 
@@ -160,6 +155,61 @@ void cm_sm_history_print(struct wlan_objmgr_vdev *vdev)
 { }
 #endif
 
+#ifdef WLAN_CM_USE_SPINLOCK
+/**
+ * cm_lock_create() - Create CM SM mutex/spinlock
+ * @cm_ctx:  connection manager ctx
+ *
+ * Creates CM SM mutex/spinlock
+ *
+ * Return: void
+ */
+static inline void
+cm_lock_create(struct cnx_mgr *cm_ctx)
+{
+	qdf_spinlock_create(&cm_ctx->sm.cm_sm_lock);
+}
+
+/**
+ * cm_lock_destroy() - Destroy CM SM mutex/spinlock
+ * @cm_ctx:  connection manager ctx
+ *
+ * Destroy CM SM mutex/spinlock
+ *
+ * Return: void
+ */
+static inline void
+cm_lock_destroy(struct cnx_mgr *cm_ctx)
+{
+	qdf_spinlock_destroy(&cm_ctx->sm.cm_sm_lock);
+}
+
+/**
+ * cm_lock_acquire() - acquire CM SM mutex/spinlock
+ * @cm_ctx:  connection manager ctx
+ *
+ * acquire CM SM mutex/spinlock
+ *
+ * return: void
+ */
+static inline void cm_lock_acquire(struct cnx_mgr *cm_ctx)
+{
+	qdf_spin_lock_bh(&cm_ctx->sm.cm_sm_lock);
+}
+
+/**
+ * cm_lock_release() - release CM SM mutex/spinlock
+ * @cm_ctx:  connection manager ctx
+ *
+ * release CM SM mutex/spinlock
+ *
+ * return: void
+ */
+static inline void cm_lock_release(struct cnx_mgr *cm_ctx)
+{
+	qdf_spin_unlock_bh(&cm_ctx->sm.cm_sm_lock);
+}
+#else
 static inline void
 cm_lock_create(struct cnx_mgr *cm_ctx)
 {
@@ -181,6 +231,7 @@ static inline void cm_lock_release(struct cnx_mgr *cm_ctx)
 {
 	qdf_mutex_release(&cm_ctx->sm.cm_sm_lock);
 }
+#endif /* WLAN_CM_USE_SPINLOCK */
 
 /**
  * cm_sm_transition_to() - invokes state transition

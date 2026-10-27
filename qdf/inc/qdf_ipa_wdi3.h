@@ -134,10 +134,6 @@ typedef __qdf_ipa_wdi_pipe_setup_info_smmu_t qdf_ipa_wdi_pipe_setup_info_smmu_t;
 	__QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PMAC_ID(txrx, pmac_id)
 #define QDF_IPA_WDI_SETUP_INFO_SMMU_CHIP_ID(txrx, chip_id)	\
 	__QDF_IPA_WDI_SETUP_INFO_SMMU_CHIP_ID(txrx, chip_id)
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-#define QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PEER_METADATA_VER(txrx, ver) \
-	__QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PEER_METADATA_VER(txrx, ver)
-#endif
 
 typedef __qdf_ipa_ep_cfg_t qdf_ipa_ep_cfg_t;
 
@@ -288,10 +284,6 @@ typedef __qdf_ipa_wdi_pipe_setup_info_t qdf_ipa_wdi_pipe_setup_info_t;
 	__QDF_IPA_WDI_SETUP_INFO_RX_PMAC_ID(txrx, pmac_id)
 #define QDF_IPA_WDI_SETUP_INFO_CHIP_ID(txrx, chip_id)	\
 	__QDF_IPA_WDI_SETUP_INFO_CHIP_ID(txrx, chip_id)
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-#define QDF_IPA_WDI_SETUP_INFO_RX_PEER_METADATA_VER(txrx, ver) \
-	__QDF_IPA_WDI_SETUP_INFO_RX_PEER_METADATA_VER(txrx, ver)
-#endif
 
 /**
  * qdf_ipa_wdi_conn_in_params_t - information provided by
@@ -706,27 +698,6 @@ static inline int qdf_ipa_wdi_opt_dpath_notify_flt_rlsd_per_inst(
 	return 0;
 }
 #endif /* IPA_OPT_WIFI_DP  */
-
-#if defined(CONFIG_BORON) && defined(IPA_OPT_WIFI_DP)
-/**
- * qdf_ipa_wdi_update_txpt_classify_info_idx() - set tx pkt classify info
- * @hdl: ipa handle
- * @vdev_id: vdev id
- * @txpt_classify_info_idx: peer classify info idx
- *
- * Return 0 on success, negative on failure
- */
-static inline int qdf_ipa_wdi_update_txpt_classify_info_idx(
-					ipa_wdi_hdl_t hdl,
-					uint8_t vdev_id,
-					uint8_t txpt_classify_info_idx)
-{
-	return __qdf_ipa_wdi_update_txpt_classify_info_idx(
-					hdl,
-					vdev_id,
-					txpt_classify_info_idx);
-}
-#endif
 
 #ifndef IPA_OPT_WIFI_DP_CTRL
 static inline int qdf_ipa_wdi_opt_dpath_notify_ctrl_flt_del_per_inst(

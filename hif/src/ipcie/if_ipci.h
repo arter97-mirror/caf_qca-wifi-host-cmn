@@ -86,8 +86,6 @@ struct hif_ipci_stats {
 #define HIF_IPCI_DEVICE_ID QCA6750_DEVICE_ID
 #elif defined(QCA_WIFI_WCN7750)
 #define HIF_IPCI_DEVICE_ID WCN7750_DEVICE_ID
-#elif defined(QCA_WIFI_WCN8750)
-#define HIF_IPCI_DEVICE_ID WCN8750_DEVICE_ID
 #else
 #define HIF_IPCI_DEVICE_ID 0
 #endif

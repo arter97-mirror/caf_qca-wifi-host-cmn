@@ -2,6 +2,7 @@
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
+ *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
@@ -220,7 +221,7 @@ bool reg_is_fcc_constraint_set(struct wlan_objmgr_pdev *pdev);
  * reg_is_6ghz_band_set - Check if 6 GHz band set
  * @pdev: Pointer to pdev
  *
- * Return: True if 6 GHz band set else return false
+ * Return: True if 6 GHz band set else return flase
  */
 bool reg_is_6ghz_band_set(struct wlan_objmgr_pdev *pdev);
 
@@ -270,6 +271,14 @@ bool reg_is_world_alpha2(uint8_t *alpha2);
 bool reg_is_us_alpha2(uint8_t *alpha2);
 
 /**
+ * reg_is_etsi_alpha2 - is country code in EU
+ * @alpha2: country code pointer
+ *
+ * Return: true or false
+ */
+bool reg_is_etsi_alpha2(uint8_t *alpha2);
+
+/**
  * reg_set_country() - Set the current regulatory country
  * @pdev: pdev device for country information
  * @country: country value
@@ -306,6 +315,7 @@ QDF_STATUS reg_get_domain_from_country_code(v_REGDOMAIN_t *reg_domain_ptr,
  * @pwr_type_6g: pointer to 6G power type
  * @ap_pwr_type: AP's power type as advertised in HE ops IE
  * @chan_freq: Connection channel frequency
+ * @rf_mode_force_pwr_type: RF mode force power type
  *
  * This function computes best power type for 6 GHz connection.
  * SP power type is selected only if AP advertises SP and client supports SP.
@@ -322,34 +332,8 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 			   struct wlan_objmgr_pdev *pdev,
 			   enum reg_6g_ap_type *pwr_type_6g,
 			   enum reg_6g_ap_type ap_pwr_type,
-			   uint32_t chan_freq);
-
-/**
- * reg_get_best_6g_power_type_for_bw() - Return best power type for 6 GHz
- * connection considering bandwidth
- * @psoc: pointer to psoc
- * @pdev: pointer to pdev
- * @best_pwr_type_6g: pointer to best 6G power type
- * @ap_pwr_type: AP's power type as advertised in HE ops IE
- * @chan_freq: Connection channel frequency
- * @cen320_freq: Center frequency for 320 MHz channel
- * @chwidth: Channel width
- *
- * This function computes best power type for 6 GHz connection considering
- * the channel bandwidth and center frequency using API
- * reg_get_best_6g_power_type. And Validate the output best power
- * type, if not supported by bonded channel, then downgrade to VLP.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-reg_get_best_6g_power_type_for_bw(struct wlan_objmgr_psoc *psoc,
-				  struct wlan_objmgr_pdev *pdev,
-				  enum reg_6g_ap_type *best_pwr_type_6g,
-				  enum reg_6g_ap_type ap_pwr_type,
-				  uint32_t chan_freq,
-				  qdf_freq_t cen320_freq,
-				  enum phy_ch_width chwidth);
+			   uint32_t chan_freq,
+			   int8_t rf_mode_force_pwr_type);
 #endif
 
 /**
@@ -436,6 +420,11 @@ static inline bool reg_is_world_alpha2(uint8_t *alpha2)
 }
 
 static inline bool reg_is_us_alpha2(uint8_t *alpha2)
+{
+	return false;
+}
+
+static inline bool reg_is_etsi_alpha2(uint8_t *alpha2)
 {
 	return false;
 }
@@ -682,44 +671,4 @@ reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif /* defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ) */
-
-/**
- * reg_disable_unii_1_2a_for_current_cc() - Check if disable of UNII 1 and
- * 2A applicable to current country
- *
- * @pdev: Pointer to pdev
- *
- * Return: True if current country is CA else false
- */
-bool reg_disable_unii_1_2a_for_current_cc(struct wlan_objmgr_pdev *pdev);
-
-/**
- * reg_set_disable_unii_1_2a() - apply disable unii 1 and 2A
- * @pdev: The physical pdev to reduce tx power for
- * @disable_unii_1_2a: true to disable UNII 1/2A band, false to enable
- *
- * This function sets disable_unii_1_2a flag to enable/disable
- * UNII 1/2A band.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS reg_set_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev,
-				     bool disable_unii_1_2a);
-
-/**
- * reg_get_disable_unii_1_2a() - Get disable unii 1 and 2A
- * @pdev: The physical pdev to reduce tx power for
- *
- * Return: disable_unii_1_2a
- */
-bool reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev);
-
-/**
- * reg_get_behav_limit_from_phymode() - Get behav_limit from wlan_phymode
- * @phymode: wlan_phymode
- *
- * Return: enum behav_limit
- */
-enum behav_limit
-reg_get_behav_limit_from_phymode(enum wlan_phymode phymode);
 #endif

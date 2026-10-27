@@ -107,8 +107,6 @@ static inline void wlan_crypto_put_be64(u8 *a, u64 val)
 	((tx_ops)->crypto_tx_ops.defaultkey)
 #define WLAN_CRYPTO_TX_OPS_SET_KEY(tx_ops) \
 	((tx_ops)->crypto_tx_ops.set_key)
-#define WLAN_CRYPTO_TX_OPS_DEL_NDI_KEY(tx_ops) \
-	((tx_ops)->crypto_tx_ops.del_ndi_key)
 #define WLAN_CRYPTO_TX_OPS_SET_VDEV_PARAM(tx_ops) \
 	((tx_ops)->crypto_tx_ops.set_vdev_param)
 #define WLAN_CRYPTO_TX_OPS_GETPN(tx_ops) \
@@ -217,7 +215,6 @@ static inline void wlan_crypto_put_be64(u8 *a, u64 val)
 #define RSN_AUTH_KEY_MGMT_PASN          WLAN_RSN_SEL(21)
 #define RSN_AUTH_KEY_MGMT_SAE_EXT_KEY   WLAN_RSN_SEL(24)
 #define RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY WLAN_RSN_SEL(25)
-#define RSN_AUTH_KEY_MGMT_EPPKE          WLAN_RSN_SEL(29)
 
 #define RSN_AUTH_KEY_MGMT_CCKM          (WLAN_RSN_CCKM_AKM)
 #define RSN_AUTH_KEY_MGMT_OSEN          (0x019a6f50)
@@ -256,14 +253,6 @@ static inline void wlan_crypto_put_be64(u8 *a, u64 val)
 #define AUTH_IS_CCKM(_param)   HAS_AUTHMODE((_param), WLAN_CRYPTO_AUTH_CCKM)
 #define AUTH_IS_WAI(_param)    HAS_AUTHMODE((_param), WLAN_CRYPTO_AUTH_WAPI)
 #define AUTH_IS_WPA2(_param)   AUTH_IS_RSNA(_param)
-
-static inline bool is_sae_key_mgmt(uint32_t key_mgmt)
-{
-	return (key_mgmt == RSN_AUTH_KEY_MGMT_SAE ||
-		key_mgmt == RSN_AUTH_KEY_MGMT_SAE_EXT_KEY ||
-		key_mgmt == RSN_AUTH_KEY_MGMT_FT_SAE ||
-		key_mgmt == RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY);
-}
 
 #define AUTH_MATCH(_param1, _param2) \
 		(((_param1)->authmodeset & (_param2)->authmodeset) != 0)
@@ -360,8 +349,6 @@ static inline bool is_sae_key_mgmt(uint32_t key_mgmt)
 #define crypto_err(params...) QDF_TRACE_ERROR(QDF_MODULE_ID_CRYPTO, params)
 #define crypto_info(params...) QDF_TRACE_INFO(QDF_MODULE_ID_CRYPTO, params)
 #define crypto_debug(params...) QDF_TRACE_DEBUG(QDF_MODULE_ID_CRYPTO, params)
-#define crypto_debug_rl(params...) \
-	QDF_TRACE_DEBUG_RL(QDF_MODULE_ID_CRYPTO, params)
 
 /**
  * struct wlan_crypto_mmie - MMIE IE
@@ -409,39 +396,21 @@ typedef void (*crypto_add_key_callback)(void *context,
 					struct crypto_add_key_result *result);
 
 /**
- * typedef crypto_del_key_callback - del key callback
- * @context: opaque context that the client can use to associate the
- *  callback with the request
- * @result: result of del key
- */
-typedef void (*crypto_del_key_callback)(void *context,
-					struct crypto_add_key_result *result);
-
-/**
  * struct wlan_crypto_comp_priv - crypto component private structure
  * @crypto_params:    crypto params for the peer
  * @crypto_key: crypto keys structure for the peer
  * @fils_aead_set:    fils params for this peer
- * @akms_roam:    akms used in roam
  * @add_key_ctx: Opaque context to be used by the caller to associate the
  *  add key request with the response
  * @add_key_cb: Callback function to be called with the add key result
- * @del_key_ctx: Opaque context to be used by the caller to associate the
- *  del key request with the response
- * @del_key_cb: Callback function to be called with the del key result
- * @rsno_crypto: crypto params of the RSNO IEs
  *
  */
 struct wlan_crypto_comp_priv {
 	struct wlan_crypto_params crypto_params;
 	struct wlan_crypto_keys crypto_key;
 	uint8_t fils_aead_set;
-	uint32_t akms_roam;
 	void *add_key_ctx;
 	crypto_add_key_callback add_key_cb;
-	void *del_key_ctx;
-	crypto_del_key_callback del_key_cb;
-	struct wlan_crypto_params rsno_crypto[RSNO_GEN_WIFI7 - 1];
 };
 
 /**
@@ -601,6 +570,17 @@ struct pdev_crypto {
 };
 
 /**
+ * wlan_crypto_add_key_entry() - Add a filled key entry to the hashing
+ * framework
+ * @psoc: PSOC pointer
+ * @new_entry: New entry
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wlan_crypto_add_key_entry(struct wlan_objmgr_psoc *psoc,
+				     struct wlan_crypto_key_entry *new_entry);
+
+/**
  * crypto_add_entry - add key entry to hashing framework
  * @psoc: psoc handler
  * @link_id: link id
@@ -627,6 +607,7 @@ wlan_crypto_key_entry * crypto_hash_find_by_linkid_and_macaddr(
 				uint8_t link_id,
 				uint8_t *mac_addr);
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * wlan_crypto_free_key_by_link_id - free key by link id
  * @psoc: psoc handler
@@ -636,4 +617,11 @@ wlan_crypto_key_entry * crypto_hash_find_by_linkid_and_macaddr(
 void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     struct qdf_mac_addr *link_addr,
 				     uint8_t link_id);
+#else
+static inline
+void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
+				     struct qdf_mac_addr *link_addr,
+				     uint8_t link_id)
+{}
+#endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #endif /* end of _WLAN_CRYPTO_DEF_I_H_ */

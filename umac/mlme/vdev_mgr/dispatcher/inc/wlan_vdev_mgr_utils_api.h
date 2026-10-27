@@ -65,14 +65,17 @@ wlan_util_vdev_mlme_set_ratemask_config(struct vdev_mlme_obj *vdev_mlme,
 					uint8_t index);
 
 /**
- * wlan_util_vdev_mlme_reset_ratemask_params() - reset ratemask configuration
- * of vdev_mlme object to default (no mask) and push to FW if changed
+ * wlan_util_vdev_mlme_set_param() - common MLME API to fill common
+ * parameters of vdev_mlme object
  * @vdev_mlme: pointer to vdev_mlme object
+ * @param_id: param id for which the value should be set
+ * @mlme_cfg: value that should be set to the parameter
  *
  * Return: QDF_STATUS - Success or Failure
  */
-QDF_STATUS
-wlan_util_vdev_mlme_reset_ratemask_params(struct vdev_mlme_obj *vdev_mlme);
+QDF_STATUS wlan_util_vdev_mlme_set_param(struct vdev_mlme_obj *vdev_mlme,
+					 enum wlan_mlme_cfg_id param_id,
+					 struct wlan_vdev_mgr_cfg mlme_cfg);
 
 /**
  * wlan_util_vdev_mlme_get_param() - common MLME API to get common
@@ -190,37 +193,6 @@ QDF_STATUS wlan_util_vdev_mgr_quiet_offload(
 				struct wlan_objmgr_psoc *psoc,
 				struct vdev_sta_quiet_event *quiet_event);
 #endif /* WLAN_FEATURE_11BE_MLO */
-#ifdef WLAN_FEATURE_11BN_SMD
-/**
- * wlan_vdev_set_smd_enabled() - Set SMD enabled flag for vdev
- * @vdev: VDEV object
- * @smd_enabled: SMD enabled flag
- *
- * Return: None
- */
-void wlan_vdev_set_smd_enabled(struct wlan_objmgr_vdev *vdev,
-			       bool smd_enabled);
-
-/**
- * wlan_vdev_is_smd_enabled() - Check if SMD is enabled for vdev
- * @vdev: VDEV object
- *
- * Return: true if SMD is enabled, false otherwise
- */
-bool wlan_vdev_is_smd_enabled(struct wlan_objmgr_vdev *vdev);
-#else
-static inline
-void wlan_vdev_set_smd_enabled(struct wlan_objmgr_vdev *vdev,
-			       bool smd_enabled)
-{
-}
-
-static inline
-bool wlan_vdev_is_smd_enabled(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_11BN_SMD */
 
 /**
  * wlan_util_vdev_peer_set_param_send() - send peer param

@@ -82,15 +82,8 @@ struct wlan_mlo_link_switch_cnf {
  * @MLO_LINK_SWITCH_REASON_HOST_FORCE: Link switch reason is because of host
  * force active/inactive
  * @MLO_LINK_SWITCH_REASON_T2LM: Link switch reason is because of T2LM
- * @MLO_LINK_SWITCH_REASON_WLM: Link switch reason is because of WLM
  * @MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP: follow up link switch after
  * host force active/inactive
- * @MLO_LINK_SWITCH_REASON_AUX_MLO_QUICK_SWITCH: Link switch reason is because
- * of MLOPS link assessment using AUX for QUICK_SWITCH
- * @MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK: SMD roaming link addition
- * (skip disconnect, connect only)
- * @MLO_LINK_SWITCH_REASON_SMD_ROAM_REMOVE_LINK: SMD roaming link removal
- * (disconnect only, skip connect)
  * @MLO_LINK_SWITCH_REASON_HOST_ADD_LINK: only be used by host to trigger
  * link switch logic for link addition.
  * @MLO_LINK_SWITCH_REASON_MAX: Link switch reason max
@@ -101,11 +94,7 @@ enum wlan_mlo_link_switch_reason {
 	MLO_LINK_SWITCH_REASON_C2_CHANGE   = 3,
 	MLO_LINK_SWITCH_REASON_HOST_FORCE  = 4,
 	MLO_LINK_SWITCH_REASON_T2LM        = 5,
-	MLO_LINK_SWITCH_REASON_WLM         = 6,
 	MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP = 7,
-	MLO_LINK_SWITCH_REASON_AUX_MLO_QUICK_SWITCH = 8,
-	MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK = 100,
-	MLO_LINK_SWITCH_REASON_SMD_ROAM_REMOVE_LINK = 101,
 	MLO_LINK_SWITCH_REASON_HOST_ADD_LINK = 65534,
 	MLO_LINK_SWITCH_REASON_MAX,
 };
@@ -123,8 +112,6 @@ enum wlan_mlo_link_switch_reason {
  * @MLO_LINK_SWITCH_STATE_ABORT_TRANS: Do not allow any further state
  *                                     transition, only allowed to move to
  *                                     MLO_LINK_SWITCH_STATE_IDLE state.
- *
- * Note: Add the new state to mlo_mgr_link_switch_req_state_string().
  */
 enum mlo_link_switch_req_state {
 	MLO_LINK_SWITCH_STATE_IDLE,
@@ -149,8 +136,6 @@ enum mlo_link_switch_req_state {
  * @reason: Link switch reason
  * @restore_vdev_flag: VDEV Flag to be restored post link switch.
  * @link_switch_ts: Link switch timestamp
- * @smd_lnk_sw_trigger: SMD link switch trigger
- * @tgt_ap_link_addr: SMD roaming Target AP link address
  */
 struct wlan_mlo_link_switch_req {
 	uint8_t vdev_id;
@@ -163,10 +148,6 @@ struct wlan_mlo_link_switch_req {
 	enum wlan_mlo_link_switch_reason reason;
 	bool restore_vdev_flag;
 	qdf_time_t link_switch_ts;
-#ifdef WLAN_FEATURE_11BN_SMD
-	bool smd_lnk_sw_trigger;
-	struct qdf_mac_addr tgt_ap_link_addr;
-#endif
 };
 
 /**
@@ -187,50 +168,20 @@ struct mlo_link_switch_stats {
 };
 
 /**
- * struct mlo_vdev_connect_params_cache - Cache for connection parameters
- * during link switch
- * @peer_create: Cached peer creation parameters
- * @vdev_start: Cached VDEV start parameters
- * @peer_assoc: Cached peer assoc parameters
- * @vdev_up: Cached vdev up parameters
- * @unified_connect_in_progress: Flag to track if unified connect
- * is in command path
- */
-struct mlo_vdev_connect_params_cache {
-	struct peer_create_params *peer_create;
-	struct vdev_start_params *vdev_start;
-	struct peer_assoc_params *peer_assoc;
-	struct vdev_up_params *vdev_up;
-	bool unified_connect_in_progress;
-};
-
-/**
- * struct unified_disconnect_params - Disconnect params for link switch
- * @vdev_id: VDEV ID
- * @peer_macaddr: Peer MAC address
- */
-struct unified_disconnect_params {
-	uint8_t vdev_id;
-	struct qdf_mac_addr peer_macaddr;
-};
-
-/**
  * struct mlo_link_switch_context - Link switch data structure.
+ * @links_info: Hold information regarding all the links of ml connection
  * @last_req: Last link switch request received from FW
  * @lswitch_stats: History of the link switch stats
  *                 Includes both fail and success stats.
- * @disconnect_params: Disconnect params for link switch
  * @link_rej_req: Link reject request info
- * @connect_params: Cache for connection parameters during link switch
  */
 struct mlo_link_switch_context {
+	struct mlo_link_info links_info[WLAN_MAX_ML_BSS_LINKS];
 	struct wlan_mlo_link_switch_req last_req;
 	struct mlo_link_switch_stats lswitch_stats[MLO_LINK_SWITCH_CNF_STATUS_MAX];
-	struct unified_disconnect_params disconnect_params;
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 	struct wlan_mlo_link_reject_req link_rej_req;
 #endif
-	struct mlo_vdev_connect_params_cache connect_params;
 };
 
 /**
@@ -259,15 +210,16 @@ void mlo_mgr_update_link_info_reset(struct wlan_objmgr_psoc *psoc,
 /**
  * mlo_mgr_update_ap_link_info() - Update AP links information
  * @vdev: Object Manager vdev
- * @data: Container of data to save
- * @cb_mode: callback mode based on freq
+ * @link_id: Link id of the AP MLD link
+ * @ap_link_addr: AP link addresses
+ * @channel: wlan channel information of the link
  *
  * Update AP link information for each link of AP MLD
  * Return: void
  */
-void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
-				 struct mlo_link_info *data,
-				 uint8_t cb_mode);
+void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
+				 uint8_t *ap_link_addr,
+				 struct wlan_channel channel);
 
 /**
  * mlo_mgr_get_ap_link_info() - Get the pointer of link info matching
@@ -328,25 +280,6 @@ void mlo_mgr_update_ap_channel_info(struct wlan_objmgr_vdev *vdev,
  */
 struct mlo_link_info *mlo_mgr_get_ap_link(struct wlan_objmgr_vdev *vdev);
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
-/**
- * mlo_mgr_fetch_cnx_nss_by_bssid() - Fetch connection NSS values by BSSID
- * @vdev: Pointer to the virtual device object
- * @bssid: Pointer to the BSSID MAC address to search for
- * @tx_nss: Pointer to store the transmit NSS value
- * @rx_nss: Pointer to store the receive NSS value
- *
- * This function searches for a link with the specified BSSID in the MLO device
- * context and retrieves the connection's transmit and receive NSS values.
- *
- * Return: QDF_STATUS_SUCCESS if the BSSID is found and NSS values are retrieved
- *         QDF_STATUS_E_NULL_VALUE if vdev or mlo_dev_ctx is NULL
- *         QDF_STATUS_E_NOENT if the BSSID is not found in any link
- */
-QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
-					  struct qdf_mac_addr *bssid,
-					  uint8_t *tx_nss, uint8_t *rx_nss);
-
 /**
  * mlo_mgr_link_rejection_handler() - Link rejection handler
  * @vdev: Object Manager vdev
@@ -359,6 +292,7 @@ QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
  *
  * Return: none
  */
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 void
 mlo_mgr_link_rejection_handler(struct wlan_objmgr_vdev *vdev,
 			       struct mlo_link_info *rejected_link_info,
@@ -436,10 +370,6 @@ struct mlo_link_info*
 mlo_mgr_get_ap_link_by_link_id(struct wlan_mlo_dev_context *mlo_dev_ctx,
 			       int link_id);
 
-struct mlo_link_info*
-mlo_mgr_get_ap_link_by_vdev_id(struct wlan_mlo_dev_context *mlo_dev_ctx,
-			       int vdev_id);
-
 /**
  * mlo_mgr_if_freq_n_inactive_links_freq_same() - API to check if the given
  * freq and ML connection inactive/standby link are on same.
@@ -511,7 +441,7 @@ QDF_STATUS mlo_mgr_link_switch_disconnect_done(struct wlan_objmgr_vdev *vdev,
  *
  * The function will handle the response for set MAC address request sent to FW
  * as part of link switch. If the response is error, then abort the link switch
- * and send the appropriate status to FW
+ * and send the appropirate status to FW
  *
  * Return: QDF_STATUS
  */
@@ -608,15 +538,6 @@ mlo_mgr_link_switch_get_curr_state(struct wlan_mlo_dev_context *mlo_dev_ctx);
 bool mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev);
 
 /**
- * mlo_mgr_is_link_switch_in_progress_by_psoc() - Check link switch
- * is in progress in any vdev of psoc
- * @psoc: psoc object
- *
- * Return: true if any vdev in psoc is doing link switch
- */
-bool mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc);
-
-/**
  * mlo_mgr_link_switch_notification() - Notify MLO manager on start
  * of link switch
  * @vdev: VDEV object manager
@@ -652,15 +573,6 @@ bool mlo_mgr_is_link_switch_on_assoc_vdev(struct wlan_objmgr_vdev *vdev);
  */
 struct wlan_objmgr_vdev *
 mlo_mgr_link_switch_get_assoc_vdev(struct wlan_objmgr_vdev *vdev);
-
-/**
- * mlo_mgr_get_link_switch_last_link_id() - Get last link id of link
- * switching VDEV
- * @vdev: VDEV object manager.
- *
- * Return: uint8_t last link id of link switching vdev
- */
-uint8_t mlo_mgr_get_link_switch_last_link_id(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlo_mgr_ser_link_switch_cmd() - The API will serialize link switch
@@ -736,7 +648,6 @@ mlo_mgr_link_switch_validate_request(struct wlan_objmgr_vdev *vdev,
  */
 QDF_STATUS mlo_mgr_link_switch_request_params(struct wlan_objmgr_psoc *psoc,
 					      void *evt_params);
-
 /**
  * mlo_mgr_link_state_switch_info_handler() - Handle Link State change related
  * information and generate corresponding connectivity logging event
@@ -748,31 +659,6 @@ QDF_STATUS mlo_mgr_link_switch_request_params(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 mlo_mgr_link_state_switch_info_handler(struct wlan_objmgr_psoc *psoc,
 				       struct mlo_link_switch_state_info *info);
-
-/**
- * mlo_mgr_update_links_current_active_state() - Update the current active state
- * of links in an MLO device context based on a provided link bitmap.
- *
- * @psoc: Pointer to the PSOC object
- * @g_mlo_ctx: Pointer to the global MLO manager context
- * @mld_ctx: Pointer to the MLO device context
- * @params: Link state switch params holder
- * @is_async_event: Flag indicating if the update is from an asynchronous event
- *
- * This function iterates through all the links in the given MLO device context
- * and updates their 'is_link_active' flag according to the bits set in the
- * provided active_link_bitmap in @params. It also handles notifications to
- * the OSIF layer and updates the policy manager tables accordingly when
- * applicable based on the @is_async_event flag.
- *
- * Return: None
- */
-void
-mlo_mgr_update_links_current_active_state(struct wlan_objmgr_psoc *psoc,
-					  struct mlo_mgr_context *g_mlo_ctx,
-					  struct wlan_mlo_dev_context *mld_ctx,
-					  struct mlo_link_switch_params *params,
-					  bool is_async_event);
 
 /**
  * mlo_mgr_link_switch_complete() - Link switch complete notification to FW
@@ -833,25 +719,6 @@ mlo_mgr_link_switch_defer_disconnect_req(struct wlan_objmgr_vdev *vdev,
 void
 mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
 					struct wlan_cm_connect_resp *resp);
-
-/**
- * mlo_mgr_link_switch_decide_mac_addr_change() - Decide MAC address change
- *                                                 after link switch disconnect
- * @vdev: vdev object
- * @req: link switch request
- * @new_link_info: link info for the target new link
- *
- * After disconnect completes during a link switch, determines whether a MAC
- * address change is needed before connecting to the new link and proceeds
- * accordingly.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-mlo_mgr_link_switch_decide_mac_addr_change(
-				struct wlan_objmgr_vdev *vdev,
-				struct wlan_mlo_link_switch_req *req,
-				struct mlo_link_info *new_link_info);
 
 /**
  * mlo_mgr_link_switch_init() - API to initialize link switch
@@ -918,196 +785,6 @@ mlo_mgr_update_link_state_delete_flag(
 void mlo_link_recfg_link_switch_timeout(
 		struct wlan_objmgr_psoc *psoc,
 		struct wlan_mlo_dev_context *mlo_dev_ctx);
-
-/*
- * mlo_mgr_is_mlo_vdev_active() - This API checks if the vdev is active vdev
- * @vdev: pointer to vdev object
- *
- * Return: True if vdev is active; false otherwise
- */
-bool mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev);
-
-/**
- * mlo_mgr_is_unified_connect_disconnect_supported() - check if unified
- * connect/disconnect is enabled
- * @psoc: psoc pointer
- *
- * Return: true if enabled, false otherwise
- */
-bool
-mlo_mgr_is_unified_connect_disconnect_supported(struct wlan_objmgr_psoc *psoc);
-
-/**
- * mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled() - Check if MLO
- * unified connect/disconnect is both configured and supported by firmware
- * @psoc: pointer to psoc object
- *
- * This API intersects the MLME configuration setting with firmware service
- * capability to determine if unified connect/disconnect is actually enabled.
- *
- * Return: true if both MLME config is enabled AND firmware supports it,
- *         false otherwise
- */
-bool
-mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
-						struct wlan_objmgr_psoc *psoc);
-
-/**
- * mlo_mgr_cache_peer_create_params() - Cache peer create parameters for
- * unified connect command processing
- * @vdev: pointer to vdev object
- * @peer_create_params: pointer to peer create parameters to cache
- *
- * This API caches peer create parameters in MLO manager context during
- * link switch or unified connect scenarios. The cached parameters will
- * be used later when the actual peer create command needs to be sent.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
-				 struct peer_create_params *peer_create_params);
-
-/**
- * mlo_mgr_cache_vdev_start_params() - Cache vdev start parameters for
- * unified connect command processing
- * @vdev: pointer to vdev object
- * @vdev_start_params: pointer to vdev start parameters to cache
- *
- * This API caches vdev start parameters in MLO manager context during
- * link switch or unified connect scenarios. The cached parameters will
- * be used later when the actual vdev start command needs to be sent.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
-				struct vdev_start_params *vdev_start_params);
-
-/**
- * mlo_mgr_cache_peer_assoc_params() - Cache peer association parameters for
- * unified connect command processing
- * @vdev: pointer to vdev object
- * @peer_assoc_params: pointer to peer association parameters to cache
- *
- * This API caches peer association parameters in MLO manager context during
- * link switch or unified connect scenarios. The cached parameters will
- * be used later when the actual peer association command needs to be sent.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
-				struct peer_assoc_params *peer_assoc_params);
-
-/**
- * mlo_mgr_cache_vdev_up_params() - Cache vdev up parameters for link switch
- * @vdev: VDEV object manager.
- * @param: vdev up parameters to cache.
- *
- * This API caches the vdev up parameters in the MLO link switch context
- * for use during unified connect operations.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlo_mgr_cache_vdev_up_params(struct wlan_objmgr_vdev *vdev,
-					struct vdev_up_params *param);
-
-/**
- * mlo_mgr_cleanup_cached_connect_params() - Cleanup all cached connect params
- * @vdev: Pointer to vdev object
- *
- * This function frees the memory allocated for ALL cached connection parameters
- * (peer_create, vdev_start, peer_assoc, vdev_up) after they have been sent to
- * firmware via unified connect command.
- *
- * Return: None
- */
-void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev);
-
-/*
- * mlo_mgr_get_cached_connect_params() - Get cached connect parameters
- * @vdev: pointer to vdev object
- *
- * This API returns a pointer to the cached connect parameters from MLO context.
- * The caller can use this to access cached peer create, vdev start, peer assoc,
- * and vdev up parameters.
- *
- * Return: Pointer to cached connect parameters on success, NULL on failure
- */
-struct mlo_vdev_connect_params_cache *
-mlo_mgr_get_cached_connect_params(struct wlan_objmgr_vdev *vdev);
-
-/**
- * mlo_mgr_set_unified_connect_in_progress() - Set unified connect in
- * progress flag
- * @vdev: pointer to vdev object
- * @in_progress: true to set flag, false to clear flag
- *
- * This API sets or clears the unified connect in progress flag in MLO context.
- * This flag is used to differentiate between command path and response path
- * for crypto operations during unified connect.
- *
- * Return: None
- */
-void mlo_mgr_set_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev,
-					     bool in_progress);
-
-/**
- * mlo_mgr_is_unified_connect_in_progress() - Check if unified connect is
- * in progress or not
- * @vdev: pointer to vdev object
- *
- * This API checks if unified connect is currently in command path by reading
- * the unified connect in progress flag from MLO context.
- *
- * Return: true if unified connect is in command path, false otherwise
- */
-bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev);
-
-/**
- * mlo_mgr_copy_peer_delete_param_for_link_switch() - Copy peer delete
- * params when link switch is in progress
- * @vdev: VDEV object manager
- * @peer_mac: peer mac address
- *
- * This API copies peer delete parameters to MLO link context when link switch
- * is in progress. The parameters will be used later during link switch
- * processing. Only copies the peer MAC address and vdev_id.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-mlo_mgr_copy_peer_delete_param_for_link_switch(struct wlan_objmgr_vdev *vdev,
-					       uint8_t *peer_mac);
-
-/**
- * mlo_mgr_get_link_switch_peer_mac_addr() - Get cached peer MAC address
- * @vdev: VDEV object manager
- * @peer_mac: Pointer to populate with peer MAC address
- *
- * This API retrieves the cached peer MAC address from MLO link context
- * that was stored for link switch unified disconnect.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-mlo_mgr_get_link_switch_peer_mac_addr(struct wlan_objmgr_vdev *vdev,
-				      struct qdf_mac_addr *peer_mac);
-
-/**
- * mlo_mgr_optimized_link_switch_in_progress() - Check if optimized linkswitch
- * inprogress
- * @psoc: pointer to psoc object
- * @vdev: pointer to vdev object
- *
- * This API checks if linkswitch is inprogress and optimized link switch is
- * supported.
- *
- * Return: true if supported, false otherwise
- */
-bool mlo_mgr_optimized_link_switch_in_progress(struct wlan_objmgr_psoc *psoc,
-					       struct wlan_objmgr_vdev *vdev);
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1209,12 +886,6 @@ mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 
-static inline bool
-mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc)
-{
-	return false;
-}
-
 static inline QDF_STATUS
 mlo_mgr_link_switch_notification(struct wlan_objmgr_vdev *vdev,
 				 struct wlan_mlo_link_switch_req *lswitch_req,
@@ -1233,12 +904,6 @@ static inline struct wlan_objmgr_vdev *
 mlo_mgr_link_switch_get_assoc_vdev(struct wlan_objmgr_vdev *vdev)
 {
 	return NULL;
-}
-
-static inline
-uint8_t mlo_mgr_get_link_switch_last_link_id(struct wlan_objmgr_vdev *vdev)
-{
-	return WLAN_INVALID_LINK_ID;
 }
 
 static inline QDF_STATUS
@@ -1287,15 +952,6 @@ mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
 }
 
 static inline QDF_STATUS
-mlo_mgr_link_switch_decide_mac_addr_change(
-				struct wlan_objmgr_vdev *vdev,
-				struct wlan_mlo_link_switch_req *req,
-				struct mlo_link_info *new_link_info)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
 mlo_mgr_link_switch_send_cnf_cmd(struct wlan_objmgr_psoc *psoc,
 				 struct wlan_mlo_link_switch_cnf *cnf_params)
 {
@@ -1316,14 +972,6 @@ mlo_mgr_update_csa_link_info(struct wlan_mlo_dev_context *mlo_dev_ctx,
 			     uint8_t link_id)
 {
 	return false;
-}
-
-static inline
-QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
-					  struct qdf_mac_addr *bssid,
-					  uint8_t *tx_nss, uint8_t *rx_nss)
-{
-	return QDF_STATUS_E_NOSUPPORT;
 }
 
 static inline void
@@ -1373,97 +1021,6 @@ static inline void mlo_link_recfg_link_switch_timeout(
 		struct wlan_objmgr_psoc *psoc,
 		struct wlan_mlo_dev_context *mlo_dev_ctx)
 {
-}
-
-static inline bool
-mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-
-static inline bool
-mlo_mgr_is_unified_connect_disconnect_supported(struct wlan_objmgr_psoc *psoc)
-{
-	return false;
-}
-
-static inline bool
-mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
-						struct wlan_objmgr_psoc *psoc)
-{
-	return false;
-}
-
-static inline QDF_STATUS
-mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
-				 struct peer_create_params *peer_create_params)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-mlo_mgr_copy_peer_delete_param_for_link_switch(struct wlan_objmgr_vdev *vdev,
-					       uint8_t *peer_mac)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
-				struct vdev_start_params *vdev_start_params)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-mlo_mgr_get_link_switch_peer_mac_addr(struct wlan_objmgr_vdev *vdev,
-				      struct qdf_mac_addr *peer_mac)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
-				struct peer_assoc_params *peer_assoc_params)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-mlo_mgr_cache_vdev_up_params(struct wlan_objmgr_vdev *vdev,
-			     struct vdev_up_params *param)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline void
-mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
-{
-}
-
-static inline struct mlo_vdev_connect_params_cache *
-mlo_mgr_get_cached_connect_params(struct wlan_objmgr_vdev *vdev)
-{
-	return NULL;
-}
-
-static inline
-void mlo_mgr_set_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev,
-					     bool in_progress)
-{
-}
-
-static inline
-bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-
-static inline
-bool mlo_mgr_optimized_link_switch_in_progress(struct wlan_objmgr_psoc *psoc,
-					       struct wlan_objmgr_vdev *vdev)
-{
-	return false;
 }
 #endif
 #endif

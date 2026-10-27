@@ -120,11 +120,12 @@
  * @WLAN_IPA_UC_OPCODE_UC_READY: IPA UC ready indication
  * @WLAN_IPA_FILTER_RSV_NOTIFY: OPT WIFI DP filter reserve notification
  * @WLAN_IPA_FILTER_REL_NOTIFY: OPT WIFI DP filter release notification
+ * @WLAN_IPA_SMMU_MAP: IPA SMMU map call
+ * @WLAN_IPA_SMMU_UNMAP: IPA SMMU unmap call
  * @WLAN_IPA_CTRL_TX_REINJECT: REINJECT TO TX
  * @WLAN_IPA_CTRL_FILTER_DEL_NOTIFY: OPT WIFI DP CTRL filter delete notification
  * @WLAN_IPA_CTRL_FILTER_HIGH_TPUT_NOTIFY: OPT WIFI DP CTRL filter
  * delete notification in high TPUT
- * @WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY: TX pkt classify info idx notification
  * @WLAN_IPA_UC_OPCODE_MAX: IPA UC max operation code
  */
 enum wlan_ipa_uc_op_code {
@@ -141,10 +142,11 @@ enum wlan_ipa_uc_op_code {
 	WLAN_IPA_UC_OPCODE_UC_READY = 8,
 	WLAN_IPA_FILTER_RSV_NOTIFY = 9,
 	WLAN_IPA_FILTER_REL_NOTIFY = 10,
+	WLAN_IPA_SMMU_MAP = 11,
+	WLAN_IPA_SMMU_UNMAP = 12,
 	WLAN_IPA_CTRL_TX_REINJECT = 13,
 	WLAN_IPA_CTRL_FILTER_DEL_NOTIFY = 14,
 	WLAN_IPA_CTRL_FILTER_HIGH_TPUT_NOTIFY = 15,
-	WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY = 16,
 	/* keep this last */
 	WLAN_IPA_UC_OPCODE_MAX
 };
@@ -269,18 +271,6 @@ enum wlan_ipa_init_state {
 	WLAN_IPA_STATE_SETUP_DONE = 2,
 	WLAN_IPA_STATE_PIPE_CONNECTION_DONE = 3,
 	WLAN_IPA_STATE_PIPE_ENABLED = 4
-};
-
-/**
- * enum wlan_ipa_work_flag: flag to indicated works
- * @WLAN_IPA_FLAG_MSG_USES_LIST: list uses in work msg
- * @WLAN_IPA_FLAG_MSG_USES_LIST_FLT_DEL: to notify ctrl flt delete
- * @WLAN_IPA_FLAG_MSG_TX_PKT_CLASSIFY: to send tx pkt classify info
- */
-enum wlan_ipa_work_flag {
-	WLAN_IPA_FLAG_MSG_USES_LIST = 0x1,
-	WLAN_IPA_FLAG_MSG_USES_LIST_FLT_DEL = 0x2,
-	WLAN_IPA_FLAG_MSG_TX_PKT_CLASSIFY = 0x4
 };
 
 /**
@@ -474,9 +464,6 @@ struct wlan_ipa_priv;
  * @bssid: BSSID. valid only for sta iface ctx
  * @is_authenticated: is peer authenticated
  * @alt_pipe: Indicate whether the interface uses alternate TX pipe
- * @is_ml_sap: Boolean value to indicate if iface is a multi-link SAP interface
- * @ml_sap_ifname: If a multi-link SAP interface, stores the ifname requested by
- * IPA driver.
  */
 struct wlan_ipa_iface_context {
 	struct wlan_ipa_priv *ipa_ctx;
@@ -498,13 +485,6 @@ struct wlan_ipa_iface_context {
 	uint8_t is_authenticated;
 #ifdef IPA_WDI3_TX_TWO_PIPES
 	bool alt_pipe;
-#endif
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-	bool is_ml_sap;
-	/* In case of multi-link SAP interface, ifname is requested to
-	 * be the in the format of "basename_vdevid" by IPA driver.
-	 */
-	char ml_sap_ifname[IPA_RESOURCE_NAME_MAX];
 #endif
 };
 
@@ -557,13 +537,11 @@ struct wlan_ipa_stats {
  * @is_reserved: STA reserved flag
  * @is_authenticated: is peer authenticated
  * @mac_addr: Station mac address
- * @session_id: vdev id of which STA is connected to
  */
 struct ipa_uc_stas_map {
 	bool is_reserved;
 	struct qdf_mac_addr mac_addr;
 	uint8_t is_authenticated;
-	uint8_t session_id;
 };
 
 /**
@@ -679,7 +657,6 @@ struct uc_rm_work_struct {
  * @op_code: IPA Operation type
  * @hdl: handle of filter deleted
  * @result: result of deletion
- * @rsvd: reserved
  */
 struct msg_elem {
 	uint8_t vdev_id;
@@ -687,7 +664,6 @@ struct msg_elem {
 	uint16_t op_code;
 	uint32_t hdl;
 	uint16_t result;
-	uint16_t rsvd;
 };
 
 /**
@@ -809,7 +785,6 @@ struct wlan_ipa_tx_desc {
 typedef QDF_STATUS (*wlan_ipa_softap_xmit)(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 typedef void (*wlan_ipa_send_to_nw)(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 typedef bool (*wlan_ipa_driver_unloading)(void);
-typedef bool (*wlan_ipa_is_mlo_vdev)(uint8_t vdev_id);
 
 /**
  * typedef wlan_ipa_rps_enable - Enable/disable RPS for adapter using vdev id
@@ -973,7 +948,6 @@ struct wlan_ipa_priv {
 	qdf_ipa_wdi_in_params_t cons_pipe_in;
 	qdf_ipa_wdi_in_params_t prod_pipe_in;
 	bool uc_loaded;
-	bool uc_load_handled;
 	bool wdi_enabled;
 	bool over_gsi;
 	qdf_mc_timer_t rt_debug_fill_timer;
@@ -1035,21 +1009,11 @@ struct wlan_ipa_priv {
 	qdf_wake_lock_t opt_dp_wake_lock;
 	struct opt_dp_ctrl_stats ctrl_stats;
 	qdf_runtime_lock_t opt_dp_runtime_lock;
-	struct qdf_delayed_work ipa_tx_comp_delayed_work;
-#ifdef CONFIG_BORON
-	qdf_atomic_t tx_pkt_classify_info_set;
-#endif
 #endif
 #if defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 	struct wlan_ipa_evt_wq *ipa_evt_wq;
 #endif
-	qdf_atomic_t ipa_tx_pending;
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-	/* callback to get if vdev is mlo vdev by vdev id */
-	wlan_ipa_is_mlo_vdev is_mlo_vdev;
-#endif
-	qdf_atomic_t ipa_suspend_state;
-	uint32_t l3_hdr_padding_len;
+	bool ipa_tx_pending;
 };
 
 #define WLAN_IPA_WLAN_FRAG_HEADER        sizeof(struct frag_header)
@@ -1092,8 +1056,6 @@ static inline char *wlan_ipa_wlan_event_to_str(qdf_ipa_wlan_event event)
 	switch (event) {
 	CASE_RETURN_STRING(QDF_IPA_CLIENT_CONNECT);
 	CASE_RETURN_STRING(QDF_IPA_CLIENT_DISCONNECT);
-	CASE_RETURN_STRING(QDF_IPA_SW_ROUTING_ENABLE);
-	CASE_RETURN_STRING(QDF_IPA_SW_ROUTING_DISABLE);
 	CASE_RETURN_STRING(QDF_IPA_AP_CONNECT);
 	CASE_RETURN_STRING(QDF_IPA_AP_DISCONNECT);
 	CASE_RETURN_STRING(QDF_IPA_STA_CONNECT);

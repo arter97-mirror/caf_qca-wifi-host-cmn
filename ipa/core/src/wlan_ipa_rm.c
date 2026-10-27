@@ -147,8 +147,7 @@ bool wlan_ipa_set_perf_level_bw_enabled(struct wlan_ipa_priv *ipa_ctx)
 	 * b. IPA clk scaling is _not_ enabled.
 	 * c. IPA force voting is enabled.
 	 */
-	return (ipa_ctx->config) &&
-	       wlan_ipa_is_enabled(ipa_ctx->config) &&
+	return wlan_ipa_is_enabled(ipa_ctx->config) &&
 	       !wlan_ipa_is_clk_scaling_enabled(ipa_ctx->config) &&
 	       ipa_ctx->config->ipa_force_voting;
 }
@@ -200,6 +199,13 @@ void wlan_ipa_init_metering(struct wlan_ipa_priv *ipa_ctx)
 {
 	qdf_event_create(&ipa_ctx->ipa_uc_sharing_stats_comp);
 	qdf_event_create(&ipa_ctx->ipa_uc_set_quota_comp);
+}
+#endif
+
+#ifdef IPA_OPT_WIFI_DP
+void wlan_ipa_add_rem_flt_cb_event(struct wlan_ipa_priv *ipa_ctx)
+{
+	qdf_event_create(&ipa_ctx->ipa_flt_evnt);
 }
 #endif
 
@@ -258,8 +264,7 @@ QDF_STATUS wlan_ipa_wdi_rm_request(struct wlan_ipa_priv *ipa_ctx)
 
 	if (ipa_ctx->wake_lock_released) {
 		qdf_wake_lock_acquire(&ipa_ctx->wake_lock,
-				      WIFI_POWER_EVENT_WAKELOCK_IPA,
-				      QDF_WAKE_TIME_DEFINED);
+				      WIFI_POWER_EVENT_WAKELOCK_IPA);
 		ipa_ctx->wake_lock_released = false;
 	}
 	qdf_spin_unlock_bh(&ipa_ctx->rm_lock);

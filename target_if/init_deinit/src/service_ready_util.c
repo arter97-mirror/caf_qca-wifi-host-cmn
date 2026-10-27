@@ -26,7 +26,6 @@
 #include <wlan_reg_ucfg_api.h>
 #include <target_type.h>
 #include <qdf_module.h>
-#include "wifi_pos_api.h"
 
 QDF_STATUS init_deinit_chainmask_table_alloc(
 		struct wlan_psoc_host_service_ext_param *ser_ext_par)
@@ -691,32 +690,6 @@ exit:
 	return qdf_status_to_os_return(status);
 }
 
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
-int init_deinit_populate_rtt_measurement_caps(struct wlan_objmgr_psoc *psoc,
-					      wmi_unified_t handle,
-					      uint8_t *event)
-{
-	QDF_STATUS status = QDF_STATUS_E_FAILURE;
-	struct wifi_pos_pmsr_fw_caps *fw_caps;
-
-	status = wifi_pos_get_pmsr_fw_caps(psoc, &fw_caps);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		target_if_err("failed to get pmsr fw caps");
-		return qdf_status_to_os_return(QDF_STATUS_E_FAILURE);
-	}
-
-	status = wmi_extract_rtt_peer_meas_caps_service_ready_ext2(
-						handle, event,
-						fw_caps);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		target_if_err("Extract RTT measurement caps failed");
-		return qdf_status_to_os_return(status);
-	}
-
-	return 0;
-}
-#endif
-
 int init_deinit_populate_aux_dev_cap_ext2(struct wlan_objmgr_psoc *psoc,
 					  wmi_unified_t handle, uint8_t *event,
 					  struct tgt_info *info)
@@ -762,51 +735,6 @@ free_and_return:
 
 	return qdf_status_to_os_return(status);
 }
-
-#ifdef FEATURE_WLAN_TX_POWERBOOST
-int init_deinit_populate_power_boost_cap_ext2(wmi_unified_t wmi_handle,
-						uint8_t *event,
-						struct tgt_info *info)
-{
-	bool pb_cap = false;
-	struct wlan_objmgr_psoc *psoc;
-	uint32_t num_phy_reg_cap;
-	uint8_t phy_idx = 0;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-
-	if (!event) {
-		target_if_err("TPB: event buffer is null");
-		return -EINVAL;
-	}
-
-	psoc = target_if_get_psoc_from_scn_hdl(wmi_handle->scn_handle);
-	if (!psoc) {
-		target_if_err("TPB: psoc is null");
-		return -EINVAL;
-	}
-
-	num_phy_reg_cap = info->service_ext_param.num_phy;
-	if (num_phy_reg_cap > PSOC_MAX_PHY_REG_CAP) {
-		target_if_err("TPB: Invalid num_phy_reg_cap %d",
-				num_phy_reg_cap);
-		return -EINVAL;
-	}
-
-	/*
-	 * For each phy_idx, ANN must be enabled, hence only check for
-	 * phy_idx = 0
-	 */
-	status = wmi_extract_power_boost_capability(
-			wmi_handle, event, phy_idx, &pb_cap);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		target_if_err("TPB: failed to parse power_boost cap ext2");
-		return qdf_status_to_os_return(status);
-	}
-
-	info->service_ext2_param.tx_powerboost = pb_cap;
-	return 0;
-}
-#endif
 
 QDF_STATUS init_deinit_dbr_ring_cap_free(
 		struct target_psoc_info *tgt_psoc_info)

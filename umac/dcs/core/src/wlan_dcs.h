@@ -32,25 +32,12 @@
 		QDF_TRACE_INFO(QDF_MODULE_ID_DCS, ## args)
 #define dcs_err(args ...) \
 		QDF_TRACE_ERROR(QDF_MODULE_ID_DCS, ## args)
-#define dcs_debug_rl(args ...) \
-		QDF_TRACE_DEBUG_RL(QDF_MODULE_ID_DCS, ## args)
-#define dcs_err_rl(args ...) \
-		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_DCS, ## args)
 
 #define WLAN_DCS_MAX_PDEVS 3
-
-/* Invalid VDEV ID marker for DCS tracking */
-#define DCS_INVALID_VDEV_ID 0xFF
 
 #define DCS_TX_MAX_CU  30
 #define MAX_DCS_TIME_RECORD 10
 #define DCS_FREQ_CONTROL_TIME (5 * 60 * 1000)
-
-/*
- * The user‑triggered DCS enable/disable interval should be greater
- * than 200 ms
- */
-#define WLAN_DCS_ENABLE_DISABLE_EXPIRY_TIME 200
 
 /**
  * enum wlan_dcs_mode - vdev operating mode for DCS
@@ -70,100 +57,6 @@ enum wlan_dcs_mode {
 	DCS_GO,
 	MAX_DCS_MODE_NUM,
 };
-
-/**
- * dcs_sanitize_quotes() - Sanitize quoted configuration string
- * @raw: pointer to raw configuration string
- *
- * This helper function removes leading and trailing quotes from a
- * configuration string returned by cfg_get(). It also performs basic
- * validation to ensure the sanitized string is non-empty and not a
- * duplicate/invalid entry.
- *
- * Return: pointer to sanitized string if valid, NULL otherwise
- */
-static inline char *dcs_sanitize_quotes(char *raw)
-{
-	size_t len;
-
-	if (!raw)
-		return NULL;
-
-	len = strlen(raw);
-	if (len == 0)
-		return NULL;
-
-	if (raw[0] == '"') {
-		raw++;
-		len--;
-	}
-
-	if (len > 0 && raw[len - 1] == '"') {
-		raw[len - 1] = '\0';
-		len--;
-	}
-
-	if (len == 0)
-		return NULL;
-
-	return raw;
-}
-
-#define DCS_CFG_GET(psoc, CFG, type, array)                             \
-do {                                                                    \
-	uint8_t i;                                                      \
-	QDF_STATUS status;                                              \
-	type *arr_ = (array);                                           \
-	void *psoc_ = (psoc);                                           \
-	qdf_size_t out_size = 0;                                        \
-	uint32_t out[MAX_DCS_MODE_NUM];                                 \
-	char *raw;                                                      \
-									\
-	if (!arr_) {                                                    \
-		dcs_err("%s NULL arr_", #CFG);                          \
-		break;                                                  \
-	}                                                               \
-									\
-	/* Initialize defaults */                                       \
-	for (i = 0; i < MAX_DCS_MODE_NUM; i++)                          \
-		arr_[i] = (type)(CFG_DCS_##CFG##_DEFAULT);              \
-									\
-	if (!psoc_) {                                                   \
-		dcs_err("NULL psoc");                                   \
-		break;                                                  \
-	}                                                               \
-	raw  = (char *)cfg_get(psoc_, CFG_DCS_##CFG);                   \
-	if (!raw) {                                                     \
-		dcs_err("%s raw=NULL", #CFG);                           \
-		break;                                                  \
-	}                                                               \
-									\
-	char *str = dcs_sanitize_quotes(raw);                           \
-	if (!str) {                                                     \
-		dcs_debug("%s NULL", #CFG);                             \
-		break;                                                  \
-	}                                                               \
-									\
-	/* Parse sanitized string */                                    \
-	status = qdf_uint32_array_parse(str, out, MAX_DCS_MODE_NUM,     \
-					&out_size);                     \
-	if (QDF_IS_STATUS_ERROR(status) || out_size == 0) {             \
-		dcs_err("%s=%s parse failed, use default",              \
-			#CFG, raw);                                     \
-		break;                                                  \
-	}                                                               \
-									\
-	dcs_debug("%s=%s", #CFG, str);                                  \
-									\
-	/* Range check */                                               \
-	for (i = 0; i < out_size; i++) {                                \
-		if (out[i] < (CFG_DCS_##CFG##_MIN))                     \
-			out[i] = (CFG_DCS_##CFG##_MIN);                 \
-		else if (out[i] > (CFG_DCS_##CFG##_MAX))                \
-			out[i] = (CFG_DCS_##CFG##_MAX);                 \
-		arr_[i] = (type)out[i];                                 \
-	}                                                               \
-} while (0)
 
 /**
  * struct wlan_dcs_type_bitmap - types of DCS interference bitmap
@@ -195,7 +88,8 @@ enum wlan_dcs_debug_level {
 };
 
 /**
- * struct dcs_im_stats - define dcs interference mitigation stats
+ * struct pdev_dcs_im_stats - define dcs interference mitigation
+ *                            stats in pdev object
  * @prev_dcs_im_stats: previous statistics at last time
  * @user_dcs_im_stats: statistics requested from userspace
  * @dcs_ch_util_im_stats: chan utilization statistics
@@ -203,7 +97,7 @@ enum wlan_dcs_debug_level {
  *                detected within detection window
  * @im_samp_cnt: sample counter
  */
-struct dcs_im_stats {
+struct pdev_dcs_im_stats {
 	struct wlan_host_dcs_im_tgt_stats prev_dcs_im_stats;
 	struct wlan_host_dcs_im_user_stats user_dcs_im_stats;
 	struct wlan_host_dcs_ch_util_stats dcs_ch_util_im_stats;
@@ -212,10 +106,9 @@ struct dcs_im_stats {
 };
 
 /**
- * struct core_dcs_params - define dcs configuration parameters
+ * struct pdev_dcs_params - define dcs configuration parameter in pdev object
  * @dcs_enable_cfg: dcs enable from ini config
  * @dcs_enable: dcs enable from ucfg config
- * @dcs_enable_timestamp: dcs enable timestamp
  * @dcs_algorithm_process: do dcs algorithm process or not
  * @force_disable_algorithm: disable dcs algorithm forcely
  * @dcs_debug: dcs debug trace level
@@ -230,11 +123,13 @@ struct dcs_im_stats {
  * @tx_err_threshold: transmission failure rate threshold
  * @user_request_count: counter of stats requested from userspace
  * @notify_user: whether to notify userspace
+ * @dcs_enable_cfg_per_mode: dcs enable per mode from ini config
+ * @intfr_detection_threshold_per_mode: interference detection threshold per
+ * mode
  */
-struct core_dcs_params {
+struct pdev_dcs_params {
 	uint8_t dcs_enable_cfg;
 	uint8_t dcs_enable;
-	uint32_t dcs_enable_timestamp;
 	bool dcs_algorithm_process;
 	bool force_disable_algorithm;
 	enum wlan_dcs_debug_level dcs_debug;
@@ -249,10 +144,15 @@ struct core_dcs_params {
 	uint32_t tx_err_threshold;
 	uint32_t user_request_count;
 	uint8_t notify_user;
+#ifdef WLAN_FEATURE_VDEV_DCS
+	union wlan_dcs_cfg dcs_enable_cfg_per_mode[MAX_DCS_MODE_NUM];
+	uint8_t intfr_detection_threshold_per_mode[MAX_DCS_MODE_NUM];
+#endif
 };
 
 /**
- * struct dcs_freq_ctrl_params - define dcs frequency control parameters
+ * struct pdev_dcs_freq_ctrl_params - define dcs frequency control parameter
+ *                                    in pdebv object
  * @disable_threshold_per_5mins: in five minutes, if dcs happen more than
  *                               threshold, then disable dcs for some time
  * @restart_delay: when dcs happen more than threshold in five minutes,
@@ -261,7 +161,7 @@ struct core_dcs_params {
  * @dcs_happened_count: dcs happened count
  * @disable_delay_process: in dcs disable delay process or not
  */
-struct dcs_freq_ctrl_params {
+struct pdev_dcs_freq_ctrl_params {
 	uint8_t disable_threshold_per_5mins;
 	uint32_t restart_delay;
 	unsigned long timestamp[MAX_DCS_TIME_RECORD];
@@ -270,15 +170,13 @@ struct dcs_freq_ctrl_params {
 };
 
 /**
- * struct core_dcs_timer_args - define dcs core timer args
+ * struct pdev_dcs_timer_args - define pdev dcs timer args
  * @psoc: psoc pointer
  * @pdev_id: pdev id
- * @vdev_id: vdev id
  */
-struct core_dcs_timer_args {
+struct pdev_dcs_timer_args {
 	struct wlan_objmgr_psoc *psoc;
-	uint8_t pdev_id;
-	uint8_t vdev_id;
+	uint32_t pdev_id;
 };
 
 /**
@@ -291,7 +189,6 @@ struct psoc_dcs_cbk {
 	void *arg;
 };
 
-#define DCS_INVALID_PDEV_ID 0xFF
 #define WLAN_DCS_MAX_STA_NUM  1
 #define WLAN_DCS_MAX_SAP_NUM  2
 #define WLAN_DCS_AFC_PREFER_BW  CH_WIDTH_80MHZ
@@ -339,7 +236,7 @@ struct dcs_afc_select_chan_cbk {
 };
 
 /**
- * struct dcs_core_priv_obj  - define dcs core priv
+ * struct dcs_pdev_priv_obj  - define dcs pdev priv
  * @dcs_host_params: dcs host configuration parameter
  * @dcs_im_stats: dcs im statistics
  * @dcs_freq_ctrl_params: dcs frequency control parameter
@@ -348,40 +245,18 @@ struct dcs_afc_select_chan_cbk {
  * @lock: lock to protect dcs pdev priv
  * @requestor_vdev_id: user request vdev id
  * @user_cb: user request callback
- * @cw_int: last FW-reported CW interference info for this pdev
  */
-struct dcs_core_priv_obj {
-	struct core_dcs_params dcs_host_params;
-	struct dcs_im_stats dcs_im_stats;
-	struct dcs_freq_ctrl_params dcs_freq_ctrl_params;
+struct dcs_pdev_priv_obj {
+	struct pdev_dcs_params dcs_host_params;
+	struct pdev_dcs_im_stats dcs_im_stats;
+	struct pdev_dcs_freq_ctrl_params dcs_freq_ctrl_params;
 	qdf_timer_t dcs_disable_timer;
-	struct core_dcs_timer_args dcs_timer_args;
+	struct pdev_dcs_timer_args dcs_timer_args;
 	qdf_spinlock_t lock;
 	uint8_t requestor_vdev_id;
 	void (*user_cb)(uint8_t vdev_id,
 			struct wlan_host_dcs_im_user_stats *stats,
 			int status);
-	struct wlan_host_dcs_cw_int cw_int;
-};
-
-/**
- * struct dcs_pdev_priv_obj  - define dcs pdev priv
- * @dcs_core: Pointer to DCS core private object
- * @pdev_id: PDEV ID
- */
-struct dcs_pdev_priv_obj {
-	struct dcs_core_priv_obj *dcs_core;
-	uint8_t pdev_id;
-};
-
-/**
- * struct dcs_vdev_priv_obj  - define dcs vdev priv
- * @dcs_core: Pointer to DCS core private object
- * @vdev: Pointer to VDEV object
- */
-struct dcs_vdev_priv_obj {
-	struct dcs_core_priv_obj *dcs_core;
-	struct wlan_objmgr_vdev *vdev;
 };
 
 /**
@@ -430,102 +305,18 @@ enum wlan_dcs_chan_seg {
 	   ((__freq) <= ((__cfreq1) + (6 * WLAN_DCS_CHAN_FREQ_OFFSET)))))))
 
 /**
- * struct psoc_dcs_params - define per-mode DCS configuration parameters
- * @dcs_debug: DCS debug trace level
- * @dcs_enable_cfg: DCS enable configuration per mode
- *                  Controls which interference types are enabled
- *                  for each mode (SAP, XPAN, XR, GO)
- * @intfr_detection_threshold: Interference detection threshold per mode
- *                             Number of times interference must be
- *                             detected within the detection window
- *                             to trigger DCS
- * @dcs_trnsprt_rjt_threshold_cu: Transport reject threshold per mode
- *                                Channel utilization threshold for
- *                                transport rejection
- * @dcs_coch_intfr_threshold: Co-channel interference threshold per mode
- *                            Threshold for detecting co-channel
- *                            interference
- * @dcs_tx_err_threshold: Transmission error threshold per mode
- *                        Threshold for transmission failure rate
- * @dcs_phy_err_penalty: PHY error penalty per mode
- *                       Penalty for each PHY error detected
- * @dcs_phy_err_threshold: PHY error threshold per mode
- *                         Threshold for PHY errors
- * @user_max_cu: Maximum channel utilization per mode
- *               Maximum allowed channel utilization due to AP's
- *               TX and RX
- * @dcs_radar_err_threshold: Radar error threshold per mode
- *                           Threshold for radar errors
- * @dcs_intfr_detection_window: Interference detection window per mode
- *                              Sampling window for interference
- *                              detection
- * @dcs_disable_thresh_per_5mins: DCS disable threshold per mode
- *                                If DCS happens more than this
- *                                threshold in 5 minutes, disable DCS
- * @dcs_restart_delay: DCS restart delay per mode
- *                     When DCS is disabled, wait this many minutes
- *                     before re-enabling
- * @dcs_disable_algorithm: DCS algorithm disable flag per mode
- *                         When true, disables DCS algorithm for
- *                         the specific mode
- */
-struct psoc_dcs_params {
-	enum wlan_dcs_debug_level dcs_debug;
-	union wlan_dcs_cfg dcs_enable_cfg[MAX_DCS_MODE_NUM];
-	uint8_t intfr_detection_threshold[MAX_DCS_MODE_NUM];
-	uint32_t dcs_trnsprt_rjt_threshold_cu[MAX_DCS_MODE_NUM];
-	uint32_t dcs_coch_intfr_threshold[MAX_DCS_MODE_NUM];
-	uint32_t dcs_tx_err_threshold[MAX_DCS_MODE_NUM];
-	uint32_t dcs_phy_err_penalty[MAX_DCS_MODE_NUM];
-	uint32_t dcs_phy_err_threshold[MAX_DCS_MODE_NUM];
-	uint32_t user_max_cu[MAX_DCS_MODE_NUM];
-	uint32_t dcs_radar_err_threshold[MAX_DCS_MODE_NUM];
-	uint32_t dcs_intfr_detection_window[MAX_DCS_MODE_NUM];
-	uint8_t dcs_disable_thresh_per_5mins[MAX_DCS_MODE_NUM];
-	uint32_t dcs_restart_delay[MAX_DCS_MODE_NUM];
-	bool dcs_disable_algorithm[MAX_DCS_MODE_NUM];
-};
-
-/**
  * struct dcs_psoc_priv_obj - define dcs psoc priv
  * @dcs_pdev_priv: dcs pdev priv
  * @dcs_cbk: dcs callback
  * @switch_chan_cb: callback for switching channel
  * @afc_sel_chan_cbk: callback for afc channel selection
- * @dcs_per_mode_param: per-mode DCS configuration parameters
- * @dcs_enable_cfg: enable dcs for pdev mode DCS
- * @intfr_detection_threshold:Interference detection threshold
- *                            for pdev mode DCS
- * @dcs_enable_count: Number of VDEVs with DCS currently enabled
- * @enabled_vdev_ids: Array of VDEV IDs that have DCS enabled
- * @dcs_psoc_lock: Lock to protect VDEV tracking data
  */
 struct dcs_psoc_priv_obj {
 	struct dcs_pdev_priv_obj dcs_pdev_priv[WLAN_DCS_MAX_PDEVS];
 	struct psoc_dcs_cbk dcs_cbk;
 	dcs_switch_chan_cb switch_chan_cb;
 	struct dcs_afc_select_chan_cbk afc_sel_chan_cbk;
-	struct psoc_dcs_params dcs_per_mode_param;
-	uint8_t dcs_enable_cfg;
-	uint8_t intfr_detection_threshold;
-	uint8_t dcs_enable_count;
-	uint8_t enabled_vdev_ids[WLAN_DCS_MAX_VDEVS];
-	qdf_spinlock_t dcs_psoc_lock;
 };
-
-/**
- * dcs_init_params_by_mode() - Init DCS params for given mode
- * @psoc: psoc object
- * @dcs_core: DCS core private object
- * @dcs_mode: DCS mode (SAP, XPAN, XR, GO)
- *
- * Copies per-mode config from psoc into core object.
- * Defaults to SAP if mode is invalid.
- */
-void
-dcs_init_params_by_mode(struct wlan_objmgr_psoc *psoc,
-			struct dcs_core_priv_obj *dcs_core,
-			enum wlan_dcs_mode dcs_mode);
 
 /**
  * wlan_dcs_get_pdev_private_obj() - get dcs pdev private object
@@ -538,32 +329,6 @@ dcs_init_params_by_mode(struct wlan_objmgr_psoc *psoc,
  */
 struct dcs_pdev_priv_obj *
 wlan_dcs_get_pdev_private_obj(struct wlan_objmgr_psoc *psoc, uint32_t pdev_id);
-
-/**
- * wlan_dcs_get_vdev_private_obj() - get dcs vdev private object
- * @psoc: psoc pointer
- * @vdev_id: vdev_id
- *
- * API to retrieve the vdev private object from the psoc context
- *
- * Return: vdev private object pointer on success, NULL on error
- */
-struct dcs_vdev_priv_obj *
-wlan_dcs_get_vdev_private_obj(struct wlan_objmgr_psoc *psoc, uint32_t vdev_id);
-
-/**
- * wlan_dcs_get_core_private_obj() - get dcs core object
- * @psoc: psoc pointer
- * @pdev_id: pdev_id
- * @vdev_id: vdev_id
- *
- * API to retrieve the core object based on vdev or pdev
- *
- * Return: core object pointer on success, NULL on error
- */
-struct dcs_core_priv_obj *
-wlan_dcs_get_core_private_obj(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id,
-			      uint8_t vdev_id);
 
 /**
  * dcs_get_trnsprt_switch_rjt_th_cu() - get unused cu threshold
@@ -597,31 +362,6 @@ QDF_STATUS wlan_dcs_attach(struct wlan_objmgr_psoc *psoc);
 QDF_STATUS wlan_dcs_detach(struct wlan_objmgr_psoc *psoc);
 
 /**
- * wlan_dcs_inc_enable_count() - Increment DCS enable count and add VDEV to list
- * @psoc: psoc pointer
- * @vdev_id: VDEV ID to add to enabled list
- *
- * This function increments the DCS enable count and adds the VDEV ID to the
- * enabled VDEV list. It is called when DCS is enabled on a VDEV.
- *
- * Return: void
- */
-void wlan_dcs_inc_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
-
-/**
- * wlan_dcs_dec_enable_count() - Decrement DCS enable count and remove VDEV
- * from list
- * @psoc: psoc pointer
- * @vdev_id: VDEV ID to remove from enabled list
- *
- * This function decrements the DCS enable count and removes the VDEV ID from
- * the enabled VDEV list. It is called when DCS is disabled on a VDEV.
- *
- * Return: void
- */
-void wlan_dcs_dec_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
-
-/**
  * wlan_dcs_cmd_send() - Send dcs command to target_if layer
  * @psoc: psoc pointer
  * @pdev_id: pdev_id
@@ -632,7 +372,7 @@ void wlan_dcs_dec_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
  * return: QDF_STATUS_SUCCESS for success or error code
  */
 QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
-			     uint8_t pdev_id,
+			     uint32_t pdev_id,
 			     bool is_host_pdev_id);
 
 #ifdef WLAN_FEATURE_VDEV_DCS
@@ -650,14 +390,6 @@ QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 				      uint32_t mac_id,
 				      uint8_t vdev_id);
-#else
-static inline
-QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
-				      uint32_t mac_id,
-				      uint8_t vdev_id)
-{
-	return QDF_STATUS_SUCCESS;
-}
 #endif
 
 /**
@@ -668,15 +400,6 @@ QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
  * Return: True/False
  */
 bool wlan_is_vdev_level_dcs_supported(struct wlan_objmgr_psoc *psoc);
-
-/**
- * wlan_is_two_vdev_dcs_supported() - API to check whether concurrent 2 VDEV
- * DCS is supported or not
- * @psoc: pointer to psoc object
- *
- * Return: True/False
- */
-bool wlan_is_two_vdev_dcs_supported(struct wlan_objmgr_psoc *psoc);
 
 /**
  * wlan_dcs_process() - dcs process main entry
@@ -704,21 +427,20 @@ void wlan_dcs_disable_timer_fn(void *dcs_timer_args);
 /**
  * wlan_dcs_clear() - clear dcs information
  * @psoc: psoc pointer
- * @vdev_id: vdev_id
+ * @pdev_id: pdev_id
  *
  * The function gets called to clear dcs information such as dcs
  * frequency control parameters and stop dcs disable timer
  *
  * Return: None
  */
-void wlan_dcs_clear(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
+void wlan_dcs_clear(struct wlan_objmgr_psoc *psoc, uint32_t pdev_id);
 
 /**
  * wlan_dcs_set_algorithm_process() - config dcs event data to do algorithm
  * process or not
  * @psoc: psoc pointer
- * @pdev_id: pdev id
- * @vdev_id: vdev id
+ * @pdev_id: pdev_id
  * @dcs_algorithm_process: dcs algorithm process
  *
  * The function gets called to config dcs event data to do algorithm
@@ -727,41 +449,29 @@ void wlan_dcs_clear(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
  * Return: None
  */
 void wlan_dcs_set_algorithm_process(struct wlan_objmgr_psoc *psoc,
-				    uint8_t pdev_id, uint8_t vdev_id,
+				    uint32_t pdev_id,
 				    bool dcs_algorithm_process);
 
 /**
- * wlan_dcs_get_cw_interference_freq() - get the last FW-reported CW
- * interference channel/freq
- * @psoc: psoc pointer
- * @pdev_id: pdev id
- * @vdev_id: vdev id
- *
- * Return: channel/freq FW last reported CW interference on, or 0 if none
- */
-qdf_freq_t wlan_dcs_get_cw_interference_freq(struct wlan_objmgr_psoc *psoc,
-					     uint8_t pdev_id, uint8_t vdev_id);
-
-/**
- * wlan_dcs_core_obj_lock() - private API to acquire spinlock for core object
- * @dcs_core: pointer to dcs core object
+ * wlan_dcs_pdev_obj_lock() - private API to acquire spinlock at pdev
+ * @dcs_pdev: pointer to dcs pdev object
  *
  * Return: void
  */
-static inline void wlan_dcs_core_obj_lock(struct dcs_core_priv_obj *dcs_core)
+static inline void wlan_dcs_pdev_obj_lock(struct dcs_pdev_priv_obj *dcs_pdev)
 {
-	qdf_spin_lock_bh(&dcs_core->lock);
+	qdf_spin_lock_bh(&dcs_pdev->lock);
 }
 
 /**
- * wlan_dcs_core_obj_unlock() - private api to release spinlock for core object
- * @dcs_core: pointer to dcs core object
+ * wlan_dcs_pdev_obj_unlock() - private api to release spinlock at pdev
+ * @dcs_pdev: pointer to dcs pdev object
  *
  * Return: void
  */
-static inline void wlan_dcs_core_obj_unlock(struct dcs_core_priv_obj *dcs_core)
+static inline void wlan_dcs_pdev_obj_unlock(struct dcs_pdev_priv_obj *dcs_pdev)
 {
-	qdf_spin_unlock_bh(&dcs_core->lock);
+	qdf_spin_unlock_bh(&dcs_pdev->lock);
 }
 
 /**

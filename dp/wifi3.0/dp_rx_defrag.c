@@ -35,9 +35,6 @@
 #include "dp_rx_defrag.h"
 #include "dp_ipa.h"
 #include "dp_rx_buffer_pool.h"
-#ifdef FEATURE_DAL_DP_SUPPORT
-#include "dp_dal_rx.h"
-#endif
 
 const struct dp_rx_defrag_cipher dp_f_ccmp = {
 	"AES-CCM",
@@ -139,8 +136,8 @@ static void dp_rx_return_head_frag_desc(struct dp_txrx_peer *txrx_peer,
 
 		dp_rx_add_to_free_desc_list(&head, &tail,
 					    txrx_peer->rx_tid[tid].head_frag_desc);
-		dp_rx_buffers_replenish_wrapper(soc, pool_id, 1,
-						&head, &tail, false);
+		dp_rx_buffers_replenish(soc, 0, dp_rxdma_srng, rx_desc_pool,
+					1, &head, &tail, false);
 	}
 
 	if (txrx_peer->rx_tid[tid].dst_ring_desc) {
@@ -778,7 +775,7 @@ static QDF_STATUS dp_rx_defrag_tkip_demic(struct dp_soc *soc,
 	QDF_STATUS status;
 	uint32_t pktlen = 0, prev_data_len;
 	uint8_t mic[IEEE80211_WEP_MICLEN];
-	uint8_t mic0[IEEE80211_WEP_MICLEN] = {0};
+	uint8_t mic0[IEEE80211_WEP_MICLEN];
 	qdf_nbuf_t prev = NULL, prev0, next;
 	uint8_t len0 = 0;
 
@@ -808,21 +805,15 @@ static QDF_STATUS dp_rx_defrag_tkip_demic(struct dp_soc *soc,
 			return QDF_STATUS_E_DEFRAG_ERROR;
 		}
 		len0 = dp_f_tkip.ic_miclen - (uint8_t)prev_data_len;
-		if (qdf_nbuf_copy_bits(prev0, qdf_nbuf_len(prev0) - len0, len0,
-				       (caddr_t)mic0) < 0) {
-			dp_err_rl("MIC copy (prev0) failed !");
-			return QDF_STATUS_E_DEFRAG_ERROR;
-		}
+		qdf_nbuf_copy_bits(prev0, qdf_nbuf_len(prev0) - len0, len0,
+				   (caddr_t)mic0);
 		qdf_nbuf_trim_tail(prev0, len0);
 	}
 
-	if (qdf_nbuf_copy_bits(prev, (qdf_nbuf_len(prev) -
-				(dp_f_tkip.ic_miclen - len0)),
-				(dp_f_tkip.ic_miclen - len0),
-				(caddr_t)(&mic0[len0])) < 0) {
-		dp_err_rl("MIC copy (prev) failed !");
-		return QDF_STATUS_E_DEFRAG_ERROR;
-	}
+	qdf_nbuf_copy_bits(prev, (qdf_nbuf_len(prev) -
+			   (dp_f_tkip.ic_miclen - len0)),
+			   (dp_f_tkip.ic_miclen - len0),
+			   (caddr_t)(&mic0[len0]));
 	qdf_nbuf_trim_tail(prev, (dp_f_tkip.ic_miclen - len0));
 	pktlen -= dp_f_tkip.ic_miclen;
 
@@ -950,15 +941,6 @@ dp_rx_construct_fraglist(struct dp_txrx_peer *txrx_peer, int tid,
 		if (hal_rx_msdu_is_wlan_mcast(soc->hal_soc, msdu)) {
 			QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
 				  "Dropping multicast/broadcast fragments");
-			return QDF_STATUS_E_FAILURE;
-		}
-
-		/* Validate buffer has enough data before pulling header */
-		if (soc->rx_pkt_tlv_size + hdrsize > qdf_nbuf_len(msdu)) {
-			QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-				  "%s: hdrsize %u exceeds frag len %u",
-				  __func__, hdrsize,
-				  (uint32_t)qdf_nbuf_len(msdu));
 			return QDF_STATUS_E_FAILURE;
 		}
 
@@ -1132,27 +1114,6 @@ dp_rx_defrag_nwifi_to_8023(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
 	qdf_mem_free(rx_desc_info);
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * dp_rx_defrag_dal_reinject() - Try DAL reinjection for defrag packet
- * @head: Nbuf to be reinjected (non-linear nbuf with fragments in frag_list)
- *
- * Return: true if DAL consumed the packet, false otherwise
- */
-static inline bool dp_rx_defrag_dal_reinject(qdf_nbuf_t head)
-{
-	/* Try to reinject defragmented packet via DAL API for inspection
-	 * head is a non-linear nbuf with fragments in frag_list
-	 */
-	return dp_dal_rx_pkt_reinject(head);
-}
-#else
-static inline bool dp_rx_defrag_dal_reinject(qdf_nbuf_t head)
-{
-	return false;
-}
-#endif
-
 #ifdef RX_DEFRAG_DO_NOT_REINJECT
 /**
  * dp_rx_defrag_deliver() - Deliver defrag packet to stack
@@ -1177,12 +1138,6 @@ static inline void dp_rx_defrag_deliver(struct dp_txrx_peer *txrx_peer,
 	QDF_NBUF_CB_RX_VDEV_ID(head) = vdev->vdev_id;
 	qdf_nbuf_set_tid_val(head, tid);
 	qdf_nbuf_pull_head(head, soc->rx_pkt_tlv_size);
-
-	if (dp_rx_defrag_dal_reinject(head)) {
-		/* DAL consumed the packet, free it */
-		dp_rx_nbuf_free(head);
-		return;
-	}
 
 	DP_RX_LIST_APPEND(deliver_list_head, deliver_list_tail,
 			  head);
@@ -1254,7 +1209,6 @@ dp_rx_reinject_ring_record_entry(struct dp_soc *soc, uint64_t paddr,
 }
 #endif
 
-#ifndef CONFIG_BORON
 /**
  * dp_rx_defrag_reo_reinject() - Reinject the fragment chain back into REO
  * @txrx_peer: Pointer to the txrx_peer
@@ -1368,6 +1322,7 @@ static QDF_STATUS dp_rx_defrag_reo_reinject(struct dp_txrx_peer *txrx_peer,
 					  rx_desc_pool->buf_size, true,
 					  __func__, __LINE__,
 					  DP_RX_IPA_SMMU_MAP_REO_REINJECT);
+	dp_audio_smmu_map(soc, head, rx_desc_pool->buf_size);
 
 	/*
 	 * As part of rx frag handler buffer was unmapped and rx desc
@@ -1442,7 +1397,6 @@ static QDF_STATUS dp_rx_defrag_reo_reinject(struct dp_txrx_peer *txrx_peer,
 	dp_debug("reinjection done !");
 	return QDF_STATUS_SUCCESS;
 }
-#endif /* CONFIG_BORON */
 #endif
 
 /**
@@ -1617,16 +1571,6 @@ QDF_STATUS dp_rx_defrag(struct dp_txrx_peer *txrx_peer, unsigned int tid,
 
 			return QDF_STATUS_E_DEFRAG_ERROR;
 		}
-	}
-
-	/* Validate hdr_space doesn't exceed first fragment's data */
-	if (soc->rx_pkt_tlv_size + hdr_space + sizeof(struct llc_snap_hdr_t) >
-	    qdf_nbuf_len(frag_list_head)) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  "%s: hdr_space %u exceeds frag data len %u",
-			  __func__, hdr_space,
-			  (uint32_t)qdf_nbuf_len(frag_list_head));
-		return QDF_STATUS_E_DEFRAG_ERROR;
 	}
 
 	/* Convert the header to 802.3 header */
@@ -2248,9 +2192,6 @@ uint32_t dp_rx_frag_handle(struct dp_soc *soc, hal_ring_desc_t ring_desc,
 	rx_desc->rx_buf_start = qdf_nbuf_data(msdu);
 
 	tid = hal_rx_mpdu_start_tid_get(soc->hal_soc, rx_desc->rx_buf_start);
-
-	mpdu_desc_info->mpdu_seq =
-		hal_rx_get_rx_sequence(soc->hal_soc, rx_desc->rx_buf_start);
 
 	/* Process fragment-by-fragment */
 	status = dp_rx_defrag_store_fragment(soc, ring_desc,

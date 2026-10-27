@@ -25,11 +25,7 @@
 #include "hal_reo.h"
 
 #define HAL_REO_QUEUE_EXT_DESC 10
-#ifdef CONFIG_BORON
-#define HAL_MAX_REO2SW_RINGS 9
-#else
 #define HAL_MAX_REO2SW_RINGS 8
-#endif
 #define HAL_NUM_RX_RING_PER_IX_MAP 8
 
 #ifdef CONFIG_4_BYTES_TLV_TAG
@@ -57,87 +53,6 @@ static inline void hal_update_stats_counter_index(uint32_t *reo_queue_desc,
 }
 #endif
 
-uint32_t hal_get_reo_reg_base_offset_be(void);
-
-#ifdef CONFIG_BORON
-static inline
-int hal_reo_send_cmd_be(hal_soc_handle_t hal_soc_hdl,
-			hal_ring_handle_t  hal_ring_hdl,
-			enum hal_reo_cmd_type cmd,
-			void *params)
-{
-	return 0;
-}
-
-/* REO status ring routines */
-static inline void
-hal_reo_queue_stats_status_be(hal_ring_desc_t ring_desc,
-			      void *st_handle,
-			      hal_soc_handle_t hal_soc_hdl)
-{
-}
-
-static inline void
-hal_reo_flush_queue_status_be(hal_ring_desc_t ring_desc,
-			      void *st_handle,
-			      hal_soc_handle_t hal_soc_hdl)
-{
-}
-
-static inline void
-hal_reo_flush_cache_status_be(hal_ring_desc_t ring_desc,
-			      void *st_handle,
-			      hal_soc_handle_t hal_soc_hdl)
-{
-}
-
-static inline void
-hal_reo_unblock_cache_status_be(hal_ring_desc_t ring_desc,
-				hal_soc_handle_t hal_soc_hdl,
-				void *st_handle)
-{
-}
-
-static inline void
-hal_reo_flush_timeout_list_status_be(hal_ring_desc_t ring_desc, void *st_handle,
-				     hal_soc_handle_t hal_soc_hdl)
-{
-}
-
-static inline void
-hal_reo_desc_thres_reached_status_be(hal_ring_desc_t ring_desc, void *st_handle,
-				     hal_soc_handle_t hal_soc_hdl)
-{
-}
-
-static inline void
-hal_reo_rx_update_queue_status_be(hal_ring_desc_t ring_desc,
-				  void *st_handle,
-				  hal_soc_handle_t hal_soc_hdl)
-{
-}
-
-/**
- * hal_reo_init_cmd_ring_be() - Initialize descriptors of REO command SRNG
- * with command number
- * @hal_soc_hdl: Handle to HAL SoC structure
- * @hal_ring_hdl: Handle to HAL SRNG structure
- *
- * Return: none
- */
-static inline
-void hal_reo_init_cmd_ring_be(hal_soc_handle_t hal_soc_hdl,
-			      hal_ring_handle_t hal_ring_hdl)
-{
-}
-
-static inline
-uint8_t hal_get_tlv_hdr_size_be(void)
-{
-	return sizeof(struct tlv_32_hdr);
-}
-
-#else
 /* Proto-types */
 uint32_t hal_get_reo_reg_base_offset_be(void);
 
@@ -185,6 +100,4 @@ hal_reo_rx_update_queue_status_be(hal_ring_desc_t ring_desc,
 void hal_reo_init_cmd_ring_be(hal_soc_handle_t hal_soc_hdl,
 			      hal_ring_handle_t hal_ring_hdl);
 uint8_t hal_get_tlv_hdr_size_be(void);
-
-#endif /* !CONFIG_BORON */
 #endif /* _HAL_REO_BE_H_ */

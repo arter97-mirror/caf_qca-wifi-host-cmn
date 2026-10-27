@@ -2,6 +2,7 @@
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
+ *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
@@ -119,7 +120,7 @@ void ucfg_reg_restore_cached_channels(struct wlan_objmgr_pdev *pdev)
  *                                               connection flag
  * @pdev: The physical pdev to get keep_6ghz_sta_cli_connection
  *
- * Return: Return true if keep 6ghz sta cli connection set else return false
+ * Return: Return true if keep 6ghz sta cli connection set else return flase
  */
 bool ucfg_reg_get_keep_6ghz_sta_cli_connection(
 					struct wlan_objmgr_pdev *pdev);
@@ -188,6 +189,14 @@ QDF_STATUS ucfg_reg_set_default_country(struct wlan_objmgr_psoc *psoc,
  */
 QDF_STATUS ucfg_reg_set_country(struct wlan_objmgr_pdev *pdev,
 				uint8_t *country);
+
+/**
+ * ucfg_reg_reset_country() - Reset the regulatory country to default
+ * @psoc: The physical SoC to reset country for
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS ucfg_reg_reset_country(struct wlan_objmgr_psoc *psoc);
 
 /**
  * ucfg_reg_enable_dfs_channels() - Enable the use of DFS channels
@@ -880,102 +889,4 @@ ucfg_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 	return 0;
 }
 #endif
-
-#ifdef FEATURE_WLAN_TX_POWERBOOST
-/**
- * ucfg_reg_txpb_send_dma_addr() - TxPB Send DMA address to Firmware
- * @pdev: pdev pointer
- * @dma: Pointer to DMA addresses
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
-				       struct reg_pdev_pb_dma_buf *dma);
-
-/**
- * ucfg_reg_txpb_send_inference_cmd() - TxPB Send Inference command
- * to Firmware
- * @pdev: pdev pointer
- * @params: Power boost params
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS ucfg_reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
-			 struct reg_txpb_cmd_params *params);
-
-/**
- * ucfg_reg_txpb_register_callback () - add tx powerboost callback
- * @psoc: psoc ptr
- * @cbk: callback
- * @arg: argument
- *
- * Return: void
- */
-void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
-					    void *cbk, void *arg);
-
-/**
- * ucfg_reg_txpb_unregister_callback () - remove tx powerboost callback
- * @psoc: psoc ptr
- *
- * Return: void
- */
-void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc);
-#else
-static inline
-QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
-				       struct reg_pdev_pb_dma_buf *dma)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS ucfg_reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
-			 struct reg_txpb_cmd_params *params)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
-					    void *cbk, void *arg)
-{
-}
-
-static inline
-void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
-{
-}
-#endif
-
-/**
- * ucfg_reg_disable_unii_1_2a_for_current_cc() - Check if disable of UNII 1 and
- * 2A bands  applicable to current country
- *
- * @pdev: Pointer to pdev
- *
- * Return: True if current country is CA else false
- */
-bool ucfg_reg_disable_unii_1_2a_for_current_cc(struct wlan_objmgr_pdev *pdev);
-
-/**
- * ucfg_reg_set_disable_unii_1_2a() - apply disable unii 1 and 2A
- * @pdev: The physical pdev to reduce tx power for
- * @disable_unii_1_2a: true to disable UNII 1/2A band, false to enable
- *
- * This function sets disable_unii_1_2a flag to enable/disable
- * UNII 1/2A band.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS ucfg_reg_set_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev,
-					  bool disable_unii_1_2a);
-
-/**
- * ucfg_reg_get_disable_unii_1_2a() - Get disable unii 1 and 2A
- * @pdev: Pointer to pdev
- *
- * Return: disable_unii_1_2a
- */
-bool ucfg_reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev);
 #endif

@@ -38,11 +38,7 @@ extern "C" {
 #include <linux/usb.h>
 #endif /* HIF_USB */
 #ifdef IPA_OFFLOAD
-#ifndef IPA_SIM
 #include <linux/ipa.h>
-#else
-#include <ipa/ipa.h>
-#endif
 #endif
 #include "cfg_ucfg_api.h"
 #include "qdf_dev.h"
@@ -54,7 +50,7 @@ typedef void __iomem *A_target_id_t;
 typedef void *hif_handle_t;
 
 #if defined(HIF_IPCI) && defined(FEATURE_HAL_DELAYED_REG_WRITE)
-#define HIF_WORK_DRAIN_WAIT_CNT 200
+#define HIF_WORK_DRAIN_WAIT_CNT 50
 
 #define HIF_EP_WAKE_RESET_WAIT_CNT 10
 #endif
@@ -95,8 +91,6 @@ typedef void *hif_handle_t;
 #define HIF_TYPE_QCA5424 36
 #define HIF_TYPE_QCC2072 37
 #define HIF_TYPE_FIG 38
-#define HIF_TYPE_WCN8750 39
-
 
 #define DMA_COHERENT_MASK_DEFAULT   37
 
@@ -105,7 +99,7 @@ typedef void *hif_handle_t;
 #endif
 
 /* enum hif_ic_irq - enum defining integrated chip irq numbers
- * defining irq numbers that can be used by external modules like datapath
+ * defining irq nubers that can be used by external modules like datapath
  */
 enum hif_ic_irq {
 	host2wbm_desc_feed = 16,
@@ -364,11 +358,7 @@ struct qca_napi_stat {
  * instances.
  */
 struct qca_napi_info {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
-	struct net_device   *netdev; /* dummy net_dev ptr */
-#else
 	struct net_device    netdev; /* dummy net_dev */
-#endif
 	void                 *hif_ctx;
 	struct napi_struct   napi;
 	uint8_t              scale;   /* currently same on all instances */
@@ -376,16 +366,12 @@ struct qca_napi_info {
 	uint8_t              cpu;
 	int                  irq;
 	cpumask_t            cpumask;
-	struct qca_napi_stat stats[QDF_MAX_AVAILABLE_CPU];
+	struct qca_napi_stat stats[NR_CPUS];
 #ifdef RECEIVE_OFFLOAD
 	/* will only be present for data rx CE's */
 	void (*offld_flush_cb)(void *);
 	struct napi_struct   rx_thread_napi;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
-	struct net_device    *rx_thread_netdev;
-#else
 	struct net_device    rx_thread_netdev;
-#endif
 #endif /* RECEIVE_OFFLOAD */
 	qdf_lro_ctx_t        lro_ctx;
 #ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
@@ -467,7 +453,7 @@ struct qca_napi_data {
 	uint32_t             exec_map;
 	uint32_t             user_cpu_affin_mask;
 	struct qca_napi_info *napis[CE_COUNT_MAX];
-	struct qca_napi_cpu  napi_cpu[QDF_MAX_AVAILABLE_CPU];
+	struct qca_napi_cpu  napi_cpu[NR_CPUS];
 	int                  lilcl_head, bigcl_head;
 	enum qca_napi_tput_state napi_mode;
 	struct qdf_cpuhp_handler *cpuhp_handler;
@@ -560,7 +546,6 @@ struct hif_direct_link_ce_info {
  * @HIF_EVENT_BH_COMPLETE: NAPI POLL completion event
  * @HIF_EVENT_BH_FORCE_BREAK: NAPI POLL force break event
  * @HIF_EVENT_IRQ_DISABLE_EXPIRED: IRQ disable expired event
- * @HIF_EVENT_IRQ_REENABLED: IRQ re-enabled event
  */
 enum hif_event_type {
 	HIF_EVENT_IRQ_TRIGGER,
@@ -572,7 +557,6 @@ enum hif_event_type {
 	HIF_EVENT_BH_COMPLETE,
 	HIF_EVENT_BH_FORCE_BREAK,
 	HIF_EVENT_IRQ_DISABLE_EXPIRED,
-	HIF_EVENT_IRQ_REENABLED,
 	/* Do check hif_hist_skip_event_record when adding new events */
 };
 
@@ -591,29 +575,6 @@ enum hif_system_pm_state {
 	HIF_SYSTEM_PM_STATE_BUS_SUSPENDING,
 	HIF_SYSTEM_PM_STATE_BUS_SUSPENDED,
 };
-
-#ifdef WLAN_FEATURE_AFFINITY_MGR
-/**
- * struct hif_cpu_affinity - CPU affinity mask info for IRQ
- *
- * @current_irq_mask: Current CPU mask set for IRQ
- * @wlan_requested_mask: CPU mask requested by WLAN
- * @walt_taken_mask: Current CPU taken by Audio
- * @last_updated: Last time IRQ CPU affinity was updated
- * @last_affined_away: Last time when IRQ was affined away
- * @update_requested: IRQ affinity hint set requested by WLAN
- * @irq: IRQ number
- */
-struct hif_cpu_affinity {
-	qdf_cpu_mask current_irq_mask;
-	qdf_cpu_mask wlan_requested_mask;
-	qdf_cpu_mask walt_taken_mask;
-	uint64_t last_updated;
-	uint64_t last_affined_away;
-	bool update_requested;
-	int irq;
-};
-#endif
 
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 #define HIF_NUM_INT_CONTEXTS		HIF_MAX_GROUP
@@ -672,6 +633,29 @@ struct hif_event_misc {
 	int32_t last_irq_index;
 	uint64_t last_irq_ts;
 };
+
+#ifdef WLAN_FEATURE_AFFINITY_MGR
+/**
+ * struct hif_cpu_affinity - CPU affinity mask info for IRQ
+ *
+ * @current_irq_mask: Current CPU mask set for IRQ
+ * @wlan_requested_mask: CPU mask requested by WLAN
+ * @walt_taken_mask: Current CPU taken by Audio
+ * @last_updated: Last time IRQ CPU affinity was updated
+ * @last_affined_away: Last time when IRQ was affined away
+ * @update_requested: IRQ affinity hint set requested by WLAN
+ * @irq: IRQ number
+ */
+struct hif_cpu_affinity {
+	qdf_cpu_mask current_irq_mask;
+	qdf_cpu_mask wlan_requested_mask;
+	qdf_cpu_mask walt_taken_mask;
+	uint64_t last_updated;
+	uint64_t last_affined_away;
+	bool update_requested;
+	int irq;
+};
+#endif
 
 /**
  * struct hif_event_history - history for one interrupt group
@@ -791,13 +775,6 @@ static inline void hif_event_history_deinit(struct hif_opaque_softc *hif_ctx,
 }
 #endif /* WLAN_FEATURE_DP_EVENT_HISTORY */
 
-#ifndef WLAN_FEATURE_DP_EVENT_HISTORY
-static inline uint64_t hif_get_log_timestamp(void)
-{
-	return qdf_sched_clock();
-}
-#endif
-
 #ifndef HIF_SDIO
 void hif_display_ctrl_traffic_pipes_state(struct hif_opaque_softc *hif_ctx);
 #else
@@ -807,8 +784,7 @@ hif_display_ctrl_traffic_pipes_state(struct hif_opaque_softc *hif_ctx)
 }
 #endif
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
-	defined(RECORD_DP_CE_EVTS)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
 void hif_display_latest_desc_hist(struct hif_opaque_softc *hif_ctx);
 #else
 static
@@ -940,7 +916,6 @@ struct htc_callbacks {
  * @prealloc_put_consistent_mem_unaligned: put unaligned consistent mem to pool
  * @prealloc_get_multi_pages: get prealloc multi pages memory
  * @prealloc_put_multi_pages: put prealloc multi pages memory back to pool
- * @athdiag_read_write: athdiag read/write register value via WMI.
  * This Structure provides callback pointer for HIF to query hdd for driver
  * states.
  */
@@ -963,9 +938,6 @@ struct hif_driver_state_callbacks {
 					 bool cacheable);
 	void (*prealloc_put_multi_pages)(uint32_t desc_type,
 					 struct qdf_mem_multi_page_t *pages);
-	int (*athdiag_read_write)(uint32_t offset, uint32_t memtype,
-				  uint32_t datalen, uint8_t *buf,
-				  bool is_write);
 };
 
 /* This API detaches the HTC layer from the HIF device */
@@ -1058,8 +1030,7 @@ QDF_STATUS hif_diag_write_access(struct hif_opaque_softc *hif_ctx,
 QDF_STATUS hif_diag_write_mem(struct hif_opaque_softc *hif_ctx,
 			uint32_t address, uint8_t *data, int nbytes);
 
-typedef void (*fastpath_msg_handler)(void *, qdf_nbuf_t *, uint32_t,
-				     unsigned int);
+typedef void (*fastpath_msg_handler)(void *, qdf_nbuf_t *, uint32_t);
 
 void hif_enable_polled_mode(struct hif_opaque_softc *hif_ctx);
 bool hif_is_polled_mode_enabled(struct hif_opaque_softc *hif_ctx);
@@ -1256,19 +1227,16 @@ void hif_post_init(struct hif_opaque_softc *hif_ctx, void *hHTC,
 QDF_STATUS hif_start(struct hif_opaque_softc *hif_ctx);
 void hif_stop(struct hif_opaque_softc *hif_ctx);
 void hif_flush_surprise_remove(struct hif_opaque_softc *hif_ctx);
+void hif_dump(struct hif_opaque_softc *hif_ctx, uint8_t CmdId, bool start);
+void hif_trigger_dump(struct hif_opaque_softc *hif_ctx,
+		      uint8_t cmd_id, bool start);
+
 QDF_STATUS hif_send_head(struct hif_opaque_softc *hif_ctx, uint8_t PipeID,
 				  uint32_t transferID, uint32_t nbytes,
 				  qdf_nbuf_t wbuf, uint32_t data_attr);
 void hif_send_complete_check(struct hif_opaque_softc *hif_ctx, uint8_t PipeID,
 			     int force);
-#if defined(CE_TASKLET_SCHEDULE_ON_FULL) && defined(CE_TASKLET_DEBUG_ENABLE)
 void hif_schedule_ce_tasklet(struct hif_opaque_softc *hif_ctx, uint8_t PipeID);
-#else
-static inline
-void hif_schedule_ce_tasklet(struct hif_opaque_softc *hif_ctx, uint8_t pipe)
-{
-}
-#endif
 void hif_shut_down_device(struct hif_opaque_softc *hif_ctx);
 void hif_get_default_pipe(struct hif_opaque_softc *hif_ctx, uint8_t *ULPipe,
 			  uint8_t *DLPipe);
@@ -1292,7 +1260,6 @@ int hif_check_soc_status(struct hif_opaque_softc *hif_ctx);
 #endif
 void hif_get_hw_info(struct hif_opaque_softc *hif_ctx, u32 *version,
 			u32 *revision, const char **target_name);
-const char *hif_get_hw_name(struct hif_target_info *info);
 
 #ifdef RECEIVE_OFFLOAD
 /**
@@ -1440,8 +1407,6 @@ enum hif_ep_vote_access {
  * @HIF_RTPM_ID_PM_QOS_NOTIFY:
  * @HIF_RTPM_ID_WIPHY_SUSPEND:
  * @HIF_RTPM_ID_DP_STC: Datapath ML STC module
- * @HIF_RTPM_ID_OPT_DP: optional datapath
- * @HIF_RTPM_ID_OSIF: OSIF commands
  * @HIF_RTPM_ID_MAX: Max id
  */
 enum  hif_rtpm_client_id {
@@ -1456,8 +1421,6 @@ enum  hif_rtpm_client_id {
 	HIF_RTPM_ID_PM_QOS_NOTIFY,
 	HIF_RTPM_ID_WIPHY_SUSPEND,
 	HIF_RTPM_ID_DP_STC,
-	HIF_RTPM_ID_OPT_DP,
-	HIF_RTPM_ID_OSIF,
 	HIF_RTPM_ID_MAX
 };
 
@@ -1535,30 +1498,6 @@ QDF_STATUS hif_rtpm_restore_autosuspend_delay(void);
  * Return: Delay in ms
  */
 int hif_rtpm_get_autosuspend_delay(void);
-
-/**
- * hif_rtpm_set_wow_tbtt_nack_delay() - Set the short RTPM autosuspend
- *  delay used to retry RTPM suspend after a TBTT-collision WOW nack, and
- *  mark it as the active override so it can be dropped on the next WMI
- *  tx/rx or suspend failure.
- * @delay: delay in ms to be set
- *
- * Return: QDF_STATUS_SUCCESS if delay is set successfully,
- *         QDF_STATUS_E_INVAL if the RTPM context is not initialized or
- *         the delay value is out of range.
- */
-QDF_STATUS hif_rtpm_set_wow_tbtt_nack_delay(int delay);
-
-/**
- * hif_rtpm_reset_wow_tbtt_nack_delay() - Drop the TBTT-nack short RTPM
- *  autosuspend delay override, if currently active, and restore the
- *  configured default delay.
- *
- * Return: QDF_STATUS_SUCCESS if the override was active and has been
- *         reset, QDF_STATUS_E_ALREADY if the override wasn't active,
- *         QDF_STATUS_E_INVAL if the RTPM context is not initialized.
- */
-QDF_STATUS hif_rtpm_reset_wow_tbtt_nack_delay(void);
 
 /**
  * hif_runtime_lock_init() - API to initialize Runtime PM context
@@ -1824,21 +1763,6 @@ void hif_fastpath_resume(struct hif_opaque_softc *hif_ctx);
 int hif_rtpm_get_state(void);
 
 /**
- * hif_rtpm_is_suspend_owner_thread() - check if the caller is the
- *                                      thread currently driving the
- *                                      runtime suspend
- *
- * A runtime suspend is only ever driven by one thread at a time, so
- * comparing the caller's pid to the recorded suspend owner tells
- * apart that thread from any other thread that happens to run while
- * pm_state is HIF_RTPM_STATE_SUSPENDING.
- *
- * Return: true if pm_state is HIF_RTPM_STATE_SUSPENDING and the
- *         caller is the thread that set it.
- */
-bool hif_rtpm_is_suspend_owner_thread(void);
-
-/**
  * hif_rtpm_display_last_busy_hist() - Display runtimepm last busy history
  * @hif_ctx: HIF context
  *
@@ -1906,18 +1830,6 @@ static inline int hif_rtpm_get_autosuspend_delay(void)
 { return 0; }
 
 static inline
-QDF_STATUS hif_rtpm_set_wow_tbtt_nack_delay(int delay)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS hif_rtpm_reset_wow_tbtt_nack_delay(void)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
 int hif_runtime_lock_init(qdf_runtime_lock_t *lock, const char *name)
 { return 0; }
 
@@ -1932,10 +1844,6 @@ int hif_rtpm_get(uint8_t type, uint32_t id)
 static inline
 QDF_STATUS hif_rtpm_put(uint8_t type, uint32_t id)
 { return QDF_STATUS_SUCCESS; }
-
-static inline
-bool hif_rtpm_is_suspend_owner_thread(void)
-{ return false; }
 
 static inline
 int hif_pm_runtime_allow_suspend(struct hif_pm_runtime_lock *data)
@@ -2145,7 +2053,6 @@ int ol_copy_ramdump(struct hif_opaque_softc *scn);
 void hif_crash_shutdown(struct hif_opaque_softc *hif_ctx);
 void hif_get_hw_info(struct hif_opaque_softc *hif_ctx, u32 *version,
 		     u32 *revision, const char **target_name);
-const char *hif_get_hw_name(struct hif_target_info *info);
 enum qdf_bus_type hif_get_bus_type(struct hif_opaque_softc *hif_hdl);
 struct hif_target_info *hif_get_target_info_handle(struct hif_opaque_softc *
 						   scn);
@@ -2157,9 +2064,15 @@ void hif_set_target_status(struct hif_opaque_softc *hif_ctx, enum
 void hif_init_ini_config(struct hif_opaque_softc *hif_ctx,
 			 struct hif_config_info *cfg);
 void hif_update_tx_ring(struct hif_opaque_softc *osc, u_int32_t num_htt_cmpls);
+qdf_nbuf_t hif_batch_send(struct hif_opaque_softc *osc, qdf_nbuf_t msdu,
+		uint32_t transfer_id, u_int32_t len, uint32_t sendhead);
+QDF_STATUS hif_send_single(struct hif_opaque_softc *osc, qdf_nbuf_t msdu,
+			   uint32_t transfer_id, u_int32_t len);
 int hif_send_fast(struct hif_opaque_softc *osc, qdf_nbuf_t nbuf,
 	uint32_t transfer_id, uint32_t download_len);
 void hif_pkt_dl_len_set(void *hif_sc, unsigned int pkt_download_len);
+void hif_ce_war_disable(void);
+void hif_ce_war_enable(void);
 void hif_disable_interrupt(struct hif_opaque_softc *osc, uint32_t pipe_num);
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
 struct hif_pipe_addl_info *hif_get_addl_pipe_info(struct hif_opaque_softc *osc,
@@ -2230,26 +2143,6 @@ QDF_STATUS hif_register_ext_group(struct hif_opaque_softc *hif_ctx,
 				  ext_intr_handler handler,
 				  void *cb_ctx, const char *context_name,
 				  enum hif_exec_type type, uint32_t scale);
-
-/**
- * hif_get_ext_grp_id() - API to get ext group id
- * @hif_ctx: HIF context
- * @cb_ctx: interrupt context
- *
- * Return: group id corresponds to rx/rx ring interrupts
- */
-int hif_get_ext_grp_id(struct hif_opaque_softc *hif_ctx,
-		       void *cb_ctx);
-
-/**
- * hif_ext_grp_napi_schedule - Schedule napi for the corresponding ext grp
- * @hif_ctx: HIF context
- * @grp_id: ext group id
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS hif_ext_grp_napi_schedule(struct hif_opaque_softc *hif_ctx,
-				     int grp_id);
 
 void hif_deregister_exec_group(struct hif_opaque_softc *hif_ctx,
 				const char *context_name);
@@ -2372,25 +2265,6 @@ int hif_prevent_l1(struct hif_opaque_softc *hif);
  */
 void hif_allow_l1(struct hif_opaque_softc *hif);
 
-/**
- * hif_disable_rtpm() - Disable runtime PM
- * @hif: HIF opaque context
- * @id: rtpm client id
- *
- * Return: 0 on success. Error code on failure.
- */
-QDF_STATUS hif_disable_rtpm(struct hif_opaque_softc *hif,
-			    uint32_t id);
-
-/**
- * hif_enable_rtpm() - Enable runtime PM
- * @hif: HIF opaque context
- * @id: rtpm client id
- * Return: 0 on success. Error code on failure.
- */
-QDF_STATUS hif_enable_rtpm(struct hif_opaque_softc *hif,
-			   uint32_t id);
-
 #else
 
 static inline
@@ -2402,20 +2276,6 @@ int hif_prevent_l1(struct hif_opaque_softc *hif)
 static inline
 void hif_allow_l1(struct hif_opaque_softc *hif)
 {
-}
-
-static inline
-QDF_STATUS hif_disable_rtpm(struct hif_opaque_softc *hif,
-			    uint32_t id)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS hif_enable_rtpm(struct hif_opaque_softc *hifi,
-			   uint32_t id)
-{
-	return QDF_STATUS_SUCCESS;
 }
 #endif
 
@@ -2449,6 +2309,20 @@ uint32_t hif_get_soc_version(struct hif_opaque_softc *hif_handle);
 void hif_set_initial_wakeup_cb(struct hif_opaque_softc *hif_ctx,
 			       void (*callback)(void *),
 			       void *priv);
+/*
+ * Note: For MCL, #if defined (HIF_CONFIG_SLUB_DEBUG_ON) needs to be checked
+ * for defined here
+ */
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+ssize_t hif_dump_desc_trace_buf(struct device *dev,
+				struct device_attribute *attr, char *buf);
+ssize_t hif_input_desc_trace_buf_index(struct hif_softc *scn,
+					const char *buf, size_t size);
+ssize_t hif_ce_en_desc_hist(struct hif_softc *scn,
+				const char *buf, size_t size);
+ssize_t hif_disp_ce_enable_desc_data_hist(struct hif_softc *scn, char *buf);
+ssize_t hif_dump_desc_event(struct hif_softc *scn, char *buf);
+#endif/*#if defined(HIF_CONFIG_SLUB_DEBUG_ON)||defined(HIF_CE_DEBUG_DATA_BUF)*/
 
 /**
  * hif_set_ce_service_max_yield_time() - sets CE service max yield time
@@ -2910,36 +2784,6 @@ void hif_set_grp_intr_affinity(struct hif_opaque_softc *scn,
 {
 }
 #endif
-
-#ifdef WLAN_DP_NAPI_IPI_REDIRECT
-/**
- * hif_set_napi_redirect_cpu() - Enable/disable IPI-based NAPI poll redirect.
- * @hif_ctx:     HIF handle
- * @tx_grp_bmap: TX completion groups bitmap (cdp_get_tx_rings_grp_bitmap).
- *               Pass 0 to skip TX groups.
- * @rx_grp_bmap: RX groups bitmap (cdp_get_rx_rings_grp_bitmap).
- *               Pass 0 to skip RX groups.
- * @cpumask:     Optional explicit CPU mask for redirect targets. Only
- *               consulted when @enable is true: if non-zero and it yields
- *               at least one online CPU, it is used as the redirect target
- *               list instead of the perf cluster; otherwise falls back to
- *               the perf-cluster-derived list. Ignored when @enable is
- *               false.
- * @enable:      true = redirect to perf CPU; false = disable (local schedule)
- */
-void hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
-			       uint32_t tx_grp_bmap,
-			       uint32_t rx_grp_bmap,
-			       uint32_t cpumask,
-			       bool enable);
-#else
-static inline void
-hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
-			  uint32_t tx_grp_bmap,
-			  uint32_t rx_grp_bmap,
-			  uint32_t cpumask,
-			  bool enable) {}
-#endif
 /**
  * hif_get_max_wmi_ep() - Get max WMI EPs configured in target svc map
  * @scn: hif opaque handle
@@ -3068,81 +2912,6 @@ hif_get_direct_link_ce_srng_info(struct hif_opaque_softc *scn,
 }
 #endif
 
-#if defined(FEATURE_WIFI_TRANSPORT)
-/**
- * hif_get_lpass_data_msg_ce_handle() - Get CE handle for LPASS_DATA_MSG_SVC
- * @scn: HIF opaque context
- * @pipedir: PIPEDIR_OUT (host-to-target) or PIPEDIR_IN (target-to-host)
- *
- * Return: CE handle pointer or NULL if not found
- */
-struct CE_handle *
-hif_get_lpass_data_msg_ce_handle(struct hif_opaque_softc *scn, uint8_t pipedir);
-
-/**
- * typedef hif_wt_tx_done_cb - TX CE completion callback for WiFi Transport
- * @transfer_ctx: per-transfer context passed to hif_wt_tx_send()
- * @nbytes:       bytes sent
- */
-typedef void (*hif_wt_tx_done_cb)(void *transfer_ctx, unsigned int nbytes);
-
-/**
- * typedef hif_wt_rx_ready_cb - RX CE completion callback for WiFi Transport
- * @transfer_ctx: per-transfer context (nbuf) enqueued via ce_recv_buf_enqueue
- * @buf:          DMA address of the received buffer
- * @nbytes:       bytes received
- */
-typedef void (*hif_wt_rx_ready_cb)(void *transfer_ctx,
-				   qdf_dma_addr_t buf, unsigned int nbytes);
-
-/**
- * hif_wifi_transport_register_callbacks() - Register TX/RX CE callbacks
- * @hif_ctx:      HIF opaque context
- * @tx_done_cb:   TX completion callback; DP context via dp_get_context()
- * @rx_ready_cb:  RX ready callback; DP context via dp_get_context()
- *
- * Looks up the TX (PIPEDIR_OUT) and RX (PIPEDIR_IN) CE handles for
- * LPASS_DATA_MSG_SVC via the service map, caches them in hif_softc, and
- * registers internal CE shims that adapt the CE callback signature to
- * hif_wt_tx_done_cb / hif_wt_rx_ready_cb so Core DP never touches
- * CE-internal types directly.
- *
- * Return: QDF_STATUS_SUCCESS or QDF_STATUS_E_FAILURE if CE handles not found
- */
-QDF_STATUS
-hif_wifi_transport_register_callbacks(struct hif_opaque_softc *hif_ctx,
-				      hif_wt_tx_done_cb  tx_done_cb,
-				      hif_wt_rx_ready_cb rx_ready_cb);
-
-/**
- * hif_wt_tx_send() - Submit one pre-formatted message over the TX CE pipe
- * @hif_ctx:          HIF opaque context
- * @transfer_ctx: passed back in tx_done_cb at completion
- * @dma_addr:         DMA address of the pre-formatted buffer; layout:
- *                    [HTC_FRAME_HDR (8B)][xpan payload]
- *                    Caller must have written the HTC header and called
- *                    dma_sync_for_device before invoking this function.
- * @total_nbytes:     total bytes to send (HTC_HDR_LENGTH + xpan payload)
- *
- * Pure CE ring wrapper — no header filling, no DMA sync.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS hif_wt_tx_send(struct hif_opaque_softc *hif_ctx, void *transfer_ctx,
-			  qdf_dma_addr_t dma_addr, uint32_t total_nbytes);
-
-/**
- * hif_wt_rx_requeue() - Re-post an RX CE buffer to FW after processing
- * @hif_ctx:          HIF opaque context
- * @transfer_ctx:     buffer to re-post (transfer_ctx from rx_ready_cb)
- * @dma_addr:         DMA address of the buffer (buf from rx_ready_cb)
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS hif_wt_rx_requeue(struct hif_opaque_softc *hif_ctx,
-			     void *transfer_ctx, qdf_dma_addr_t dma_addr);
-#endif
-
 static inline QDF_STATUS
 hif_irq_set_affinity_hint(int irq_num, qdf_cpu_mask *cpu_mask)
 {
@@ -3221,7 +2990,7 @@ void hif_affinity_mgr_affine_irq(struct hif_softc *scn);
  * hif_affinity_mgr_supported() - checks for affinity mgr support
  * @hif_ctx: hif opaque handle
  *
- * Return: true if affinity mgr supported else return false
+ * Return: true if affinity mgr supported else return flase
  */
 bool hif_affinity_mgr_supported(struct hif_opaque_softc *hif_ctx);
 #else
@@ -3279,14 +3048,8 @@ void hif_affinity_mgr_set_affinity(struct hif_opaque_softc *scn);
  * Return: None
  */
 void hif_print_reg_write_stats(struct hif_opaque_softc *hif_ctx);
-void hif_flush_delayed_reg_write_work(struct hif_softc *scn);
 #else
 static inline void hif_print_reg_write_stats(struct hif_opaque_softc *hif_ctx)
-{
-}
-
-static inline void
-hif_flush_delayed_reg_write_work(struct hif_softc *scn)
 {
 }
 #endif
@@ -3300,21 +3063,6 @@ void hif_get_wlan_rx_time_stats(struct hif_opaque_softc *hif_ctx,
 void hif_check_and_apply_irq_affinity(struct hif_opaque_softc *hif_ctx,
 				      uint8_t grp_id, uint32_t cpu_id);
 #endif
-#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
-void hif_set_grp_affinity_cpumaskwise(struct hif_opaque_softc *hif_ctx,
-				      uint32_t grp_irq_mask,
-					  uint32_t irq_cpumask,
-					  uint32_t napi_thread_cpumask);
-void hif_set_affn_override_enabled(struct hif_opaque_softc *hif_ctx,
-				   bool value);
-#elif defined(FEATURE_STATIC_IRQ_AFFINITY)
-void hif_set_grp_affinity_cpumaskwise(struct hif_opaque_softc *hif_ctx,
-				      uint32_t grp_irq_mask,
-				      uint32_t irq_cpumask,
-				      uint32_t napi_thread_cpumask);
-#endif
 QDF_STATUS hif_bus_get_device_handle(struct hif_opaque_softc *hif_ctx,
 				     void **handle);
-
-void hif_set_target_access_allowed(bool access_allowed);
 #endif /* _HIF_H_ */

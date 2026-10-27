@@ -158,11 +158,6 @@ static inline int qdf_topology_physical_package_id(unsigned int cpu)
 	return __qdf_topology_physical_package_id(cpu);
 }
 
-static inline qdf_cpu_mask *qdf_topology_cluster_cpumask(unsigned int cpu)
-{
-	return __qdf_topology_cluster_cpumask(cpu);
-}
-
 static inline int qdf_cpumask_subset(qdf_cpu_mask *srcp1,
 				     const qdf_cpu_mask *srcp2)
 {

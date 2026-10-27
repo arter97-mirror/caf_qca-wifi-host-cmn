@@ -106,30 +106,21 @@ qdf_export_symbol(ucfg_ipa_uc_stat);
 
 void ucfg_ipa_set_opt_dp_ctrl_flt(
 			struct wlan_objmgr_pdev *pdev,
-			struct ipa_wdi_opt_dpath_flt_add_cb_params *flt,
-			uint8_t opr)
+			struct ipa_wdi_opt_dpath_flt_add_cb_params *flt)
 {
-	return ipa_set_opt_dp_ctrl_flt(pdev, flt, opr);
+	return ipa_set_opt_dp_ctrl_flt(pdev, flt);
 }
 
 qdf_export_symbol(ucfg_ipa_set_opt_dp_ctrl_flt);
 
 void ucfg_ipa_set_opt_dp_ctrl_flt_rm(
 			struct wlan_objmgr_pdev *pdev,
-			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt,
-			uint8_t opr)
+			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt)
 {
-	return ipa_set_opt_dp_ctrl_flt_rm(pdev, flt, opr);
+	return ipa_set_opt_dp_ctrl_flt_rm(pdev, flt);
 }
 
 qdf_export_symbol(ucfg_ipa_set_opt_dp_ctrl_flt_rm);
-
-void ucfg_ipa_dump_logging_stats(void)
-{
-	return ipa_dump_logging_stats();
-}
-
-qdf_export_symbol(ucfg_ipa_dump_logging_stats);
 
 void ucfg_ipa_uc_rt_debug_host_dump(struct wlan_objmgr_pdev *pdev)
 {
@@ -229,20 +220,6 @@ void ucfg_ipa_flush(struct wlan_objmgr_pdev *pdev)
 
 qdf_export_symbol(ucfg_ipa_flush);
 
-#ifdef WLAN_STA_SEAMLESS_ROAMING
-void ucfg_ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
-			     qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id, uint8_t *mac_addr,
-			     bool is_enable)
-
-{
-	ipa_sw_routing_set(pdev, net_dev, device_mode,
-			   session_id, mac_addr, is_enable);
-}
-
-qdf_export_symbol(ucfg_ipa_sw_routing_set);
-#endif
-
 QDF_STATUS ucfg_ipa_suspend(struct wlan_objmgr_pdev *pdev)
 {
 	return ipa_suspend(pdev);
@@ -289,13 +266,12 @@ qdf_export_symbol(ucfg_ipa_send_mcc_scc_msg);
 
 QDF_STATUS ucfg_ipa_wlan_evt(struct wlan_objmgr_pdev *pdev,
 			     qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id, bool is_seamless_roam,
+			     uint8_t session_id,
 			     enum wlan_ipa_wlan_event ipa_event_type,
 			     const uint8_t *mac_addr, bool is_2g_iface)
 {
 	return ipa_wlan_evt(pdev, net_dev, device_mode, session_id,
-			    is_seamless_roam, ipa_event_type, mac_addr,
-			    is_2g_iface);
+			    ipa_event_type, mac_addr, is_2g_iface);
 }
 
 qdf_export_symbol(ucfg_ipa_wlan_evt);
@@ -307,9 +283,9 @@ int ucfg_ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 
 qdf_export_symbol(ucfg_ipa_uc_smmu_map);
 
-bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc)
+bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev)
 {
-	return ipa_is_fw_wdi_activated(psoc);
+	return ipa_is_fw_wdi_activated(pdev);
 }
 
 qdf_export_symbol(ucfg_ipa_is_fw_wdi_activated);
@@ -459,26 +435,3 @@ void ucfg_ipa_event_wq(struct wlan_objmgr_psoc *psoc,
 
 qdf_export_symbol(ucfg_ipa_event_wq);
 #endif
-
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-void
-ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
-			    wlan_ipa_is_mlo_vdev cb)
-{
-	ipa_reg_is_mlo_vdev_cb(pdev, cb);
-}
-#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
-
-int ucfg_ipa_get_psoc_idx(void)
-{
-	return ipa_get_psoc_idx();
-}
-
-qdf_export_symbol(ucfg_ipa_get_psoc_idx);
-
-void ucfg_ipa_ps_suspend_resume(bool suspend)
-{
-	return ipa_ps_suspend_resume(suspend);
-}
-
-qdf_export_symbol(ucfg_ipa_ps_suspend_resume);

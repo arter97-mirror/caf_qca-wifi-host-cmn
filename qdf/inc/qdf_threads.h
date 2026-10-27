@@ -159,9 +159,9 @@ const char *qdf_get_current_comm(void);
  * @thread: thread for which new cpu mask is set
  * @new_mask: new cpu mask to be set for the thread
  *
- * Return: QDF_STATUS - 0 on success, non-zero on failure
+ * Return: None
  */
-QDF_STATUS
+void
 qdf_thread_set_cpus_allowed_mask(qdf_thread_t *thread, qdf_cpu_mask *new_mask);
 
 /**

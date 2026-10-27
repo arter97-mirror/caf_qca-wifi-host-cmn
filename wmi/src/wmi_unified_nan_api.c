@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -44,63 +43,15 @@ QDF_STATUS wmi_unified_nan_disable_req_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-#if defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
-QDF_STATUS wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
-					struct nan_disable_req *nan_req)
-{
-	if (wmi_handle->ops->send_nan_stop_req_cmd)
-		return wmi_handle->ops->send_nan_stop_req_cmd(wmi_handle,
-							      nan_req);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_extract_nan_enable_rsp_event(
-				wmi_unified_t wmi_handle,
-				void *evt_buf,
-				struct nan_enable_rsp_params *evt_params)
-{
-	if (wmi_handle->ops->extract_nan_enable_rsp_event)
-		return wmi_handle->ops->extract_nan_enable_rsp_event(
-								wmi_handle,
-								evt_buf,
-								evt_params);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
-				     struct nan_enable_req *nan_req)
-{
-	if (wmi_handle->ops->send_nan_start_req_cmd)
-		return wmi_handle->ops->send_nan_start_req_cmd(wmi_handle,
-							       nan_req);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_nan_change_conf_req(wmi_unified_t wmi_handle,
-					   struct nan_change_conf_req *nan_req)
-{
-	if (wmi_handle->ops->send_nan_change_conf_req_cmd)
-		return wmi_handle->ops->send_nan_change_conf_req_cmd(
-								wmi_handle,
-								nan_req);
-
-	return QDF_STATUS_E_FAILURE;
-}
-#endif
-
 QDF_STATUS wmi_extract_nan_event_rsp(wmi_unified_t wmi_handle, void *evt_buf,
 				     struct nan_event_params *nan_evt_params,
-				     uint8_t **nan_msg_buf, uint32_t nan_config)
+				     uint8_t **nan_msg_buf)
 {
 	if (wmi_handle->ops->extract_nan_event_rsp)
 		return wmi_handle->ops->extract_nan_event_rsp(wmi_handle,
 							      evt_buf,
 							      nan_evt_params,
-							      nan_msg_buf,
-							      nan_config);
+							      nan_msg_buf);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -147,39 +98,6 @@ QDF_STATUS wmi_unified_ndp_end_req_cmd_send(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
-
-QDF_STATUS
-wmi_unified_ndp_update_config_cmd_send(wmi_unified_t wmi_handle,
-				       struct nan_datapath_update_config *req)
-{
-	if (wmi_handle->ops->send_ndp_update_config_cmd)
-		return wmi_handle->ops->send_ndp_update_config_cmd(wmi_handle,
-								   req);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
-QDF_STATUS wmi_unified_nan_add_func_cmd(wmi_unified_t wmi_handle,
-					struct nan_add_func_params *params)
-{
-	if (wmi_handle->ops->send_add_nan_func_cmd)
-		return wmi_handle->ops->send_add_nan_func_cmd(wmi_handle,
-							      params);
-	return QDF_STATUS_E_FAILURE;
-}
-#endif
-
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
-QDF_STATUS wmi_unified_nan_del_func_cmd(wmi_unified_t wmi_handle,
-					struct nan_del_func_params *params)
-{
-	if (wmi_handle->ops->send_nan_del_func_cmd)
-		return wmi_handle->ops->send_nan_del_func_cmd(wmi_handle,
-							      params);
-	return QDF_STATUS_E_FAILURE;
-}
-#endif
 
 QDF_STATUS wmi_extract_nan_msg(wmi_unified_t wmi_handle,
 			       uint8_t *data,
@@ -271,197 +189,3 @@ QDF_STATUS wmi_extract_ndp_host_event(wmi_unified_t wmi_handle, uint8_t *data,
 
 	return QDF_STATUS_E_FAILURE;
 }
-
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
-QDF_STATUS wmi_extract_nan_next_dw_info(wmi_unified_t wmi_handle,
-					uint8_t *data,
-					struct nan_next_dw_info_event *event)
-{
-	if (wmi_handle->ops->extract_nan_next_dw_info)
-		return wmi_handle->ops->extract_nan_next_dw_info(wmi_handle,
-								 data, event);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_disable_rsp_event(wmi_unified_t wmi_handle, void *evt_buf,
-				  struct nan_event_params *temp_evt_params)
-{
-	if (!wmi_handle || !evt_buf || !temp_evt_params) {
-		wmi_err("Invalid parameters for NAN disable rsp extraction");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (wmi_handle->ops->extract_nan_disable_rsp_event)
-		return wmi_handle->ops->extract_nan_disable_rsp_event(
-				wmi_handle, evt_buf, temp_evt_params);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_extract_nan_cluster_event(wmi_unified_t wmi_handle,
-					 uint8_t *data,
-					 struct nan_cluster_event *event)
-{
-	if (wmi_handle->ops->extract_nan_cluster_event)
-		return wmi_handle->ops->extract_nan_cluster_event(wmi_handle,
-								  data, event);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_dfs_channel_availability_ind(
-	wmi_unified_t wmi_handle,
-	uint8_t *data,
-	struct nan_dfs_channel_availability_ind *event)
-{
-	struct wmi_ops *ops = wmi_handle->ops;
-
-	if (ops->extract_nan_dfs_channel_availability_ind)
-		return ops->extract_nan_dfs_channel_availability_ind(
-					wmi_handle, data, event);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_disable_ind_event(wmi_unified_t wmi_handle, void *evt_buf,
-				  struct nan_event_params *temp_evt_params)
-{
-	if (wmi_handle->ops->extract_nan_disable_ind_event)
-		return wmi_handle->ops->extract_nan_disable_ind_event(
-				wmi_handle, evt_buf, temp_evt_params);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_nan_local_schedule_cmd_send(wmi_unified_t wmi_handle,
-					struct nan_local_sched_params *req)
-{
-	if (wmi_handle->ops->send_nan_local_schedule_cmd)
-		return wmi_handle->ops->send_nan_local_schedule_cmd(wmi_handle,
-								    req);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_enable_rsp_event(wmi_unified_t wmi_handle,
-				 void *evt_buf,
-				 struct nan_enable_rsp_params *evt_params)
-{
-	if (wmi_handle->ops->extract_nan_enable_rsp_event)
-		return wmi_handle->ops->extract_nan_enable_rsp_event(
-					wmi_handle, evt_buf, evt_params);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_local_schedule_cnf(wmi_unified_t wmi_handle, uint8_t *data,
-				   struct nan_local_sched_rsp *rsp)
-{
-	if (wmi_handle->ops->extract_nan_local_schedule_cnf)
-		return wmi_handle->ops->extract_nan_local_schedule_cnf(
-								wmi_handle,
-								data, rsp);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_nan_peer_schedule_cmd_send(wmi_unified_t wmi_handle,
-				       struct nan_peer_sched_params *req)
-{
-	if (wmi_handle->ops->send_nan_peer_schedule_cmd)
-		return wmi_handle->ops->send_nan_peer_schedule_cmd(wmi_handle,
-								   req);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_peer_schedule_cnf(wmi_unified_t wmi_handle, uint8_t *data,
-				  struct nan_peer_sched_rsp *rsp)
-{
-	if (wmi_handle->ops->extract_nan_peer_schedule_cnf)
-		return wmi_handle->ops->extract_nan_peer_schedule_cnf(
-								wmi_handle,
-								data, rsp);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_nan_peer_params_cmd_send(wmi_unified_t wmi_handle,
-				     struct nan_peer_params_req *req)
-{
-	if (wmi_handle->ops->send_nan_peer_params_cmd)
-		return wmi_handle->ops->send_nan_peer_params_cmd(wmi_handle,
-								 req);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_peer_params_cnf(wmi_unified_t wmi_handle, uint8_t *data,
-				struct nan_peer_params_rsp *rsp)
-{
-	if (wmi_handle->ops->extract_nan_peer_params_cnf)
-		return wmi_handle->ops->extract_nan_peer_params_cnf(wmi_handle,
-								    data, rsp);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_extract_ndp_channel_info(wmi_unified_t wmi_handle,
-				uint8_t *data,
-				struct nan_ndp_channel_info_event *ev)
-{
-	if (wmi_handle->ops->extract_ndp_channel_info)
-		return wmi_handle->ops->extract_ndp_channel_info(wmi_handle,
-							  data, ev);
-
-	return QDF_STATUS_E_FAILURE;
-}
-#endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
-
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
-QDF_STATUS
-wmi_extract_nan_disc_service_rsp_event(wmi_unified_t wmi_handle, void *evt_buf,
-				       struct nan_disc_service_rsp_event
-				       *params)
-{
-	if (wmi_handle->ops->extract_nan_disc_service_rsp_event)
-		return wmi_handle->ops->extract_nan_disc_service_rsp_event(
-					wmi_handle, evt_buf, params);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_disc_match_event(wmi_unified_t wmi_handle, void *evt_buf,
-				 struct nan_disc_match_event *params)
-{
-	if (wmi_handle->ops->extract_nan_disc_match_event)
-		return wmi_handle->ops->extract_nan_disc_match_event(wmi_handle,
-							evt_buf, params);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_nan_disc_terminated_evt(wmi_unified_t wmi_handle, void *evt_buf,
-				    struct nan_disc_req_terminated_event
-				    *params)
-{
-	if (wmi_handle->ops->extract_nan_disc_terminated_evt)
-		return wmi_handle->ops->extract_nan_disc_terminated_evt
-						(wmi_handle, evt_buf, params);
-
-	return QDF_STATUS_E_FAILURE;
-}
-#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE */

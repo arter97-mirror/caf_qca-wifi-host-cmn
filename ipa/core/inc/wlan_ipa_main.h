@@ -83,24 +83,6 @@ extern uint8_t g_instances_added;
 	QDF_TRACE_EXIT(QDF_MODULE_ID_IPA, "exit")
 
 /**
- * enum opt_dp_flt_op - opt_dp operations
- * @IPA_OPT_DP_RESV: opt_dp filter reservation
- * @IPA_OPT_DP_ADD: opt_dp filter addition
- * @IPA_OPT_DP_CTRL_ADD: opt_dp_ctrl filter addition
- * @IPA_OPT_DP_RELEASE: opt_dp filter release
- * @IPA_OPT_DP_REM:  opt_dp filter removal
- * @IPA_OPT_DP_CTRL_REM: opt_dp_ctrl filter removal
- */
-enum opt_dp_flt_op {
-	IPA_OPT_DP_RESV = 1,
-	IPA_OPT_DP_ADD,
-	IPA_OPT_DP_CTRL_ADD,
-	IPA_OPT_DP_RELEASE,
-	IPA_OPT_DP_REM,
-	IPA_OPT_DP_CTRL_REM
-};
-
-/**
  * ipa_set_cap_offload() - set IPA capability offload support
  * @flag: flag to set
  *
@@ -216,13 +198,6 @@ bool ipa_config_is_enabled(void);
 bool ipa_config_is_uc_enabled(void);
 
 /**
- * ipa_get_l3_hdr_padding_len() - Get IPA l3 header padding length
- *
- * Return: l3 header padding length, 0 if IPA context is not available
- */
-uint32_t ipa_get_l3_hdr_padding_len(void);
-
-/**
  * ipa_config_is_opt_wifi_dp_enabled() - Is IPA optional wifi dp enabled?
  *
  * Return: true if IPA opt wifi dp is enabled in IPA config
@@ -281,17 +256,6 @@ ipa_send_intrabss_enable_disable(struct wlan_objmgr_psoc *psoc,
 				 struct ipa_intrabss_control_params *req);
 
 /**
- * ipa_send_l3_hdr_padding_cfg() - wdi l3 header padding enable/disable notify
- *				   to fw
- * @psoc: objmgr psoc object
- * @enable: ipa l3 header padding config value
- *
- * Return: QDF status success or failure
- */
-QDF_STATUS ipa_send_l3_hdr_padding_cfg(struct wlan_objmgr_psoc *psoc,
-				       bool enable);
-
-/**
  * ipa_set_dp_handle() - set dp soc handle
  * @psoc: psoc handle
  * @dp_soc: dp soc handle
@@ -331,26 +295,22 @@ void ipa_uc_stat(struct wlan_objmgr_pdev *pdev);
  * ipa_set_opt_dp_ctrl_flt() - flt add for opt_dp_ctrl
  * @pdev: pdev obj
  * @flt: flt params
- * @opr: operation type
  *
  * Return: None
  */
 void ipa_set_opt_dp_ctrl_flt(struct wlan_objmgr_pdev *pdev,
-			     struct ipa_wdi_opt_dpath_flt_add_cb_params *flt,
-			     uint8_t opr);
+			     struct ipa_wdi_opt_dpath_flt_add_cb_params *flt);
 
 /*
  * ipa_set_opt_dp_ctrl_flt_rm() - flt del for opt_dp_ctrl
  * @pdev: pdev obj
  * @flt: flt params
- * @opr: operation type
  *
  * Return: None
  */
 void ipa_set_opt_dp_ctrl_flt_rm(
 			struct wlan_objmgr_pdev *pdev,
-			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt,
-			uint8_t opr);
+			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt);
 
 /**
  * ipa_uc_rt_debug_host_dump() - IPA rt debug host dump
@@ -476,24 +436,6 @@ void ipa_uc_force_pipe_shutdown(struct wlan_objmgr_pdev *pdev);
  */
 void ipa_flush(struct wlan_objmgr_pdev *pdev);
 
-#ifdef WLAN_STA_SEAMLESS_ROAMING
-/**
- * ipa_sw_routing_set() - IPA sw routing set
- * @pdev: pdev obj
- * @net_dev: Interface net device
- * @device_mode: Net interface device mode
- * @session_id: vdev id
- * @mac_addr: MAC address of the wlan client
- * @is_enable: set ipa sw routing enable/disable
- *
- * Return: None
- */
-void ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
-			qdf_netdev_t net_dev, uint8_t device_mode,
-			uint8_t session_id, uint8_t *mac_addr,
-			bool is_enable);
-#endif
-
 /**
  * ipa_suspend() - Suspend IPA
  * @pdev: pdev obj
@@ -552,7 +494,6 @@ QDF_STATUS ipa_send_mcc_scc_msg(struct wlan_objmgr_pdev *pdev,
  * @net_dev: Interface net device
  * @device_mode: Net interface device mode
  * @session_id: session id for the event
- * @is_roam: is roaming for the ipa event
  * @ipa_event_type: event enum of type ipa_wlan_event
  * @mac_addr: MAC address associated with the event
  * @is_2g_iface: true if interface is operating on 2G band, otherwise false
@@ -560,7 +501,7 @@ QDF_STATUS ipa_send_mcc_scc_msg(struct wlan_objmgr_pdev *pdev,
  * Return: QDF_STATUS
  */
 QDF_STATUS ipa_wlan_evt(struct wlan_objmgr_pdev *pdev, qdf_netdev_t net_dev,
-			uint8_t device_mode, uint8_t session_id, bool is_roam,
+			uint8_t device_mode, uint8_t session_id,
 			enum wlan_ipa_wlan_event ipa_event_type,
 			const uint8_t *mac_addr, bool is_2g_iface);
 
@@ -576,11 +517,11 @@ int ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr);
 
 /**
  * ipa_is_fw_wdi_activated - Is FW WDI activated?
- * @psoc: psoc obj
+ * @pdev: pdev obj
  *
  * Return: true if FW WDI activated, false otherwise
  */
-bool ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc);
+bool ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev);
 
 /**
  * ipa_uc_cleanup_sta() - disconnect and cleanup sta iface
@@ -752,13 +693,6 @@ bool ipa_set_perf_level_bw_enabled(struct wlan_objmgr_pdev *pdev);
  */
 void ipa_set_perf_level_bw(struct wlan_objmgr_pdev *pdev,
 			   enum wlan_ipa_bw_level lvl);
-/*
- * ipa_ps_suspend_resume() - set power save suspend and resume in IPA
- * @suspend: True is suspend else False
- *
- * Return: None
- */
-void ipa_ps_suspend_resume(bool suspend);
 
 #if defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 /**
@@ -792,24 +726,11 @@ wlan_psoc_ipa_evt_wq_attach(struct wlan_objmgr_psoc *psoc);
 void wlan_psoc_ipa_evt_wq_detach(struct wlan_objmgr_psoc *psoc);
 #endif
 
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-/**
- * ipa_reg_is_mlo_vdev_cb() - Register callback to get if vdev is mlo vdev
- * @pdev: pdev objmgr handle
- * @cb: pointer to callback function
- *
- * Return: None
- */
-void
-ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev, wlan_ipa_is_mlo_vdev cb);
-#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
-
 #else /* Not IPA_OFFLOAD */
 typedef QDF_STATUS (*wlan_ipa_softap_xmit)(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 typedef void (*wlan_ipa_send_to_nw)(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 typedef void (*wlan_ipa_rps_enable)(uint8_t vdev_id, bool enable);
 typedef bool (*wlan_ipa_driver_unloading)(void);
-typedef bool (*wlan_ipa_is_mlo_vdev)(uint8_t vdev_id);
 
 #endif /* IPA_OFFLOAD */
 #endif /* end  of _WLAN_IPA_MAIN_H_ */

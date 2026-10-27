@@ -100,32 +100,11 @@ extern bool is_hal_verbose_debug_enabled;
 
 struct hal_hw_cc_config {
 	uint32_t lut_base_addr_31_0;
-	uint64_t cc_global_en:1,
+	uint32_t cc_global_en:1,
 		 page_4k_align:1,
 		 cookie_offset_msb:5,
 		 cookie_page_msb:5,
 		 lut_base_addr_39_32:8,
-#ifdef CONFIG_BORON
-		 tqm2sw6_cc_en:1,
-		 tqm2sw5_cc_en:1,
-		 tqm2sw4_cc_en:1,
-		 tqm2sw3_cc_en:1,
-		 tqm2sw2_cc_en:1,
-		 tqm2sw1_cc_en:1,
-		 tqm2sw0_cc_en:1,
-		 tqm2fw_cc_en:1,
-		 reo2sw9_cc_en:1,
-		 reo2sw8_cc_en:1,
-		 reo2sw7_cc_en:1,
-		 reo2sw6_cc_en:1,
-		 reo2sw5_cc_en:1,
-		 reo2sw4_cc_en:1,
-		 reo2sw3_cc_en:1,
-		 reo2sw2_cc_en:1,
-		 reo2sw1_cc_en:1,
-		 reo2sw0_cc_en:1,
-		 reo2fw_cc_en:1,
-#else
 		 wbm2sw6_cc_en:1,
 		 wbm2sw5_cc_en:1,
 		 wbm2sw4_cc_en:1,
@@ -134,7 +113,6 @@ struct hal_hw_cc_config {
 		 wbm2sw1_cc_en:1,
 		 wbm2sw0_cc_en:1,
 		 wbm2fw_cc_en:1,
-#endif
 		 error_path_cookie_conv_en:1,
 		 release_path_cookie_conv_en:1,
 		 reserved:2;
@@ -209,10 +187,9 @@ enum hal_srng_ring_id {
 	HAL_SRNG_REO2SW6 = 6,
 	HAL_SRNG_REO2SW7 = 7,
 	HAL_SRNG_REO2SW8 = 8,
-	HAL_SRNG_REO2SW9 = 9,
-	HAL_SRNG_REO2TCL = 10,
-	HAL_SRNG_REO2PPE = 11,
-	/* 12-15 unused */
+	HAL_SRNG_REO2TCL = 9,
+	HAL_SRNG_REO2PPE = 10,
+	/* 11-15 unused */
 	HAL_SRNG_SW2REO = 16,
 	HAL_SRNG_SW2REO1 = 17,
 	HAL_SRNG_SW2REO2 = 18,
@@ -296,13 +273,6 @@ enum hal_srng_ring_id {
 	HAL_SRNG_WBM2SW5_RELEASE = 133,
 	HAL_SRNG_WBM2SW6_RELEASE = 134,
 	HAL_SRNG_WBM_ERROR_RELEASE = 135,
-	HAL_SRNG_TQM2SW0_RELEASE = 136,
-	HAL_SRNG_TQM2SW1_RELEASE = 137,
-	HAL_SRNG_TQM2SW2_RELEASE = 138,
-	HAL_SRNG_TQM2SW3_RELEASE = 139,
-	HAL_SRNG_TQM2SW4_RELEASE = 140,
-	HAL_SRNG_TQM2SW5_RELEASE = 141,
-	HAL_SRNG_TQM2SW6_RELEASE = 142,
 	/* 136-158 unused */
 	HAL_SRNG_UMAC_ID_END = 159,
 	/* Common DMAC rings shared by all LMACs */
@@ -324,7 +294,7 @@ enum hal_srng_ring_id {
 	HAL_SRNG_WMAC1_SW2RXDMA0_BUF2,
 #endif
 #endif
-#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
+#ifdef FEATURE_DIRECT_LINK
 	HAL_SRNG_WMAC1_RX_DIRECT_LINK_SW_REFILL_RING,
 #endif
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
@@ -365,7 +335,7 @@ enum hal_srng_ring_id {
 	HAL_SRNG_WMAC1_SW2RXDMA0_BUF2,
 #endif
 #endif
-#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
+#ifdef FEATURE_DIRECT_LINK
 	HAL_SRNG_WMAC1_RX_DIRECT_LINK_SW_REFILL_RING,
 #endif
 	HAL_SRNG_WMAC1_SW2RXDMA2_BUF,
@@ -400,12 +370,6 @@ enum hal_srng_ring_id {
 
 #define HAL_SRNG_ID_MAX (HAL_SRNG_DMAC_CMN_ID_END + HAL_MAX_LMAC_RINGS)
 
-#ifdef CONFIG_BORON
-#define COMP_RING_TYPE TQM2SW_RELEASE
-#else
-#define COMP_RING_TYPE WBM2SW_RELEASE
-#endif
-
 /* SRNG type to be passed in APIs hal_srng_get_entrysize and hal_srng_setup */
 enum hal_ring_type {
 	REO_DST = 0,
@@ -439,11 +403,6 @@ enum hal_ring_type {
 	TX_MONITOR_DST,
 	SW2RXDMA_NEW,
 	SW2RXDMA_LINK_RELEASE,
-	TQM2SW_RELEASE,
-	/*
-	 * If you are adding new ring type, then update hal_hw_srng_config
-	 * for all the targets
-	 */
 	MAX_RING_TYPES
 };
 
@@ -1247,8 +1206,6 @@ struct hal_hw_txrx_ops {
 	uint8_t (*hal_rx_msdu_end_sa_is_valid_get)(uint8_t *buf);
 	uint16_t (*hal_rx_msdu_end_sa_idx_get)(uint8_t *buf);
 	uint32_t (*hal_rx_desc_is_first_msdu)(void *hw_desc_addr);
-	void (*hal_rx_msdu_end_l3_hdr_padding_set)(uint8_t *buf,
-						   uint32_t l3_hdr_pad);
 	uint32_t (*hal_rx_msdu_end_l3_hdr_padding_get)(uint8_t *buf);
 	uint32_t (*hal_rx_encryption_info_valid)(uint8_t *buf);
 	void (*hal_rx_print_pn)(uint8_t *buf);
@@ -1449,8 +1406,6 @@ struct hal_hw_txrx_ops {
 	uint8_t (*hal_rx_err_status_get)(hal_ring_desc_t rx_desc);
 	uint8_t (*hal_rx_reo_buf_type_get)(hal_ring_desc_t rx_desc);
 	bool (*hal_rx_mpdu_info_ampdu_flag_get)(uint8_t *buf);
-	uint8_t *(*hal_rx_msdu_stats_tlv_resolve)(uint8_t *first_msdu_tlv,
-						  uint8_t *last_msdu_tlv);
 	uint32_t (*hal_rx_tlv_mpdu_len_err_get)(void *hw_desc_addr);
 	uint32_t (*hal_rx_tlv_mpdu_fcs_err_get)(void *hw_desc_addr);
 	void (*hal_rx_tlv_get_pkt_capture_flags)(uint8_t *rx_tlv_hdr,
@@ -1542,7 +1497,7 @@ struct hal_hw_txrx_ops {
 					 uint8_t mac_id, uint64_t *value);
 	void (*hal_get_tqm_scratch_reg)(hal_soc_handle_t hal_soc_hdl,
 					uint64_t *value);
-#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_DAL_DP_SUPPORT)
+#ifdef FEATURE_DIRECT_LINK
 	QDF_STATUS (*hal_srng_set_msi_config)(hal_ring_handle_t ring_hdl,
 					      void *ring_params);
 #endif
@@ -1562,12 +1517,6 @@ struct hal_hw_txrx_ops {
 						    uint8_t reo_dest_ind);
 	uint16_t (*hal_srng_dst_get_num_avail_words)(
 			hal_ring_handle_t hal_ring_hdl);
-#ifdef DRIVER_PASSTHRU_MODE
-	uint32_t (*hal_rx_tlv_get_rssi)(uint8_t *buf);
-	uint32_t (*hal_rx_tlv_get_ppdu_start_ts)(uint8_t *rx_tlv_hdr);
-#endif
-	/* Returns the FW QTimer (hardware timestamp counter) value */
-	uint64_t (*hal_get_fw_qtime)(struct hal_soc *soc);
 };
 
 /**
@@ -1790,12 +1739,10 @@ void hal_qca8074_attach(struct hal_soc *hal_soc);
  */
 void hal_kiwi_attach(struct hal_soc *hal_soc);
 void hal_peach_attach(struct hal_soc *hal_soc);
-void hal_fig_attach(struct hal_soc *hal_soc);
 
 void hal_qcn9224v2_attach(struct hal_soc *hal_soc);
 void hal_wcn6450_attach(struct hal_soc *hal_soc);
 void hal_wcn7750_attach(struct hal_soc *hal_soc);
-void hal_wcn8750_attach(struct hal_soc *hal_soc);
 void hal_qcc2072_attach(struct hal_soc *hal_soc);
 
 /**
@@ -1864,7 +1811,6 @@ struct hal_srng *hal_ring_handle_to_hal_srng(hal_ring_handle_t hal_ring)
  * @HAL_DOT11BE: 802.11be PPDU type
  * @HAL_DOT11AZ: 802.11az (ranging) PPDU type
  * @HAL_DOT11N_GF: 802.11n Green Field PPDU type
- * @HAL_DOT11BN: 802.11bn PPDU type
  * @HAL_DOT11_MAX: Maximum enumeration
  *
  * Enum indicating the packet type reported by HW in rx_pkt_tlvs (RX data)
@@ -1880,7 +1826,6 @@ enum hal_pkt_type {
 	HAL_DOT11BE = 6,
 	HAL_DOT11AZ = 7,
 	HAL_DOT11N_GF = 8,
-	HAL_DOT11BN = 9,
 	HAL_DOT11_MAX,
 };
 

@@ -306,8 +306,7 @@ target_if_update_wds_entry(struct cdp_ctrl_objmgr_psoc *soc, uint8_t vdev_id,
  */
 int target_if_peer_txq_flush_config(struct cdp_ctrl_objmgr_psoc *psoc,
 				    uint8_t vdev_id, uint8_t *mac,
-				    uint8_t ac, uint32_t tid,
-				    enum cdp_peer_txq_flush_policy policy);
+				    uint8_t ac, uint32_t tid, uint32_t policy);
 #else
 static inline int
 target_if_peer_txq_flush_config(struct cdp_ctrl_objmgr_psoc *psoc,

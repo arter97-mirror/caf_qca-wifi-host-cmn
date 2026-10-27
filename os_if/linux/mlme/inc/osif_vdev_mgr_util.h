@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2021, 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -24,11 +23,6 @@
 
 #ifndef __OSIF_VDEV_MGR_UTIL_H
 #define __OSIF_VDEV_MGR_UTIL_H
-
-#ifdef FEATURE_CQM_RSSI
-struct vdev_cqm_rssi_breach_event;
-#endif
-
 /**
  * struct osif_vdev_mgr_ops - VDEV mgr legacy callbacks
  * @osif_vdev_mgr_set_mac_addr_response: Callback to indicate set MAC address
@@ -36,10 +30,6 @@ struct vdev_cqm_rssi_breach_event;
  * @osif_vdev_mgr_send_scan_done_complete_cb: send scan done indication to
  * upper layer
  * @osif_vdev_mgr_get_p2p_wdev_cb: Get p2p wdev ptr
- * @osif_vdev_mgr_sta_csa_received: send STA CSA IE received indication to
- * upper layer
- * @osif_vdev_mgr_cqm_rssi_breach_cb: adaptive-hysteresis RSSI CQM breach
- * event callback
  */
 struct osif_vdev_mgr_ops {
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
@@ -48,14 +38,6 @@ struct osif_vdev_mgr_ops {
 #endif
 	void (*osif_vdev_mgr_send_scan_done_complete_cb)(uint8_t vdev_id);
 	struct wireless_dev *(*osif_vdev_mgr_get_p2p_wdev_cb)(void);
-	void (*osif_vdev_mgr_sta_csa_received)(uint8_t vdev_id,
-					       struct csa_offload_params
-					       *csa_event);
-#ifdef FEATURE_CQM_RSSI
-	void
-	(*osif_vdev_mgr_cqm_rssi_breach_cb)(struct vdev_cqm_rssi_breach_event
-					     *event);
-#endif
 };
 
 /**

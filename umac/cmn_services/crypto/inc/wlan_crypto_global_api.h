@@ -51,33 +51,6 @@ bool is_igtk(uint16_t keyix);
 bool is_bigtk(uint16_t keyix);
 
 /**
- * is_vgtk() - Is given key index for VLAN GTK (multipass SAP)
- * @keyix: Key index
- *
- * Return: true or false
- */
-#ifdef QCA_MULTIPASS_SUPPORT
-bool is_vgtk(uint16_t keyix);
-void wlan_crypto_free_vlan_keys(struct wlan_crypto_keys *priv_key);
-void wlan_crypto_save_vlan_key(struct wlan_crypto_keys *priv_key,
-			       uint8_t key_index,
-			       struct wlan_crypto_key *crypto_key);
-struct wlan_crypto_key *
-wlan_crypto_get_vlan_key(struct wlan_crypto_keys *priv_key, uint8_t key_index);
-#else
-static inline bool is_vgtk(uint16_t keyix) { return false; }
-static inline void
-wlan_crypto_free_vlan_keys(struct wlan_crypto_keys *priv_key) {}
-static inline void
-wlan_crypto_save_vlan_key(struct wlan_crypto_keys *priv_key,
-			  uint8_t key_index,
-			  struct wlan_crypto_key *crypto_key) {}
-static inline struct wlan_crypto_key *
-wlan_crypto_get_vlan_key(struct wlan_crypto_keys *priv_key,
-			 uint8_t key_index) { return NULL; }
-#endif
-
-/**
  * is_gtk() - Is given key index for GTK
  * @keyix: Key index
  *
@@ -98,30 +71,6 @@ bool is_gtk(uint16_t keyix);
 QDF_STATUS wlan_crypto_set_vdev_param(struct wlan_objmgr_vdev *vdev,
 					wlan_crypto_param_type param,
 					uint32_t value);
-
-/**
- * wlan_crypto_set_vdev_akm_roam() - set akm to vdev for roam
- * @vdev: vdev
- * @n_connect_akm_suites: number of akm suites in connect req
- * @value: akm value to be set
- *
- * This function sets akm to vdev for roam
- *
- * Return: QDF_STATUS_SUCCESS - in case of success
- */
-QDF_STATUS wlan_crypto_set_vdev_akm_roam(struct wlan_objmgr_vdev *vdev,
-					 int n_connect_akm_suites,
-					 uint32_t value);
-
-/**
- * wlan_crypto_get_vdev_akm_roam() - get akm from vdev for roam
- * @vdev: vdev
- *
- * This function gets akm from vdev for roam
- *
- * Return: akm value
- */
-uint32_t wlan_crypto_get_vdev_akm_roam(struct wlan_objmgr_vdev *vdev);
 
 /**
  * wlan_crypto_set_peer_param() - called by ucfg to set crypto param
@@ -215,14 +164,6 @@ QDF_STATUS wlan_crypto_getkey(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS wlan_crypto_delkey(struct wlan_objmgr_vdev *vdev,
 					uint8_t *macaddr,
 					uint8_t key_idx);
-/**
- * wlan_crypto_rsn_cipher_to_suite() - Convert a given RSN cipher
- * to suite value.
- * @cipher: internal crypto cipher suite
- *
- * Return: Cipher suite selector
- */
-int32_t wlan_crypto_rsn_cipher_to_suite(uint32_t cipher);
 
 /**
  * wlan_crypto_rsn_keymgmt_to_suite() - Convert an RSN key
@@ -230,30 +171,6 @@ int32_t wlan_crypto_rsn_cipher_to_suite(uint32_t cipher);
  * @keymgmt : crypto value
  */
 int32_t wlan_crypto_rsn_keymgmt_to_suite(uint32_t keymgmt);
-
-/**
- * wlan_crypto_rsn_suite_to_keymgmt() - Convert an RSN AKM suite selector
- * to the internal key management type code.
- * @sel: 4-byte RSN AKM suite selector (little-endian OUI + type)
- *
- * Parses the 4-byte suite selector and returns the corresponding
- * wlan_crypto_key_mgmt value, or -1 if the suite is not recognised.
- *
- * Return: internal key management type on success, -1 on failure
- */
-int32_t wlan_crypto_rsn_suite_to_keymgmt(const uint8_t *sel);
-
-/**
- * wlan_crypto_rsn_suite_to_cipher() - Convert an RSN cipher suite selector
- * to the internal cipher type code.
- * @sel: 4-byte RSN cipher suite selector (little-endian OUI + type)
- *
- * Parses the 4-byte suite selector and returns the corresponding
- * wlan_crypto_cipher_type value, or -1 if the suite is not recognised.
- *
- * Return: internal cipher type on success, -1 on failure
- */
-int32_t wlan_crypto_rsn_suite_to_cipher(const uint8_t *sel);
 
 /**
  * wlan_crypto_default_key() - called by ucfg to set default tx key
@@ -342,26 +259,22 @@ QDF_STATUS wlan_crypto_demic(struct wlan_objmgr_vdev *vdev,
 /**
  * wlan_crypto_vdev_is_pmf_enabled() - called to check is pmf enabled in vdev
  * @vdev: vdev
- * @rsno_gen: RSN(O) generation
  *
  * This function gets called to check is pmf enabled or not in vdev.
  *
  * Return: true or false
  */
-bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev,
-				     uint8_t rsno_gen);
+bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev);
 
 /**
  * wlan_crypto_vdev_is_pmf_required() - called to check is pmf required in vdev
  * @vdev: vdev
- * @rsno_gen: RSN(O) generation
  *
  * This function gets called to check is pmf required or not in vdev.
  *
  * Return: true or false
  */
-bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev,
-				      uint8_t rsno_gen);
+bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev);
 
 /**
  * wlan_crypto_is_pmf_enabled() - called by mgmt txrx to check is pmf enabled
@@ -421,7 +334,6 @@ bool wlan_crypto_is_mmie_valid(struct wlan_objmgr_vdev *vdev,
  * wlan_crypto_wpaie_check() - called by mlme to check the wpaie
  * @crypto_params: crypto params
  * @frm: ie buffer
- * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function gets called by mlme to check the contents of wpa is
  * matching with given crypto params
@@ -429,14 +341,12 @@ bool wlan_crypto_is_mmie_valid(struct wlan_objmgr_vdev *vdev,
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_crypto_wpaie_check(struct wlan_crypto_params *crypto_params,
-				   const uint8_t *frm,
-				   enum wlan_status_code *status_code);
+				   const uint8_t *frm);
 
 /**
  * wlan_crypto_rsnie_check() - called by mlme to check the rsnie
  * @crypto_params: crypto params
  * @frm: rsn buffer beginning from RSN data
- * @status_code: pointer to wlan status code to retrieve, can be null
  *
  * This function gets called by mlme to check the contents of rsn is
  * matching with given crypto params
@@ -444,8 +354,7 @@ QDF_STATUS wlan_crypto_wpaie_check(struct wlan_crypto_params *crypto_params,
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_crypto_rsnie_check(struct wlan_crypto_params *crypto_params,
-				   const uint8_t *frm,
-				   enum wlan_status_code *status_code);
+				   const uint8_t *frm);
 
 /**
  * wlan_crypto_rsnxie_check() - called by mlme to parse rsnx capabilities
@@ -479,11 +388,6 @@ uint8_t *wlan_crypto_build_wpaie(struct wlan_objmgr_vdev *vdev,
  *
  * This function gets called by mlme to build rsnie from given vdev
  *
- * @pmksa must be an entry the caller owns (e.g. a struct populated via
- * wlan_crypto_get_pmksa_copy() and friends, or a local/stack instance) -
- * never a raw pointer into the shared per-vdev pmksa[] table. This API is
- * lock-free and simply reads the fields of @pmksa.
- *
  * Return: end of buffer
  */
 uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
@@ -497,10 +401,6 @@ uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
  * @bssid: bssid mac address to add pmkid in rsnie
  *
  * This function gets called by mlme to build rsnie from given vdev
- *
- * This API looks up the PMKSA for @bssid via wlan_crypto_get_pmksa_copy(),
- * which locks internally, so the caller must NOT hold
- * wlan_crypto_pmksa_aquire_lock() across this call.
  *
  * Return: end of buffer
  */
@@ -537,8 +437,6 @@ uint8_t *wlan_crypto_build_wapiie(struct wlan_objmgr_vdev *vdev,
  * wlan_crypto_rsn_info() - check is given params matching with vdev params.
  * @vdev: vdev
  * @crypto_params: crypto params
- * @status_code: pointer to wlan status code to be retrieved, can be null
- * @rsno_gen: type of RSN used
  *
  * This function gets called by mlme to check is given params matching with
  * vdev params.
@@ -546,9 +444,7 @@ uint8_t *wlan_crypto_build_wapiie(struct wlan_objmgr_vdev *vdev,
  * Return: true success or false for failure.
  */
 bool wlan_crypto_rsn_info(struct wlan_objmgr_vdev *vdev,
-			  struct wlan_crypto_params *crypto_params,
-			  enum wlan_status_code *status_code,
-			  uint8_t rsno_gen);
+				struct wlan_crypto_params *crypto_params);
 
 /**
  * wlan_crypto_pn_check() - called by data patch for PN check
@@ -572,17 +468,6 @@ QDF_STATUS wlan_crypto_pn_check(struct wlan_objmgr_vdev *vdev,
  */
 struct wlan_crypto_params *wlan_crypto_vdev_get_crypto_params(
 						struct wlan_objmgr_vdev *vdev);
-
-/*
- * wlan_crypto_vdev_get_rsno_crypto() - called by mlme to get crypto params
- * based on the RSNO generation
- * @vdev: vdev
- * @gen: RSN generation
- *
- * Return: wlan_crypto_params or NULL in case of failure
- */
-struct wlan_crypto_params *
-wlan_crypto_vdev_get_rsno_crypto(struct wlan_objmgr_vdev *vdev, uint8_t gen);
 
 /**
  * wlan_crypto_peer_get_crypto_params() - called by mlme to get crypto params
@@ -836,23 +721,21 @@ void wlan_crypto_restore_keys(struct wlan_objmgr_vdev *vdev);
 
 /**
  * wlan_crypto_check_rsn_match() - called by ucfg to check for RSN match
- * @vdev: vdev
+ * @psoc: psoc pointer
+ * @vdev_id: vdev id
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
  * @peer_crypto_params: return peer crypto parameters
- * @status_code: pointer to wlan status code to be retrieved, can be null
- * @rsno_gen: rsno generation used
  *
  * This function gets called from ucfg to check RSN match.
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS
-wlan_crypto_check_rsn_match(struct wlan_objmgr_vdev *vdev,
-			    uint8_t *ie_ptr, uint16_t ie_len,
-			    struct wlan_crypto_params *peer_crypto_params,
-			    enum wlan_status_code *status_code,
-			    uint8_t rsno_gen);
+wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
+			    uint8_t vdev_id, uint8_t *ie_ptr,
+			    uint16_t ie_len, struct wlan_crypto_params *
+			    peer_crypto_params);
 
 /**
  * wlan_crypto_check_wpa_match() - called by ucfg to check for WPA match
@@ -861,7 +744,6 @@ wlan_crypto_check_rsn_match(struct wlan_objmgr_vdev *vdev,
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
  * @peer_crypto_params: return peer crypto parameters
- * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function gets called from ucfg to check WPA match.
  *
@@ -870,9 +752,8 @@ wlan_crypto_check_rsn_match(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS
 wlan_crypto_check_wpa_match(struct wlan_objmgr_psoc *psoc,
 			    uint8_t vdev_id, uint8_t *ie_ptr,
-			    uint16_t ie_len,
-			    struct wlan_crypto_params *peer_crypto_params,
-			    enum wlan_status_code *status_code);
+			    uint16_t ie_len, struct wlan_crypto_params *
+			    peer_crypto_params);
 
 /**
  * wlan_crypto_parse_rsnxe_ie() - parse RSNXE IE
@@ -883,23 +764,6 @@ wlan_crypto_check_wpa_match(struct wlan_objmgr_psoc *psoc,
  */
 const uint8_t *
 wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len);
-
-/**
- * wlan_crypto_eppke_rsnxe_caps_valid() - Check if RSNXE capability bytes
- * satisfy the capabilities required for EPPKE per IEEE 802.11bi.
- * @rsnxe_cap: capability bytes returned by wlan_crypto_parse_rsnxe_ie()
- * @cap_len: (n-1) encoded length from the RSNXE capability field
- * @from_sp: true for Security Profile 1/2 path — PMKSA_PRIVACY is also
- *           mandatory; false for plain EPPKE via RSNE — optional.
- *
- * Mandatory caps for both paths:
- *   KEK_IN_PASN          (bit 18, byte 2)
- *   ASSOC_FRM_ENCRYPTION (bit 27, byte 3)
- *
- * Return: true if all required caps are present.
- */
-bool wlan_crypto_eppke_rsnxe_caps_valid(const uint8_t *rsnxe_cap,
-					uint8_t cap_len, bool from_sp);
 
 /**
  * wlan_get_crypto_params_from_wapi_ie() - Function to get crypto params
@@ -933,7 +797,6 @@ wlan_get_crypto_params_from_wapi_ie(struct wlan_crypto_params *crypto_params,
  * @crypto_params: return crypto parameters
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
- * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function is used to get the crypto parameters from wpa ie
  *
@@ -942,8 +805,7 @@ wlan_get_crypto_params_from_wapi_ie(struct wlan_crypto_params *crypto_params,
  */
 QDF_STATUS
 wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
-				   const uint8_t *ie_ptr, uint16_t ie_len,
-				   enum wlan_status_code *status_code);
+				   const uint8_t *ie_ptr, uint16_t ie_len);
 
 /**
  * wlan_get_crypto_params_from_rsn_ie() - Function to get crypto params
@@ -951,7 +813,6 @@ wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
  * @crypto_params: vdev crypto parameters
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
- * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function is used to get the crypto parameters from rsn ie
  *
@@ -960,37 +821,7 @@ wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
  */
 QDF_STATUS
 wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
-				   const uint8_t *ie_ptr, uint16_t ie_len,
-				   enum wlan_status_code *status_code);
-
-/**
- * wlan_get_crypto_params_from_mrsno_ie() - Function to set crypto params
- * from MRSNO IE
- * @crypto_params: vdev crypto parameters
- * @ie_ptr: pointer to IEs
- * @ie_len: IE length
- * @rsno_gen: RSNO generation
- *
- * This function is used to get the crypto parameters from MRSNO IE
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_get_crypto_params_from_mrsno_ie(struct wlan_crypto_params *crypto_params,
-				     const uint8_t *ie_ptr, uint16_t ie_len,
-				     uint8_t rsno_gen);
-
-/*
- * wlan_set_crypto_params_from_mrsno - Sets vdev crypto params from RSNO IE
- * @vdev: vdev pointer
- * @ie_ptr: pointer to IE
- * @ie_len: IE length
- *
- * This function gets called from ucfg to set crypto params from IE data.
- *
- * Return: QDF_STATUS_SUCCESS or error code
- */
-QDF_STATUS wlan_set_crypto_params_from_mrsno(struct wlan_objmgr_vdev *vdev,
-					     uint8_t *ie_ptr, uint16_t ie_len);
+				   const uint8_t *ie_ptr, uint16_t ie_len);
 
 /**
  * wlan_set_vdev_crypto_params_from_ie() - Sets vdev crypto params from IE info
@@ -1045,19 +876,6 @@ QDF_STATUS ucfg_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
 				   enum wlan_crypto_key_type key_type);
 
 /**
- * ucfg_crypto_del_ndi_key_req() - Del NDI key request to UCFG
- * @vdev: vdev object
- * @key_index: Key index used in 802.11 frames
- * @pairwise: true if it is pairwise key
- * @mac_addr: Peer address
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS ucfg_crypto_del_ndi_key_req(struct wlan_objmgr_vdev *vdev,
-				       uint8_t key_index, bool pairwise,
-				       const uint8_t *mac_addr);
-
-/**
  * wlan_crypto_get_default_key_idx() - Get the default key index
  * @vdev: vdev object
  * @igtk: denotes if the request is for igtk key type or not
@@ -1091,10 +909,7 @@ wlan_crypto_get_cipher(struct wlan_objmgr_vdev *vdev, const uint8_t *peer_mac,
  * Return: enum wlan_crypto_key_mgmt
  */
 wlan_crypto_key_mgmt wlan_crypto_get_secure_akm_available(uint32_t akm);
-
-enum wlan_crypto_cipher_type
-wlan_crypto_get_cipher_from_bitmap(uint32_t ciphers);
-
+#ifdef CRYPTO_SET_KEY_CONVERGED
 /**
  * wlan_crypto_update_set_key_peer() - Update the peer for set key
  * @vdev: vdev object
@@ -1162,28 +977,6 @@ struct wlan_crypto_key *wlan_crypto_get_ml_sta_link_key(
 				uint8_t key_index,
 				struct qdf_mac_addr *link_addr,
 				uint8_t link_id);
-
-/**
- * wlan_crypto_copy_ml_sta_link_key() - Copy a stored ml sta link key of the
- *					given type to another link
- * @psoc: psoc handler
- * @params: key copy parameters, @params->copied_key_index is filled with the
- *	    key index that was copied on success
- *
- * Scans the key indices stored under (@params->src_link_addr,
- * @params->src_link_id) for the first key matching @params->key_type and
- * stores a copy of it under (@params->dst_link_addr, @params->dst_link_id) at
- * the same key index, allocating the destination key when the link has none.
- * The whole lookup-copy-store sequence is performed while holding the crypto
- * lock, so callers must not take the crypto lock themselves.
- *
- * Return: QDF_STATUS_SUCCESS on copy, QDF_STATUS_E_NOENT when the source link
- *	   has no key of @params->key_type, QDF_STATUS_E_* otherwise
- */
-QDF_STATUS
-wlan_crypto_copy_ml_sta_link_key(struct wlan_objmgr_psoc *psoc,
-				 struct wlan_crypto_ml_key_copy_params *params);
-
 /**
  * wlan_crypto_get_key() - Get the stored key information
  * @vdev: vdev object
@@ -1197,26 +990,6 @@ struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
 					    uint8_t key_index);
 
 /**
- * wlan_crypto_get_key_allow_roam_bypass() - Get the stored key information,
- * with an option to bypass the ML link key lookup for a roaming 11bi vdev
- * @vdev: vdev object
- * @peer_mac: MAC address of crypto key entity
- * @key_index: the index of the key that needs to be retrieved
- * @is_roam_eppke: true if this is an EPPKE / 802.1X-in-auth (11bi) roam
- *
- * When @is_roam_eppke is true, the AP's link address (@peer_mac) is used as
- * the ML key hash-table lookup key instead of the vdev's own link address,
- * to match the link_addr used when the key was stored via
- * wlan_crypto_save_ml_sta_key().
- *
- * Return: Key material
- */
-struct wlan_crypto_key *
-wlan_crypto_get_key_allow_roam_bypass(struct wlan_objmgr_vdev *vdev,
-				      const uint8_t *peer_mac,
-				      uint8_t key_index, bool is_roam_eppke);
-
-/**
  * wlan_crypto_set_key_req() - Set key request
  * @vdev: vdev object
  * @req: key request information
@@ -1227,19 +1000,6 @@ wlan_crypto_get_key_allow_roam_bypass(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS wlan_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
 				   struct wlan_crypto_key *req,
 				   enum wlan_crypto_key_type key_type);
-
-/**
- * wlan_crypto_del_ndi_key_req() - Del NDI key request
- * @vdev: vdev object
- * @key_index: Key index used in 802.11 frames
- * @pairwise: true if it is pairwise key
- * @mac_addr: Peer address
- *
- * Return: QDF status
- */
-QDF_STATUS wlan_crypto_del_ndi_key_req(struct wlan_objmgr_vdev *vdev,
-				       uint8_t key_index, bool pairwise,
-				       const uint8_t *mac_addr);
 
 /**
  * wlan_crypto_free_key() - Free the given key
@@ -1270,6 +1030,46 @@ void wlan_crypto_free_vdev_key(struct wlan_objmgr_vdev *vdev);
  * Return: None
  */
 void wlan_crypto_reset_vdev_params(struct wlan_objmgr_vdev *vdev);
+#else
+static inline void wlan_crypto_update_set_key_peer(
+						struct wlan_objmgr_vdev *vdev,
+						bool pairwise,
+						uint8_t key_index,
+						struct qdf_mac_addr *peer_mac)
+{
+}
+
+static inline QDF_STATUS
+wlan_crypto_save_key(struct wlan_objmgr_vdev *vdev,
+		     const uint8_t *peer_mac, uint8_t key_index,
+		     struct wlan_crypto_key *crypto_key)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline struct wlan_crypto_key *
+wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
+		    const uint8_t *peer_mac, uint8_t key_index)
+{
+	return NULL;
+}
+
+static inline
+QDF_STATUS wlan_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
+				   struct wlan_crypto_key *req,
+				   enum wlan_crypto_key_type key_type)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void wlan_crypto_free_vdev_key(struct wlan_objmgr_vdev *vdev)
+{
+}
+
+static inline void wlan_crypto_reset_vdev_params(struct wlan_objmgr_vdev *vdev)
+{
+}
+#endif /* CRYPTO_SET_KEY_CONVERGED */
 
 /**
  * wlan_crypto_vdev_set_param() - Send vdev set param to firmware.
@@ -1285,101 +1085,51 @@ wlan_crypto_vdev_set_param(struct wlan_objmgr_psoc *psoc, uint32_t vdev_id,
 			   uint32_t param_id, uint32_t param_value);
 
 /**
- * wlan_crypto_set_peer_ucastcipher() - Set unicast cipher and cipher cap
- *                                      of the peer
- * @psoc: Pointer to PSOC object
- * @mac_addr: peer mac address
- * @cipher: peer cipher bits
- * @cipher_cap: cipher cap
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_crypto_set_peer_ucastcipher(struct wlan_objmgr_psoc *psoc,
-				 uint8_t *mac_addr, int32_t cipher,
-				 int32_t cipher_cap);
-
-/**
- * ucfg_crypto_set_peer_ucastcipher() - Set unicast cipher and cipher cap
- *                                      of the peer, north bound wrapper
- * @psoc: Pointer to PSOC object
- * @mac_addr: peer mac address
- * @cipher: peer cipher bits
- * @cipher_cap: cipher cap
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-ucfg_crypto_set_peer_ucastcipher(struct wlan_objmgr_psoc *psoc,
-				 uint8_t *mac_addr, int32_t cipher,
-				 int32_t cipher_cap);
-
-/**
- * wlan_crypto_get_peer_pmksa_copy() - get pmksa based on pmksa lookup key
+ * wlan_crypto_get_peer_pmksa() - called to get pmksa based on pmksa parameter
  * @vdev: vdev
- * @lookup: lookup key - ssid_len/ssid/cache_id (FILS) or bssid
- * @pmksa: output buffer the matched entry is copied into
+ * @pmksa: bssid
  *
- * Looks up the per-vdev PMKSA cache using @lookup and, on a match, copies
- * the entry into @pmksa under the crypto module's internal pmksa lock.
- * The caller never touches the lock or a pointer into the shared table.
+ * This function is to get pmksa based on pmksa parameter
  *
- * Return: QDF_STATUS_SUCCESS if found and copied, QDF_STATUS_E_EMPTY if
- * not found, QDF_STATUS_E_INVAL if @pmksa is NULL.
+ * Return: wlan_crypto_pmksa when match found else NULL.
  */
-QDF_STATUS
-wlan_crypto_get_peer_pmksa_copy(struct wlan_objmgr_vdev *vdev,
-				struct wlan_crypto_pmksa *lookup,
-				struct wlan_crypto_pmksa *pmksa);
-
-/**
- * wlan_crypto_get_pmksa_copy() - get pmksa of bssid passed, copied out
- * @vdev: vdev
- * @bssid: bssid
- * @pmksa: output buffer the matched entry is copied into
- *
- * Looks up the per-vdev PMKSA cache for @bssid and, on a match, copies the
- * entry into @pmksa under the crypto module's internal pmksa lock. The
- * caller never touches the lock or a pointer into the shared table.
- *
- * Return: QDF_STATUS_SUCCESS if found and copied, QDF_STATUS_E_EMPTY if
- * not found, QDF_STATUS_E_INVAL if @pmksa is NULL.
- */
-QDF_STATUS
-wlan_crypto_get_pmksa_copy(struct wlan_objmgr_vdev *vdev,
-			   struct qdf_mac_addr *bssid,
+struct wlan_crypto_pmksa *
+wlan_crypto_get_peer_pmksa(struct wlan_objmgr_vdev *vdev,
 			   struct wlan_crypto_pmksa *pmksa);
 
 /**
- * wlan_crypto_get_fils_pmksa_copy() - get the PMKSA for FILS SSID, copied out
+ * wlan_crypto_get_pmksa() - called to get pmksa of bssid passed.
+ * @vdev: vdev
+ * @bssid: bssid
+ *
+ * This function gets called from to get pmksa for the bssid.
+ *
+ * Return: wlan_crypto_pmksa when match found else NULL.
+ */
+struct wlan_crypto_pmksa *
+wlan_crypto_get_pmksa(struct wlan_objmgr_vdev *vdev,
+		      struct qdf_mac_addr *bssid);
+
+/**
+ * wlan_crypto_get_fils_pmksa() - Get the PMKSA for FILS
+ * SSID, if the SSID and cache id matches
  * @vdev:     Pointer with VDEV object
  * @cache_id: Cache id
  * @ssid:     Pointer to ssid
  * @ssid_len: SSID length
- * @pmksa: output buffer the matched entry is copied into
  *
- * Looks up the per-vdev PMKSA cache by cache id + SSID and, on a match,
- * copies the entry into @pmksa under the crypto module's internal pmksa
- * lock. The caller never touches the lock or a pointer into the shared
- * table.
- *
- * Return: QDF_STATUS_SUCCESS if found and copied, QDF_STATUS_E_EMPTY if
- * not found, QDF_STATUS_E_INVAL if @pmksa is NULL.
+ * Return: PMKSA entry if the cache id and SSID matches
  */
-QDF_STATUS
-wlan_crypto_get_fils_pmksa_copy(struct wlan_objmgr_vdev *vdev,
-				uint8_t *cache_id, uint8_t *ssid,
-				uint8_t ssid_len,
-				struct wlan_crypto_pmksa *pmksa);
+struct wlan_crypto_pmksa *
+wlan_crypto_get_fils_pmksa(struct wlan_objmgr_vdev *vdev,
+			   uint8_t *cache_id, uint8_t *ssid,
+			   uint8_t ssid_len);
 
 /**
  * wlan_crypto_pmksa_flush() - called to flush saved pmksa
  * @crypto_params: crypto_params
  *
  * This function flush saved pmksa from crypto params.
- *
- * This API locks internally, so the caller must NOT hold
- * wlan_crypto_pmksa_aquire_lock() across this call.
  *
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
@@ -1393,9 +1143,6 @@ QDF_STATUS wlan_crypto_pmksa_flush(struct wlan_crypto_params *crypto_params);
  *
  * This function gets called from ucfg to set or del pmksa.
  * when given pmksa is NULL and set is 0, it is for flush all entries.
- *
- * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
- * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
  *
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
@@ -1412,9 +1159,6 @@ QDF_STATUS wlan_crypto_set_del_pmksa(struct wlan_objmgr_vdev *vdev,
  * This function gets called from ucfg to update pmksa with mdid.
  * And flush the matching mdid entries.
  *
- * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
- * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
- *
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_crypto_update_pmk_cache_ft(struct wlan_objmgr_vdev *vdev,
@@ -1427,9 +1171,6 @@ QDF_STATUS wlan_crypto_update_pmk_cache_ft(struct wlan_objmgr_vdev *vdev,
  * AP
  * @vdev:       Vdev
  * @conn_bssid: Connected bssid
- *
- * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
- * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
  */
 void
 wlan_crypto_selective_clear_sae_single_pmk_entries(
@@ -1442,9 +1183,6 @@ wlan_crypto_selective_clear_sae_single_pmk_entries(
  * @bssid: BSSID for which the flag is to be set
  * @single_pmk_capable_bss: Flag to indicate Sae single pmk supported BSSID or
  * not
- *
- * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
- * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
  */
 void wlan_crypto_set_sae_single_pmk_bss_cap(struct wlan_objmgr_vdev *vdev,
 					    struct qdf_mac_addr *bssid,
@@ -1454,9 +1192,6 @@ void wlan_crypto_set_sae_single_pmk_bss_cap(struct wlan_objmgr_vdev *vdev,
  * wlan_crypto_set_sae_single_pmk_info() - Set the peer SAE single pmk info
  * @vdev: Vdev
  * @roam_sync_pmksa: pmk info for roamed AP
- *
- * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
- * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
  */
 void
 wlan_crypto_set_sae_single_pmk_info(struct wlan_objmgr_vdev *vdev,
@@ -1553,27 +1288,4 @@ void ucfg_crypto_flush_entries(struct wlan_objmgr_psoc *psoc);
 void ucfg_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     struct qdf_mac_addr *link_addr,
 				     uint8_t link_id);
-
-#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_ROAM_OFFLOAD)
-/**
- * wlan_crypto_key_event_handler() - Handle key event and store the keys in
- * crypto PSOC object.
- * @psoc:  Pointer to PSOC object
- * @keys:  Pointer to the keys
- * @num_keys: Number of links for which keys entries are available
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS wlan_crypto_key_event_handler(struct wlan_objmgr_psoc *psoc,
-					 struct wlan_crypto_key_entry *keys,
-					 uint8_t num_keys);
-#else
-static inline
-QDF_STATUS wlan_crypto_key_event_handler(struct wlan_objmgr_psoc *psoc,
-					 struct wlan_crypto_key_entry *keys,
-					 uint8_t num_keys)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-#endif
 #endif /* end of _WLAN_CRYPTO_GLOBAL_API_H_ */

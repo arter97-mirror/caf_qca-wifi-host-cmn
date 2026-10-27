@@ -311,17 +311,6 @@ void mlo_mlme_peer_delete(struct wlan_objmgr_peer *peer);
 void mlo_mlme_peer_assoc_resp(struct wlan_objmgr_peer *peer);
 
 /**
- * mlo_mlme_get_cb_mode_for_freq() - fetch cb_mode from freq
- * @vdev_id: objmgr vdev id
- * @freq: freq for which cb_mode is required
- * @cb_mode: callback mode to fetch
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlo_mlme_get_cb_mode_for_freq(uint8_t vdev_id, qdf_freq_t freq,
-					 uint8_t *cb_mode);
-
-/**
  * mlo_mlme_get_link_assoc_req() - API to get link assoc req buffer
  * @peer: Object manager peer
  * @link_ix: link id of vdev
@@ -570,14 +559,6 @@ bool wlan_mlo_get_psoc_capable(struct wlan_objmgr_psoc *psoc)
 }
 #endif/*WLAN_MLO_MULTI_CHIP*/
 
-/**
- * typedef mlo_vdev_ops_handler() - API to have operation on ml vdevs
- * @vdev: vdev object
- * @arg: operation-specific argument
- */
-typedef void (*mlo_vdev_ops_handler)(struct wlan_objmgr_vdev *vdev,
-				     void *arg);
-
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
  * mlo_process_link_set_active_resp() - handler for mlo link set active response
@@ -608,6 +589,14 @@ void
 mlo_link_recfg_set_link_resp_timeout(struct wlan_mlo_dev_context *mlo_dev_ctx);
 
 /**
+ * typedef mlo_vdev_ops_handler() - API to have operation on ml vdevs
+ * @vdev: vdev object
+ * @arg: operation-specific argument
+ */
+typedef void (*mlo_vdev_ops_handler)(struct wlan_objmgr_vdev *vdev,
+				     void *arg);
+
+/**
  * mlo_iterate_ml_vdev_list() - Iterate on ML vdevs of MLD
  * @vdev: vdev object
  * @handler: the handler will be called for each object in ML list
@@ -629,17 +618,8 @@ void mlo_iterate_ml_vdev_list(struct wlan_objmgr_vdev *vdev,
 		return;
 
 	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	if (!mlo_dev_ctx) {
-		status = wlan_objmgr_vdev_try_get_ref(vdev, WLAN_MLO_MGR_ID);
-		if (QDF_IS_STATUS_ERROR(status))
-			return;
-
-		if (handler)
-			handler(vdev, arg);
-
-		mlo_release_vdev_ref(vdev);
+	if (!mlo_dev_ctx || !(wlan_vdev_mlme_is_mlo_vdev(vdev)))
 		return;
-	}
 
 	if (lock)
 		mlo_dev_lock_acquire(mlo_dev_ctx);
@@ -715,43 +695,7 @@ mlo_get_link_state_register_resp_cb(struct wlan_objmgr_vdev *vdev,
  * @vdev: vdev handler
  */
 QDF_STATUS ml_post_get_link_state_msg(struct wlan_objmgr_vdev *vdev);
-#else
-static inline
-void mlo_iterate_ml_vdev_list(struct wlan_objmgr_vdev *vdev,
-			      mlo_vdev_ops_handler handler,
-			      void *arg, bool lock)
-{
-	QDF_STATUS status;
 
-	if (!vdev || !handler)
-		return;
-
-	status = wlan_objmgr_vdev_try_get_ref(vdev, WLAN_MLO_MGR_ID);
-	if (QDF_IS_STATUS_ERROR(status))
-		return;
-
-	handler(vdev, arg);
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-}
-#endif /* WLAN_FEATURE_11BE_MLO */
-
-#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
-/**
- * wlan_mlo_link_remove_event_handler() - handler target report tbtt event
- * @psoc: psoc pointer
- * @evt_params: parameters corresponding to the current link removal event
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS wlan_mlo_link_remove_event_handler(struct wlan_objmgr_psoc *psoc,
-					      struct mlo_link_removal_evt_params *evt_params);
-#else
-static inline
-QDF_STATUS wlan_mlo_link_remove_event_handler(struct wlan_objmgr_psoc *psoc,
-					      struct mlo_link_removal_evt_params *evt_params)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM
 /**

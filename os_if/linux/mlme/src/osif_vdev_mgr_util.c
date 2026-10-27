@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2021, 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -47,15 +46,6 @@ static void osif_vdev_mgr_send_scan_done_complete_cb(uint8_t vdev_id)
 								vdev_id);
 }
 
-static void osif_vdev_mgr_sta_csa_received(uint8_t vdev_id,
-					   struct csa_offload_params *csa_event)
-{
-	if (osif_vdev_mgr_legacy_ops &&
-	    osif_vdev_mgr_legacy_ops->osif_vdev_mgr_sta_csa_received)
-		osif_vdev_mgr_legacy_ops->osif_vdev_mgr_sta_csa_received(
-							vdev_id, csa_event);
-}
-
 struct wireless_dev *osif_vdev_mgr_get_p2p_wdev(void)
 {
 	if (!osif_vdev_mgr_legacy_ops ||
@@ -65,23 +55,6 @@ struct wireless_dev *osif_vdev_mgr_get_p2p_wdev(void)
 	return osif_vdev_mgr_legacy_ops->osif_vdev_mgr_get_p2p_wdev_cb();
 }
 
-#ifdef FEATURE_CQM_RSSI
-static QDF_STATUS
-osif_vdev_mgr_cqm_rssi_breach_cb(struct vdev_cqm_rssi_breach_event *event)
-{
-	void (*cb)(struct vdev_cqm_rssi_breach_event *event);
-
-	if (!osif_vdev_mgr_legacy_ops)
-		return QDF_STATUS_SUCCESS;
-
-	cb = osif_vdev_mgr_legacy_ops->osif_vdev_mgr_cqm_rssi_breach_cb;
-	if (cb)
-		cb(event);
-
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 static struct mlme_vdev_mgr_ops vdev_mgr_ops = {
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
 	.mlme_vdev_mgr_set_mac_addr_response =
@@ -89,10 +62,6 @@ static struct mlme_vdev_mgr_ops vdev_mgr_ops = {
 #endif
 	.mlme_vdev_mgr_send_scan_done_complete_cb =
 				osif_vdev_mgr_send_scan_done_complete_cb,
-	.mlme_vdev_mgr_sta_csa_received = osif_vdev_mgr_sta_csa_received,
-#ifdef FEATURE_CQM_RSSI
-	.mlme_vdev_mgr_cqm_rssi_breach_cb = osif_vdev_mgr_cqm_rssi_breach_cb,
-#endif
 };
 
 /**

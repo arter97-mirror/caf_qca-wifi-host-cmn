@@ -29,7 +29,6 @@
 struct vdev_mlme_obj;
 struct cnx_mgr;
 struct ml_rv_info;
-struct peer_oper_mode_event;
 
 /* Requestor ID for multiple vdev restart */
 #define MULTIPLE_VDEV_RESTART_REQ_ID 0x1234
@@ -43,7 +42,6 @@ struct peer_oper_mode_event;
 #define WLAN_VDEV_MLME_TYPE_NAN 0x5
 #define WLAN_VDEV_MLME_TYPE_OCB 0x6
 #define WLAN_VDEV_MLME_TYPE_NDI 0x7
-#define WLAN_VDEV_MLME_TYPE_PASSTHRU 0x9
 
 /* values for vdev_subtype */
 #define WLAN_VDEV_MLME_SUBTYPE_UNKNOWN   0x0
@@ -64,38 +62,6 @@ struct peer_oper_mode_event;
 #define WLAN_VDEV_MLME_FLAGS_MBSS_CMN_PARAM     0x00000010
 
 /**
- * struct wlan_bss_op_res - BSS operating resource params container struct
- * @nss_valid: NSS fields are valid if true
- * @chains_valid: Chains fields are valid if true
- * @ch_width_valid: Channel width fields are valid if true
- * @tx_nss: Tx NSS, only valid if @nss_valid is %true
- * @rx_nss: Rx NSS, only valid if @nss_valid is %true
- * @tx_chains: Tx chains, only valid if @chains_valid is %true
- * @rx_chains: Rx chains, only valid if @chains_valid is %true
- * @ch_width: channel width, only valid if @ch_width_valid is %true
- */
-struct wlan_bss_op_res {
-	bool nss_valid;
-	bool chains_valid;
-	bool ch_width_valid;
-	uint8_t tx_nss;
-	uint8_t rx_nss;
-	uint8_t tx_chains;
-	uint8_t rx_chains;
-	enum phy_ch_width ch_width;
-};
-
-/**
- * struct wlan_vdev_bss_op_res_params - VDEV BSS operating resource params
- * @vdev_id: VDEV identifier
- * @bss_op_res: BSS operating params of the VDEV
- */
-struct wlan_vdev_bss_op_res_params {
-	uint8_t vdev_id;
-	struct wlan_bss_op_res bss_op_res;
-};
-
-/**
  * struct vdev_mlme_proto_generic - generic mlme proto structure
  * sent in frames
  * @dtim_period: frequency of data transmissions per beacon 1-255
@@ -103,15 +69,10 @@ struct wlan_vdev_bss_op_res_params {
  * @protection_mode: rts cts protection mode
  * @beacon_interval: beacon interval
  * @ldpc: low density parity check value
- * @cap_tx_nss: Self cap Tx NSS of the current BSS session
- * @cap_rx_nss: Self cap Rx NSS of the current BSS session
- * @op_tx_nss: Self cp Tx NSS of the current BSS session
- * @op_rx_nss: Self cp Rx NSS of the current BSS session
  * @nss: number of spatial stream
  * @nss_2g: 2.4GHz number of spatial stream
  * @nss_5g: 5GHz number of spatial stream
  * @tsfadjust: adjusted timer sync value
- * @bss_op_res: BSS operating params of the containing object
  */
 struct vdev_mlme_proto_generic {
 	uint8_t dtim_period;
@@ -119,15 +80,10 @@ struct vdev_mlme_proto_generic {
 	uint32_t protection_mode;
 	uint16_t beacon_interval;
 	uint8_t ldpc;
-	uint8_t cap_tx_nss;
-	uint8_t cap_rx_nss;
-	uint8_t op_tx_nss;
-	uint8_t op_rx_nss;
 	uint8_t nss;
 	uint8_t nss_2g;
 	uint8_t nss_5g;
 	uint64_t tsfadjust;
-	struct wlan_bss_op_res bss_op_res;
 };
 
 /**
@@ -142,12 +98,10 @@ struct vdev_mlme_proto_ap {
  * struct vdev_mlme_proto_sta - sta specific mlme protocol
  * @assoc_id: association id of station
  * @uapsd_cfg: uapsd configuration
- * @sta_in_20mhz: STA is 20 MHz only or not
  */
 struct vdev_mlme_proto_sta {
 	uint16_t assoc_id;
 	uint16_t uapsd_cfg;
-	bool sta_in_20mhz;
 };
 
 /**
@@ -340,107 +294,6 @@ struct vdev_mlme_eht_ops_info {
 };
 #endif
 
-#ifdef WLAN_FEATURE_11BN
-/**
- * struct vdev_mlme_uhr_caps_info - vdev mlme UHR capability information
- * @uhr_maccap_dps_support: Dynamic Power Save support
- * @uhr_maccap_dps_assist_support: Dynamic Power Save assist support
- * @uhr_maccap_ap_static_hcm_support: AP static HCM (Host Connection Manager)
- *                                    support
- * @uhr_maccap_ml_power_mgmt: Multi-link power management
- * @uhr_maccap_npca_support: NPCA (Network-based Power Control Algorithm)
- *                           support
- * @uhr_maccap_bsr_support: BSR (Buffer Status Report) support
- * @uhr_maccap_addn_mapped_tid_support: Additional mapped TID support
- * @uhr_maccap_eotsp_support: EOTSP (End of Transmission Service Period)
- *                            support
- * @uhr_maccap_dso_support: DSO (Dynamic Spatial reuse Operation) support
- * @uhr_maccap_p_edca_support: Prioritized EDCA support
- * @uhr_maccap_dbe_support: DBE (Dual Band Enhancement) support
- * @uhr_maccap_ul_lli_support: Uplink LLI (Low Latency Interface) support
- * @uhr_maccap_p2p_lli_support: P2P LLI (Low Latency Interface) support
- * @uhr_maccap_puo_support: PUO (Punctured Uplink OFDMA) support
- * @uhr_maccap_ap_puo_support: AP PUO (Punctured Uplink OFDMA) support
- * @uhr_maccap_duo_support: DUO (Downlink Uplink OFDMA) support
- * @uhr_maccap_ul_mu_data_disable_rx_support: Uplink MU data disable RX support
- * @uhr_maccap_aom_support: AOM (Adaptive OFDMA Management) support
- * @uhr_maccap_ifcs_support: IFCS (Interference Free Channel Selection) support
- * @uhr_maccap_trs_support: UHR TRS (Triggered Response Scheduling) support
- * @uhr_maccap_txspg_support: TXSPG (Transmit Spatial Reuse Parameter Group)
- *                            support
- * @uhr_maccap_txop_return_support_intxspg: TXOP return support in TXSPG
- * @uhr_maccap_op_mode_param_update_timeout: UHR operating mode parameter
- *                                           update timeout
- * @uhr_maccap_param_update_adv_notify: Parameter update advance notification
- * @uhr_maccap_unused: Unused bits
- * @uhr_maccap_update_ind_in_tim: Update indication in TIM
- * @uhr_maccap_bounded_ess: Bounded ESS (Extended Service Set)
- * @uhr_maccap_btm_assurance: BTM (BSS Transition Management) assurance
- * @uhr_maccap_co_bf_support: Co-located Beamforming support
- * @uhr_phycap_max_nss_rx_ndp_sounding_80mhz: Maximum NSS for RX NDP sounding
- *                                            in 80 MHz
- * @uhr_phycap_max_nss_rx_dl_mumimo_80mhz: Maximum NSS for RX DL MU-MIMO
- *                                         in 80 MHz
- * @uhr_phycap_max_nss_rx_ndp_sounding_160mhz: Maximum NSS for RX NDP sounding
- *                                             in 160 MHz
- * @uhr_phycap_max_nss_total_rx_dl_mumimo_160mhz: Maximum total NSS for RX DL
- *                                                MU-MIMO in 160 MHz
- * @uhr_phycap_max_nss_rx_ndp_sounding_320mhz: Maximum NSS for RX NDP sounding
- *                                             in 320 MHz
- * @uhr_phycap_max_nss_total_rx_dl_mumimo_320mhz: Maximum total NSS for RX DL
- *                                                MU-MIMO in 320 MHz
- * @uhr_phycap_elr_rx_support: ELR (Extended Long Range) RX support
- * @uhr_phycap_elr_tx_support: ELR (Extended Long Range) TX support
- */
-struct vdev_mlme_uhr_caps_info {
-	uint32_t uhr_maccap_dps_support:1,
-		 uhr_maccap_dps_assist_support:1,
-		 uhr_maccap_ap_static_hcm_support:1,
-		 uhr_maccap_ml_power_mgmt:1,
-		 uhr_maccap_npca_support:1,
-		 uhr_maccap_bsr_support:1,
-		 uhr_maccap_addn_mapped_tid_support:1,
-		 uhr_maccap_eotsp_support:1,
-		 uhr_maccap_dso_support:1,
-		 uhr_maccap_p_edca_support:1,
-		 uhr_maccap_dbe_support:1,
-		 uhr_maccap_ul_lli_support:1,
-		 uhr_maccap_p2p_lli_support:1,
-		 uhr_maccap_puo_support:1,
-		 uhr_maccap_ap_puo_support:1,
-		 uhr_maccap_duo_support:1,
-		 uhr_maccap_ul_mu_data_disable_rx_support:1,
-		 uhr_maccap_aom_support:1,
-		 uhr_maccap_ifcs_support:1,
-		 uhr_maccap_trs_support:1,
-		 uhr_maccap_txspg_support:1,
-		 uhr_maccap_txop_return_support_intxspg:1,
-		 uhr_maccap_op_mode_param_update_timeout:4,
-		 uhr_maccap_param_update_adv_notify:3,
-		 uhr_maccap_unused:3;
-	uint32_t uhr_maccap_update_ind_in_tim:5,
-		 uhr_maccap_bounded_ess:1,
-		 uhr_maccap_btm_assurance:1,
-		 uhr_maccap_co_bf_support:1,
-		 uhr_phycap_max_nss_rx_ndp_sounding_80mhz:1,
-		 uhr_phycap_max_nss_rx_dl_mumimo_80mhz:1,
-		 uhr_phycap_max_nss_rx_ndp_sounding_160mhz:1,
-		 uhr_phycap_max_nss_total_rx_dl_mumimo_160mhz:1,
-		 uhr_phycap_max_nss_rx_ndp_sounding_320mhz:1,
-		 uhr_phycap_max_nss_total_rx_dl_mumimo_320mhz:1,
-		 uhr_phycap_elr_rx_support:1,
-		 uhr_phycap_elr_tx_support:1;
-};
-
-/**
- * struct vdev_mlme_uhr_ops_info - vdev mlme UHR operations information
- * @uhr_ops: uhr ops
- */
-struct vdev_mlme_uhr_ops_info {
-	uint32_t uhr_ops;
-};
-#endif
-
 /**
  * enum mlme_vdev_dot11_mode - Dot11 mode of the vdev
  * @MLME_VDEV_DOT11_MODE_AUTO: vdev uses mlme_dot11_mode
@@ -448,7 +301,6 @@ struct vdev_mlme_uhr_ops_info {
  * @MLME_VDEV_DOT11_MODE_11AC: vdev supports 11AC mode
  * @MLME_VDEV_DOT11_MODE_11AX: vdev supports 11AX mode
  * @MLME_VDEV_DOT11_MODE_11BE: vdev supports 11BE mode
- * @MLME_VDEV_DOT11_MODE_11BN: vdev supports 11BN mode
  */
 enum mlme_vdev_dot11_mode {
 	MLME_VDEV_DOT11_MODE_AUTO,
@@ -456,7 +308,6 @@ enum mlme_vdev_dot11_mode {
 	MLME_VDEV_DOT11_MODE_11AC,
 	MLME_VDEV_DOT11_MODE_11AX,
 	MLME_VDEV_DOT11_MODE_11BE,
-	MLME_VDEV_DOT11_MODE_11BN,
 };
 
 /**
@@ -472,8 +323,6 @@ enum mlme_vdev_dot11_mode {
  * @eht_cap_info: EHT capability information
  * @eht_ops_info: EHT operation information
  * @bss_color: 11ax HE BSS Color information
- * @uhr_cap_info: UHR capability information
- * @uhr_ops_info: UHR operation information
  */
 struct vdev_mlme_proto {
 	enum mlme_vdev_dot11_mode vdev_dot11_mode;
@@ -488,10 +337,6 @@ struct vdev_mlme_proto {
 	struct vdev_mlme_eht_ops_info eht_ops_info;
 #endif
 	struct vdev_mlme_proto_bss_color bss_color;
-#ifdef WLAN_FEATURE_11BN
-	struct vdev_mlme_uhr_caps_info uhr_cap_info;
-	struct vdev_mlme_uhr_ops_info uhr_ops_info;
-#endif
 };
 
 /**
@@ -613,37 +458,11 @@ struct vdev_mlme_mgmt_ap {
 };
 
 /**
- * enum vdev_mlme_bss_param_flags - flag bits for vdev_mlme_bss_params::flags
- * @VDEV_MLME_BSS_PARAM_CTS_PROT: CTS protection enabled (ERP use_protection)
- * @VDEV_MLME_BSS_PARAM_SHORT_PREAMBLE: short preamble enabled (cap info bit)
- * @VDEV_MLME_BSS_PARAM_SHORT_SLOT_TIME: short slot time enabled (cap info bit)
- */
-enum vdev_mlme_bss_param_flags {
-	VDEV_MLME_BSS_PARAM_CTS_PROT        = BIT(0),
-	VDEV_MLME_BSS_PARAM_SHORT_PREAMBLE  = BIT(1),
-	VDEV_MLME_BSS_PARAM_SHORT_SLOT_TIME = BIT(2),
-};
-
-/**
- * struct vdev_mlme_bss_params - BSS parameters learnt from beacon/assoc resp
- * @flags: bitmask of enum vdev_mlme_bss_param_flags
- * @dtim_period: DTIM period advertised by the BSS
- * @beacon_interval: beacon interval of the BSS
- */
-struct vdev_mlme_bss_params {
-	uint8_t flags;
-	uint8_t dtim_period;
-	uint16_t beacon_interval;
-};
-
-/**
  * struct vdev_mlme_mgmt_sta - sta specific vdev mlme mgmt cfg
  * @he_mcs_12_13_map: map to indicate mcs12/13 caps of peer&dut
- * @bss_params: BSS parameters learnt from beacon/assoc response
  */
 struct vdev_mlme_mgmt_sta {
 	uint16_t he_mcs_12_13_map;
-	struct vdev_mlme_bss_params bss_params;
 };
 
 /**
@@ -671,7 +490,6 @@ struct vdev_mlme_inactivity_params {
  * @WLAN_VDEV_RATEMASK_TYPE_VHT: phy type vht
  * @WLAN_VDEV_RATEMASK_TYPE_HE: phy type he
  * @WLAN_VDEV_RATEMASK_TYPE_EHT: phy type eht
- * @WLAN_VDEV_RATEMASK_TYPE_UHR: phy type uhr
  * @WLAN_VDEV_RATEMASK_TYPE_MAX: Maximum enumeration
  */
 enum vdev_ratemask_type {
@@ -680,7 +498,6 @@ enum vdev_ratemask_type {
 	WLAN_VDEV_RATEMASK_TYPE_VHT,
 	WLAN_VDEV_RATEMASK_TYPE_HE,
 	WLAN_VDEV_RATEMASK_TYPE_EHT,
-	WLAN_VDEV_RATEMASK_TYPE_UHR,
 	WLAN_VDEV_RATEMASK_TYPE_MAX,
 };
 
@@ -732,10 +549,14 @@ struct vdev_mlme_rate_info {
  * struct vdev_mlme_chainmask_info - vdev mlme chainmask information
  * @tx_chainmask: Tx chainmask
  * @rx_chainmask: Rx Chainmask
+ * @num_rx_chain: Num of bits set in Rx chain
+ * @num_tx_chain: Num of bits set in Tx chain
  */
 struct vdev_mlme_chainmask_info {
 	uint8_t tx_chainmask;
 	uint8_t rx_chainmask;
+	uint8_t num_rx_chain;
+	uint8_t num_tx_chain;
 };
 
 /**
@@ -847,7 +668,7 @@ enum vdev_cmd_type {
 };
 
 /**
- * enum vdev_start_resp_type - start response type
+ * enum vdev_start_resp_type - start respone type
  * @START_RESPONSE:  Start response
  * @RESTART_RESPONSE: Restart response
  */
@@ -890,7 +711,6 @@ enum vdev_start_resp_type {
  * @mlme_vdev_notify_down_complete:
  * @mlme_vdev_ext_stop_rsp:
  * @mlme_vdev_ext_start_rsp:
- * @mlme_vdev_ext_unified_connect_rsp:  Callback to handle unified connect resp
  * @mlme_vdev_notify_start_state_exit:  callback to notify on vdev start
  *                                      start state exit
  * @mlme_vdev_is_newchan_no_cac:        callback to check CAC is required
@@ -911,15 +731,6 @@ enum vdev_start_resp_type {
  *                                           disable event
  * @mlme_vdev_init_down:                callback to process event down in init
  *                                      state
- * @mlme_vdev_link_reconfig_remove:     callback to send link removal in up
- *                                      remove state
- * @mlme_vdev_set_link_remove_delay:    callback to set link removal delay
- *                                      work flag
- * @mlme_vdev_peer_oper_mode_notify: Callback to handle peer oper mode notify
- * @mlme_vdev_ext_unified_disconnect_rsp: callback to handle unified
- * disconnect rsp
- * @mlme_vdev_op_res_chg_evt:           Callback to handle vdev operating
- *                                      resources change event
  */
 struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_validate_basic_params)(
@@ -985,10 +796,6 @@ struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_ext_start_rsp)(
 				struct vdev_mlme_obj *vdev_mlme,
 				struct vdev_start_response *rsp);
-	QDF_STATUS (*mlme_vdev_ext_unified_connect_rsp)(
-				struct wlan_objmgr_vdev *vdev,
-				struct vdev_unified_connect_response *rsp,
-				QDF_STATUS evt_status);
 	QDF_STATUS (*mlme_vdev_notify_start_state_exit)(
 				struct vdev_mlme_obj *vdev_mlme);
 	QDF_STATUS (*mlme_vdev_is_newchan_no_cac)(
@@ -1017,21 +824,6 @@ struct vdev_mlme_ops {
 				struct wlan_objmgr_vdev *vdev,
 				void *t2lm);
 	void (*mlme_vdev_init_down)(struct vdev_mlme_obj *vdev_mlme);
-	QDF_STATUS (*mlme_vdev_link_reconfig_remove)(
-				struct vdev_mlme_obj *vdev_mlme,
-				uint16_t event_data_len, void *event_data);
-	QDF_STATUS (*mlme_vdev_set_link_remove_delay)(
-				struct vdev_mlme_obj *vdev_mlme,
-				uint16_t event_data_len, void *event_data);
-	QDF_STATUS (*mlme_vdev_peer_oper_mode_notify)
-				(struct wlan_objmgr_vdev *vdev,
-				 struct peer_oper_mode_event *data);
-	QDF_STATUS (*mlme_vdev_ext_unified_disconnect_rsp)(
-				struct vdev_mlme_obj *vdev_mlme,
-				struct vdev_unified_disconnect_response *rsp);
-	QDF_STATUS (*mlme_vdev_op_res_chg_evt)
-				(struct vdev_mlme_obj *vdev_mlme,
-				 struct wlan_bss_op_res *params);
 };
 
 /**
@@ -1048,6 +840,8 @@ struct p2p_device_mode_data {
  * struct vdev_mlme_obj - VDEV MLME component object
  * @proto: VDEV MLME proto substructure
  * @mgmt: VDEV MLME mgmt substructure
+ * @sm_lock:              VDEV SM lock
+ * @vdev_cmd_lock:        VDEV MLME command atomicity
  * @sm_hdl:               VDEV SM handle
  * @cnx_mgr_ctx: connection manager context, valid for STA and P2P-CLI mode only
  * @vdev: Pointer to vdev objmgr
@@ -1061,6 +855,10 @@ struct p2p_device_mode_data {
 struct vdev_mlme_obj {
 	struct vdev_mlme_proto proto;
 	struct vdev_mlme_mgmt  mgmt;
+#ifdef VDEV_SM_LOCK_SUPPORT
+	qdf_spinlock_t sm_lock;
+	qdf_mutex_t vdev_cmd_lock;
+#endif
 	struct wlan_sm *sm_hdl;
 	union {
 		struct cnx_mgr *cnx_mgr_ctx;
@@ -1111,47 +909,6 @@ static inline QDF_STATUS wlan_vdev_mlme_set_ssid(
 }
 
 /**
- * wlan_vdev_mlme_set_sta_in_20mhz() - Set whether STA is allowed on
- * 20 MHz only or not
- * @psoc: pointer to psoc object
- * @value: value to set STA is allowed on 20 MHz only or not
- * Return: QDF Status
- */
-static inline QDF_STATUS
-wlan_vdev_mlme_set_sta_in_20mhz(struct wlan_objmgr_vdev *vdev,
-					      bool value)
-{
-	struct vdev_mlme_obj *vdev_mlme;
-
-	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
-	if (!vdev_mlme)
-		return QDF_STATUS_E_FAILURE;
-
-	vdev_mlme->proto.sta.sta_in_20mhz = value;
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * wlan_vdev_mlme_get_sta_in_20mhz() - Check if the STA is allowed on 20 MHz
- * only or not
- * @psoc: pointer to psoc object
- *
- * Return: bool to check if STA is allowed on 20 MHz only or not
- */
-static inline bool
-wlan_vdev_mlme_get_sta_in_20mhz(struct wlan_objmgr_vdev *vdev)
-{
-	struct vdev_mlme_obj *vdev_mlme;
-
-	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
-	if (!vdev_mlme)
-		return false;
-
-	return vdev_mlme->proto.sta.sta_in_20mhz;
-}
-
-/**
  * wlan_vdev_mlme_get_ssid() - get ssid
  * @vdev: VDEV object
  * @ssid: SSID
@@ -1184,120 +941,6 @@ static inline QDF_STATUS wlan_vdev_mlme_get_ssid(
 		return QDF_STATUS_E_FAILURE;
 	}
 	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS wlan_vdev_mlme_set_bss_nss_params(struct wlan_objmgr_vdev *vdev,
-					     uint8_t cap_tx_nss,
-					     uint8_t cap_rx_nss,
-					     uint8_t op_tx_nss,
-					     uint8_t op_rx_nss)
-{
-	struct vdev_mlme_obj *vdev_mlme;
-
-	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
-	if (!vdev_mlme)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	vdev_mlme->proto.generic.cap_tx_nss = cap_tx_nss;
-	vdev_mlme->proto.generic.cap_rx_nss = cap_rx_nss;
-	vdev_mlme->proto.generic.op_tx_nss = op_tx_nss;
-	vdev_mlme->proto.generic.op_rx_nss = op_rx_nss;
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS wlan_vdev_mlme_get_bss_nss_params(struct wlan_objmgr_vdev *vdev,
-					     uint8_t *cap_tx_nss,
-					     uint8_t *cap_rx_nss,
-					     uint8_t *op_tx_nss,
-					     uint8_t *op_rx_nss)
-{
-	struct vdev_mlme_obj *vdev_mlme;
-
-	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
-	if (!vdev_mlme)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	*cap_tx_nss = vdev_mlme->proto.generic.cap_tx_nss;
-	*cap_rx_nss = vdev_mlme->proto.generic.cap_rx_nss;
-	*op_tx_nss = vdev_mlme->proto.generic.op_tx_nss;
-	*op_rx_nss = vdev_mlme->proto.generic.op_rx_nss;
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-wlan_vdev_mlme_get_bss_oper_res_params(struct wlan_objmgr_vdev *vdev,
-				       struct wlan_bss_op_res *params)
-{
-	struct vdev_mlme_obj *vdev_mlme;
-
-	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
-	if (!vdev_mlme)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	qdf_mem_copy(params, &vdev_mlme->proto.generic.bss_op_res,
-		     sizeof(*params));
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-wlan_vdev_mlme_set_bss_oper_res_params(struct wlan_objmgr_vdev *vdev,
-				       struct wlan_bss_op_res *params)
-{
-	struct vdev_mlme_obj *vdev_mlme;
-
-	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
-	if (!vdev_mlme)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	qdf_mem_copy(&vdev_mlme->proto.generic.bss_op_res, params,
-		     sizeof(*params));
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-wlan_vdev_mlme_init_bss_oper_res_params(struct wlan_objmgr_vdev *vdev)
-{
-	struct wlan_bss_op_res params = {0};
-	struct vdev_mlme_obj *vdev_mlme;
-
-	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
-	if (!vdev_mlme)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	params.tx_nss = 0xFF;
-	params.rx_nss = 0xFF;
-	params.tx_chains = 0xFF;
-	params.rx_chains = 0xFF;
-	params.ch_width = CH_WIDTH_INVALID;
-
-	qdf_mem_copy(&vdev_mlme->proto.generic.bss_op_res, &params,
-		     sizeof(params));
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-wlan_vdev_mlme_reset_bss_oper_res_ch_width_params(struct wlan_objmgr_vdev *vdev)
-{
-	QDF_STATUS status;
-	struct wlan_bss_op_res params;
-
-	status = wlan_vdev_mlme_get_bss_oper_res_params(vdev, &params);
-	if (QDF_IS_STATUS_ERROR(status))
-		return status;
-
-	params.ch_width_valid = false;
-	params.ch_width = CH_WIDTH_INVALID;
-
-	status = wlan_vdev_mlme_set_bss_oper_res_params(vdev, &params);
-
-	return status;
 }
 
 /**
@@ -2314,26 +1957,4 @@ QDF_STATUS vdev_mgr_cdp_vdev_attach(struct vdev_mlme_obj *mlme_obj);
  */
 QDF_STATUS vdev_mgr_cdp_vdev_detach(struct vdev_mlme_obj *mlme_obj);
 #endif
-
-/**
- * wlan_vdev_mlme_get_bss_params() - get BSS parameters for a STA vdev
- * @vdev: VDEV object
- * @bss_params: output; caller-allocated struct to receive a copy of the
- *              BSS parameters cached from the beacon/assoc response
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_FAILURE otherwise
- */
-static inline QDF_STATUS
-wlan_vdev_mlme_get_bss_params(struct wlan_objmgr_vdev *vdev,
-			      struct vdev_mlme_bss_params *bss_params)
-{
-	struct vdev_mlme_obj *vdev_mlme;
-
-	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
-	if (!vdev_mlme)
-		return QDF_STATUS_E_FAILURE;
-
-	*bss_params = vdev_mlme->mgmt.sta.bss_params;
-	return QDF_STATUS_SUCCESS;
-}
 #endif

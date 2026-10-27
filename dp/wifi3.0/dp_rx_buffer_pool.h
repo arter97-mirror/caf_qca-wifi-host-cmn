@@ -242,15 +242,13 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
  * @soc: SoC handle
  * @nbuf_frag_info: NBUF frag info reference
  * @mac_id: Pool ID
- * @is_replenish: Flag specifying if the buffer should be mapped/unmapped
- *		  to the IPA IOMMU domain
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS
 dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 				   struct dp_rx_nbuf_frag_info *nbuf_frag_info,
-				   uint32_t mac_id, bool is_replenish);
+				   uint32_t mac_id);
 /**
  * dp_rx_page_pool_deinit() - Deinit page pool parameters for @pool_id
  * @soc: SoC handle
@@ -314,15 +312,13 @@ dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
  * @soc: SoC handle
  * @nbuf_frag_info: NBUF frag info reference
  * @mac_id: Pool ID
- * @is_replenish: Flag specifying if the buffer should be mapped/unmapped
- *		  to the IPA IOMMU domain
  *
  * Return: QDF_STATUS
  */
 static inline QDF_STATUS
 dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 				   struct dp_rx_nbuf_frag_info *nbuf_frag_info,
-				   uint8_t mac_id, bool is_replenish)
+				   uint8_t mac_id)
 {
 	return QDF_STATUS_E_FAILURE;
 }

@@ -48,7 +48,7 @@
 	QDF_TRACE_INFO(QDF_MODULE_ID_OS_IF, params)
 #define osif_debug(params...) \
 	QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF, params)
-#define osif_debug_rl(params...) \
+#define osif_rl_debug(params...) \
 	QDF_TRACE_DEBUG_RL(QDF_MODULE_ID_OS_IF, params)
 #define osif_err_rl(params...) \
 	QDF_TRACE_ERROR_RL(QDF_MODULE_ID_OS_IF, params)
@@ -187,7 +187,7 @@
  * switch event index
  * @QCA_NL80211_VENDOR_SUBCMD_TX_LATENCY_INDEX: event index for transmit
  *	latency stats
- * @QCA_NL80211_VENDOR_SUBCMD_HIGH_AP_AVAILABILITY_INDEX: High AP availability
+ * @QCA_NL80211_VENDOR_SUBCMD_HIGH_AP_AVAILABILITY_INDEX: High AP availablility
  * index
  * @QCA_NL80211_VENDOR_SUBCMD_TTLM_LINK_UPDATE_INDEX: MLO Link
  * enable/disable event index
@@ -202,22 +202,9 @@
  * @QCA_NL80211_VENDOR_SUBCMD_FLOW_STATS_INDEX: Event index for flow stats
  * @QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_REPORT_INDEX: Event index for
  * the flow report sent for classified flow
- * @QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_STATUS_INDEX: Event index for
- * the flow status sent for classified flow
  * @QCA_NL80211_VENDOR_SUBCMD_ASYNC_GET_STATION_INDEX: Event index for async
  * get station sent for ucast cmd
  * @QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX: Idle shutdown event index
- * @QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX: Power boost event index
- * @QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE_INDEX: Event index for MLO
- * link state switch event
- * @QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH_INDEX: Event index for external
- * authentication event.
- * @QCA_NL80211_VENDOR_SUBCMD_TDLS_EVENT_INDEX: TDLS event index
- * @QCA_NL80211_VENDOR_SUBCMD_TDLS_STATS_INDEX: TDLS stats event index
- * @QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION_INDEX: Event index for GVP
- * operation event.
- * @QCA_NL80211_VENDOR_SUBCMD_WOW_INDEX: WoW suspend/resume IPA pipe control
- * vendor event index.
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -286,7 +273,7 @@ enum qca_nl80211_vendor_subcmds_index {
 	QCA_NL80211_VENDOR_SUBCMD_SCAN_DONE_INDEX,
 	QCA_NL80211_VENDOR_SUBCMD_GW_PARAM_CONFIG_INDEX,
 	QCA_NL80211_VENDOR_SUBCMD_INTEROP_ISSUES_AP_INDEX,
-#ifdef WLAN_FEATURE_TSF_PLUS
+#ifdef WLAN_FEATURE_TSF
 	QCA_NL80211_VENDOR_SUBCMD_TSF_INDEX,
 #endif
 	QCA_NL80211_VENDOR_SUBCMD_NDP_INDEX,
@@ -362,26 +349,9 @@ enum qca_nl80211_vendor_subcmds_index {
 #ifdef WLAN_DP_FEATURE_STC
 	QCA_NL80211_VENDOR_SUBCMD_FLOW_STATS_INDEX,
 	QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_REPORT_INDEX,
-	QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_STATUS_INDEX,
 #endif
 	QCA_NL80211_VENDOR_SUBCMD_ASYNC_GET_STATION_INDEX,
 	QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX,
-#ifdef FEATURE_WLAN_TX_POWERBOOST
-	QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX,
-#endif
-#ifdef WLAN_FEATURE_11BE_MLO
-	QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE_INDEX,
-#endif
-	QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH_INDEX,
-#ifdef FEATURE_TDLS_STATS_VENDOR_EVENTS
-	QCA_NL80211_VENDOR_SUBCMD_TDLS_EVENT_INDEX,
-	QCA_NL80211_VENDOR_SUBCMD_TDLS_STATS_INDEX,
-#endif /* FEATURE_TDLS_STATS_VENDOR_EVENTS */
-	QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION_INDEX,
-#ifdef IPA_OFFLOAD
-	/* WoW suspend/resume prepare vendor event index */
-	QCA_NL80211_VENDOR_SUBCMD_WOW_INDEX,
-#endif /* IPA_OFFLOAD */
 };
 
 #if !defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC) && \
@@ -612,44 +582,6 @@ wlan_cfg80211_nla_put_u64(struct sk_buff *skb, int attrtype, u64 value)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
-static inline void
-osif_wiphy_lock(struct wiphy *wiphy, struct wireless_dev *dev_ptr)
-{
-	if (wiphy)
-		wiphy_lock(wiphy);
-	else if (dev_ptr)
-		mutex_lock(&dev_ptr->mtx);
-}
-
-static inline void
-osif_wiphy_unlock(struct wiphy *wiphy, struct wireless_dev *dev_ptr)
-{
-	if (wiphy)
-		wiphy_unlock(wiphy);
-	else if (dev_ptr)
-		mutex_unlock(&dev_ptr->mtx);
-}
-#else
-static inline void
-osif_wiphy_lock(struct wiphy *wiphy, struct wireless_dev *dev_ptr)
-{
-	if (wiphy)
-		wiphy_lock(wiphy);
-	else if (dev_ptr)
-		mutex_lock(&dev_ptr->wiphy->mtx);
-}
-
-static inline void
-osif_wiphy_unlock(struct wiphy *wiphy, struct wireless_dev *dev_ptr)
-{
-	if (wiphy)
-		wiphy_unlock(wiphy);
-	else if (dev_ptr)
-		mutex_unlock(&dev_ptr->wiphy->mtx);
-}
-#endif
-
 /**
  * wlan_cfg80211_nla_put_u64_64bit() - Add u64 attribute to an skb and align it
  * @skb: SKB to add attribute(s) to
@@ -719,20 +651,6 @@ static inline void wlan_cfg80211_unregister_netdevice(struct net_device *dev)
 static inline void wlan_cfg80211_unregister_netdevice(struct net_device *dev)
 {
 	unregister_netdevice(dev);
-}
-#endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)  || \
-	(defined CFG80211_SETUP_LINK_RECONFIG_SUPPORT))
-static inline void wlan_cfg80211_links_removed(struct net_device *dev,
-					       u16 link_mask)
-{
-	cfg80211_links_removed(dev, link_mask);
-}
-#else
-static inline void wlan_cfg80211_links_removed(struct net_device *dev,
-					       u16 link_mask)
-{
 }
 #endif
 

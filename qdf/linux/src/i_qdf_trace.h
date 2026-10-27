@@ -444,8 +444,6 @@ static inline void __qdf_bug(void)
 		} \
 	} while (0)
 
-#define __QDF_ASSERT_MSG "Assertion failed! %s:%s %s:%d\n"
-
 #define QDF_BUG_ON_ASSERT(_condition) \
 	do { \
 		if (!(_condition)) { \
@@ -471,8 +469,6 @@ static inline void __qdf_bug(void)
 			/* no-op */ \
 		} \
 	} while (0)
-
-#define __QDF_ASSERT_MSG "WARNING!! %s:%s %s:%d\n"
 
 #define QDF_BUG_ON_ASSERT(_condition) \
 	do { \

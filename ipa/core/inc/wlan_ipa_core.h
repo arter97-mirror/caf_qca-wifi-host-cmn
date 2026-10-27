@@ -27,7 +27,6 @@
 
 #define WLAN_IPA_NBUF_CB_PEER_ID_OFFSET		5
 #define IPA_DEF_PDEV_ID 0
-#define L3_HEADER_PADDING_LEN 2
 
 /**
  * wlan_ipa_is_enabled() - Is IPA enabled?
@@ -477,6 +476,21 @@ static inline void wlan_ipa_update_tx_stats(struct wlan_ipa_priv *ipa_ctx,
 }
 #endif /* FEATURE_METERING */
 
+#ifdef IPA_OPT_WIFI_DP
+/*
+ * wlan_ipa_add_rem_flt_cb_event() - Set event to get notified when cce
+ * super rule filter is added/removed
+ * @ipa_ctx: IPA context
+ *
+ * Return: None
+ */
+void wlan_ipa_add_rem_flt_cb_event(struct wlan_ipa_priv *ipa_ctx);
+#else
+static inline void wlan_ipa_add_rem_flt_cb_event(struct wlan_ipa_priv *ipa_ctx)
+{
+}
+#endif /* IPA_OPT_WIFI_DP */
+
 /*
  * wlan_ipa_uc_stat() - Print IPA uC stats
  * @ipa_ctx: IPA context
@@ -726,32 +740,6 @@ QDF_STATUS wlan_ipa_uc_ol_deinit(struct wlan_ipa_priv *ipa_ctx);
  */
 void wlan_ipa_flush(struct wlan_ipa_priv *ipa_ctx);
 
-#ifdef WLAN_STA_SEAMLESS_ROAMING
-/**
- * wlan_ipa_sw_routing_set() - IPA sw routing set
- * @ipa_ctx: IPA context
- * @net_dev: Interface net device
- * @device_mode: Net interface device mode
- * @session_id: vdev id
- * @mac_addr: MAC address of the wlan client
- * @is_enable: set ipa sw routing enable/disable
- *
- * Return: None
- */
-void wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
-			     qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id, uint8_t *mac_addr,
-			     bool is_enable);
-#else
-static inline
-void wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
-			     qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id, uint8_t *mac_addr,
-			     bool is_enable)
-{
-}
-#endif
-
 /**
  * wlan_ipa_suspend() - Suspend IPA
  * @ipa_ctx: IPA context
@@ -796,7 +784,6 @@ static inline void wlan_ipa_mcc_work_handler(void *data)
  * @net_dev: Interface net device
  * @device_mode: Net interface device mode
  * @session_id: session id for the event
- * @is_roam: is roaming for the ipa event
  * @ipa_event_type: event enum of type ipa_wlan_event
  * @mac_addr: MAC address associated with the event
  * @is_2g_iface: true if interface is operating on 2G band, otherwise false
@@ -805,7 +792,7 @@ static inline void wlan_ipa_mcc_work_handler(void *data)
  * Return: QDF_STATUS
  */
 QDF_STATUS wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id, bool is_roam,
+			     uint8_t session_id,
 			     enum wlan_ipa_wlan_event ipa_event_type,
 			     const uint8_t *mac_addr, bool is_2g_iface,
 			     struct wlan_ipa_priv *ipa_obj);
@@ -1012,14 +999,6 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb_wrapper(void *ipa_ctx);
  */
 void wlan_ipa_wdi_opt_dpath_notify_flt_rlsd(int result0, int result1);
 
-/**
- * wlan_ipa_set_tx_classify_idx() - set peer_classify_info_idx
- * @vdev_id: vdev id
- * @peer_classify_info_idx: peer_classify_info_idx
- */
-void wlan_ipa_set_tx_classify_idx(uint8_t vdev_id,
-				  uint8_t peer_classify_info_idx);
-
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb - Add filter tuple to lce filter
@@ -1029,17 +1008,6 @@ void wlan_ipa_set_tx_classify_idx(uint8_t vdev_id,
  * Return: 0 on success, negative on failure
  */
 int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
-			    void *ipa_ctx,
-			    struct ipa_wdi_opt_dpath_flt_add_cb_params *in_out);
-/**
- * wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb_wrapper - callback to add
- * @ipa_ctx: IPA context
- * @in_out: filter tuple info
- *
- * Return: 0 on success, negative on failure
- */
-
-int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb_wrapper(
 			    void *ipa_ctx,
 			    struct ipa_wdi_opt_dpath_flt_add_cb_params *in_out);
 /**
@@ -1169,27 +1137,5 @@ QDF_STATUS wlan_ipa_get_alt_pipe(struct wlan_ipa_priv *ipa_ctx,
 }
 #endif /* IPA_WDI3_TX_TWO_PIPES */
 
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-/**
- * wlan_ipa_reg_is_mlo_vdev_cb() - Register callback to get if vdev is mlo vdev
- * @ipa_ctx: IPA context
- * @cb: pointer to callback function
- *
- * Return: None
- */
-static inline void
-wlan_ipa_reg_is_mlo_vdev_cb(struct wlan_ipa_priv *ipa_ctx,
-			    wlan_ipa_is_mlo_vdev cb)
-{
-	ipa_ctx->is_mlo_vdev = cb;
-}
-#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
-/**
- * wlan_ipa_ps_suspend_resume() - set power save suspend and resume in IPA
- * @suspend: True if supend else False
- *
- * Return: None
- */
-void wlan_ipa_ps_suspend_resume(bool suspend);
 #endif /* IPA_OFFLOAD */
 #endif /* _WLAN_IPA_CORE_H_ */

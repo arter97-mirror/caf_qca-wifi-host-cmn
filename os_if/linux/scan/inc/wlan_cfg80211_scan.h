@@ -90,7 +90,7 @@ struct osif_scan_pdev{
 /*
  * enum scan_source - scan request source
  * @NL_SCAN: Scan initiated from NL
- * @VENDOR_SCAN: Scan initiated from vendor command
+ * @VENDOR_SCAN: Scan intiated from vendor command
  */
 enum scan_source {
 	NL_SCAN,
@@ -438,7 +438,7 @@ void wlan_cfg80211_scan_done(struct net_device *netdev,
 			     bool aborted, struct pdev_osif_priv *osif_priv);
 
 /**
- * convert_nl_scan_priority_to_internal() - Convert NL80211 based scan priority
+ * convert_nl_scan_priority_to_internal() - Convert NL80211 based scan prioirty
  * value to internal scan priority value
  * @nl_scan_priority : Scan priority value received in vendor attribute
  *

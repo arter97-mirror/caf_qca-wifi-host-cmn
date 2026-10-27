@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -157,18 +156,6 @@ void target_if_mlo_unregister_vdev_tid_to_link_map_event(
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
- * target_if_send_link_reconfig_req_cmd() - Send user initiated link reconfig
- * command handler
- * @psoc: psoc object
- * @recfg_req: reconfig request
- *
- * Return: None
- */
-QDF_STATUS
-target_if_send_link_reconfig_req_cmd(struct wlan_objmgr_psoc *psoc,
-				     struct wlan_mlo_link_recfg_req *recfg_req);
-
-/**
  * target_if_mlo_register_trace_link_set_active_cb() - register/Unregister trace
  * set link cmd/evt callback
  * @psoc: psoc object
@@ -180,14 +167,6 @@ void
 target_if_mlo_register_trace_link_set_active_cb(
 		struct wlan_objmgr_psoc *psoc,
 		trace_link_set_active_cb_type trace_link_set_active_cb);
-#else
-static inline QDF_STATUS
-target_if_send_link_reconfig_req_cmd(struct wlan_objmgr_psoc *psoc,
-				     struct wlan_mlo_link_recfg_req *recfg_req)
-
-{
-	return QDF_STATUS_SUCCESS;
-}
 #endif
 #else
 static inline QDF_STATUS
@@ -211,55 +190,4 @@ void target_if_mlo_unregister_vdev_tid_to_link_map_event(
 {
 }
 #endif
-
-#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
-/**
- * target_if_mlo_sap_link_removal_offload_support() - link removal offload
- * service bit support
- * @psoc: PSOC object
- *
- * API to get service bit of link removal offload support
- *
- * Return: true if support, false if not support
- */
-bool
-target_if_mlo_sap_link_removal_offload_support(struct wlan_objmgr_psoc *psoc);
-#endif
-
-/**
- * target_if_is_unified_connect_disconnect_enabled() - handler to check whether
- * unified_connect_disconnect FW service cap is enabled or not.
- * @psoc: psoc pointer
- *
- * Return: True if service capabilities are present, false otherwise.
- */
-bool
-target_if_is_unified_connect_disconnect_enabled(struct wlan_objmgr_psoc *psoc);
-
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
-/**
- * target_if_mlo_populate_unified_connect_params() - Populate unified connect
- * parameters from cached MLO context
- * @vdev: pointer to vdev object
- * @unified_connect_param: pointer to unified connect parameters to populate
- *
- * This API populates unified connect parameters by getting cached parameters
- * from MLO manager and copying them to the WMI unified connect structure.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-target_if_mlo_populate_unified_connect_params(
-		struct wlan_objmgr_vdev *vdev,
-		struct vdev_unified_connect_param *unified_connect_param);
-#else
-static inline QDF_STATUS
-target_if_mlo_populate_unified_connect_params(
-		struct wlan_objmgr_vdev *vdev,
-		struct vdev_unified_connect_param *unified_connect_param)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 #endif /* __TARGET_IF_MLO_MGR_H__ */

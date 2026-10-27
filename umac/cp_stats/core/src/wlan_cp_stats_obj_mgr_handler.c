@@ -33,7 +33,9 @@
 #include <target_if_cp_stats.h>
 #include <wlan_twt_public_structs.h>
 #include <wlan_cp_stats_chipset_stats.h>
+#ifdef WLAN_CHIPSET_STATS
 #include <cfg_ucfg_api.h>
+#endif
 
 #ifdef WLAN_CHIPSET_STATS
 int wlan_cp_stats_cstats_qmi_event_handler(void *cb_ctx, uint16_t type,
@@ -67,32 +69,6 @@ void wlan_cp_stats_init_cfg(struct wlan_objmgr_psoc *psoc,
 
 	csc->host_params.chipset_stats_enable =
 				cfg_get(psoc, CHIPSET_STATS_ENABLE);
-	csc->host_params.is_cp_stats_logging_enabled =
-			cfg_get(psoc, CHIPSET_STATS_DEBUG_LOGGING_ENABLE);
-}
-
-void wlan_cp_stats_init_user_delay_value_ms_cfg(struct wlan_objmgr_psoc *psoc,
-						struct cp_stats_context *csc)
-{
-	if (!psoc) {
-		cp_stats_err("psoc is NULL");
-		return;
-	}
-
-	csc->host_params.chipset_stats_push_rbs_delay_val_ms =
-		cfg_get(psoc, CFG_CHIPSET_STATS_PUSH_RBS_DELAY_VAL_MS);
-}
-
-void wlan_cp_stats_init_user_delay_interval_cfg(struct wlan_objmgr_psoc *psoc,
-						struct cp_stats_context *csc)
-{
-	if (!psoc) {
-		cp_stats_err("psoc is NULL");
-		return;
-	}
-
-	csc->host_params.chipset_stats_push_rbs_delay_interval =
-		cfg_get(psoc, CFG_CHIPSET_STATS_PUSH_RBS_DELAY_VAL_MS);
 }
 
 bool wlan_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
@@ -107,48 +83,6 @@ bool wlan_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 	}
 
 	return csc->host_params.chipset_stats_enable;
-}
-
-bool wlan_cp_stats_is_debug_logging_enabled(struct wlan_objmgr_psoc *psoc)
-{
-	struct cp_stats_context *csc;
-
-	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
-						    WLAN_UMAC_COMP_CP_STATS);
-	if (!csc) {
-		cp_stats_err("CP Stats Context is NULL");
-		return false;
-	}
-
-	return csc->host_params.is_cp_stats_logging_enabled;
-}
-
-size_t wlan_cp_stats_get_user_delay_value_ms(struct wlan_objmgr_psoc *psoc)
-{
-	struct cp_stats_context *csc;
-
-	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
-						    WLAN_UMAC_COMP_CP_STATS);
-	if (!csc) {
-		cp_stats_err("CP Stats Context is NULL");
-		return false;
-	}
-
-	return csc->host_params.chipset_stats_push_rbs_delay_val_ms;
-}
-
-size_t wlan_cp_stats_get_user_delay_interval(struct wlan_objmgr_psoc *psoc)
-{
-	struct cp_stats_context *csc;
-
-	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
-						    WLAN_UMAC_COMP_CP_STATS);
-	if (!csc) {
-		cp_stats_err("CP Stats Context is NULL");
-		return false;
-	}
-
-	return csc->host_params.chipset_stats_push_rbs_delay_interval;
 }
 
 static void wlan_cp_stats_enable_init_cstats(struct wlan_objmgr_pdev *pdev)
@@ -210,52 +144,6 @@ void wlan_cp_stats_enable_init_cstats(struct wlan_objmgr_pdev *pdev)
 }
 #endif /* WLAN_CHIPSET_STATS */
 
-#ifdef FEATURE_SNR_STATS
-/**
- * wlan_cp_stats_init_snr_stats_cfg() - Initialize SNR stats report config
- * @psoc: pointer to psoc object
- * @csc: pointer to cp_stats_context structure
- *
- * Return: None
- */
-static void wlan_cp_stats_init_snr_stats_cfg(
-				struct wlan_objmgr_psoc *psoc,
-				struct cp_stats_context *csc)
-{
-	csc->host_params.snr_stats_report_enable =
-			cfg_get(psoc, CFG_ENABLE_SNR_STATS_REPORT);
-}
-#else
-static void wlan_cp_stats_init_snr_stats_cfg(
-				struct wlan_objmgr_psoc *psoc,
-				struct cp_stats_context *csc)
-{
-}
-#endif /* FEATURE_SNR_STATS */
-
-/**
- * wlan_cp_stats_init_bcn_histroy_report_cfg() - Beacon history report
- * cfg
- * @psoc: pointer to psoc object
- * @csc: pointer to cp_stats_context structure
- *
- * Return: None
- */
-static void wlan_cp_stats_init_bcn_histroy_report_cfg(
-				struct wlan_objmgr_psoc *psoc,
-				struct cp_stats_context *csc)
-{
-	if (!psoc) {
-		cp_stats_err("psoc is NULL");
-		return;
-	}
-
-	csc->host_params.bcn_rssi_history_report_enable =
-			cfg_get(psoc, CFG_ENABLE_BCN_RSSI_HISTORY_REPORT);
-
-	wlan_cp_stats_init_snr_stats_cfg(psoc, csc);
-}
-
 QDF_STATUS
 wlan_cp_stats_psoc_obj_create_handler(struct wlan_objmgr_psoc *psoc, void *arg)
 {
@@ -314,10 +202,7 @@ wlan_cp_stats_psoc_obj_create_handler(struct wlan_objmgr_psoc *psoc, void *arg)
 						       QDF_STATUS_SUCCESS);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
 		wlan_cp_stats_init_cfg(psoc, csc);
-		wlan_cp_stats_init_user_delay_value_ms_cfg(psoc, csc);
-		wlan_cp_stats_init_user_delay_interval_cfg(psoc, csc);
 		wlan_cp_stats_cstats_init(psoc);
-		wlan_cp_stats_init_bcn_histroy_report_cfg(psoc, csc);
 	}
 
 wlan_cp_stats_psoc_obj_create_handler_return:
@@ -429,45 +314,6 @@ wlan_cp_stats_pdev_obj_create_handler_return:
 	return status;
 }
 
-#ifdef WLAN_FEATURE_POWER_STATISTICS
-/**
- * wlan_cp_stats_free_power_datapath_stats() - Free power datapath stats memory
- * @pdev_cs: Pointer to pdev CP stats object
- *
- * This function frees the dynamically allocated memory for power and datapath
- * statistics when the pdev object is being destroyed.
- *
- * Return: None
- */
-static void
-wlan_cp_stats_free_power_datapath_stats(struct pdev_cp_stats *pdev_cs)
-{
-	struct pdev_mc_cp_stats *pdev_mc_stats;
-
-	if (!pdev_cs || !pdev_cs->pdev_stats)
-		return;
-
-	pdev_mc_stats = pdev_cs->pdev_stats;
-
-	if (pdev_mc_stats->power_datapath_stats.power_stats) {
-		qdf_mem_free(pdev_mc_stats->power_datapath_stats.power_stats);
-		pdev_mc_stats->power_datapath_stats.power_stats = NULL;
-	}
-
-	if (pdev_mc_stats->power_datapath_stats.tx_rate_stats) {
-		qdf_mem_free(pdev_mc_stats->power_datapath_stats.tx_rate_stats);
-		pdev_mc_stats->power_datapath_stats.tx_rate_stats = NULL;
-	}
-
-	cp_stats_debug("Power datapath stats memory freed");
-}
-#else
-static void
-wlan_cp_stats_free_power_datapath_stats(struct pdev_cp_stats *pdev_cs)
-{
-}
-#endif
-
 QDF_STATUS
 wlan_cp_stats_pdev_obj_destroy_handler(struct wlan_objmgr_pdev *pdev, void *arg)
 {
@@ -485,10 +331,6 @@ wlan_cp_stats_pdev_obj_destroy_handler(struct wlan_objmgr_pdev *pdev, void *arg)
 		cp_stats_err("pdev is NULL");
 		return QDF_STATUS_E_INVAL;
 	}
-
-	/* Free power datapath stats memory if feature is enabled */
-	wlan_cp_stats_free_power_datapath_stats(pdev_cs);
-
 	csc = wlan_cp_stats_ctx_get_from_pdev(pdev);
 	if (!csc) {
 		cp_stats_err("cp_stats context is NULL!");
@@ -512,7 +354,6 @@ wlan_cp_stats_vdev_obj_create_handler(struct wlan_objmgr_vdev *vdev, void *arg)
 	struct cp_stats_context *csc = NULL;
 	struct vdev_cp_stats *vdev_cs = NULL;
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;
-	uint8_t i;
 
 	if (!vdev) {
 		cp_stats_err("vdev is NULL");
@@ -554,10 +395,6 @@ wlan_cp_stats_vdev_obj_create_handler_return:
 
 		if (vdev_cs)
 			qdf_mem_free(vdev_cs);
-	} else {
-		for (i = 0; i < WLAN_UMAC_MLO_MAX_VDEVS; i++)
-			vdev_cs->vdev_stats->bcn_stats[i].vdev_id =
-						WLAN_INVALID_VDEV_ID;
 	}
 
 	cp_stats_debug("vdev cp stats object attach");
@@ -683,42 +520,6 @@ wlan_cp_stats_peer_obj_destroy_handler(struct wlan_objmgr_peer *peer, void *arg)
 	qdf_mem_free(peer_cs);
 	cp_stats_debug("peer cp stats object detached");
 	return QDF_STATUS_SUCCESS;
-}
-
-
-QDF_STATUS
-wlan_cp_stats_set_enhanced_stats_support(struct wlan_objmgr_psoc *psoc,
-					 bool is_enhanced_stats_support)
-{
-	struct cp_stats_context *csc;
-
-	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
-						    WLAN_UMAC_COMP_CP_STATS);
-	if (!csc) {
-		cp_stats_err("CP Stats Context is NULL");
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-
-	csc->host_params.is_enhanced_stats_support = is_enhanced_stats_support;
-	cp_stats_debug("is_enhanced_stats_support: %d",
-		       csc->host_params.is_enhanced_stats_support);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-bool
-wlan_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc)
-{
-	struct cp_stats_context *csc;
-
-	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
-						   WLAN_UMAC_COMP_CP_STATS);
-	if (!csc) {
-		cp_stats_err("CP Stats Context is NULL");
-		return false;
-	}
-
-	return csc->host_params.is_enhanced_stats_support;
 }
 
 #ifdef WLAN_SUPPORT_INFRA_CTRL_PATH_STATS

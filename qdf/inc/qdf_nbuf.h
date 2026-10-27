@@ -96,7 +96,6 @@
 #define QDF_NBUF_TRAC_IP_OFFSET		14
 #define QDF_NBUF_TRAC_VLAN_IP_OFFSET		18
 #define QDF_NBUF_TRAC_DOUBLE_VLAN_IP_OFFSET	22
-#define QDF_NBUF_TRAC_ICMPV6_MLQ_TYPE       0x36
 /* One dword for IPv4 header size unit */
 #define QDF_NBUF_IPV4_HDR_SIZE_UNIT	4
 #define QDF_NBUF_TRAC_IPV4_TOTAL_LEN_OFFSET 16
@@ -147,22 +146,6 @@
 
 #define EAP_EXP_MSG_OPCODE_OFFSET 0x1E
 #define EAP_EXP_MSG_TYPE_OFFSET 0x29
-
-#define WBUFF_MODULE_ID_SHIFT 4
-#define WBUFF_MODULE_ID_BITMASK 0xF0
-
-#define WBUFF_POOL_ID_SHIFT 1
-#define WBUFF_POOL_ID_BITMASK 0xE
-
-/* Number of pools supported per module */
-#define WBUFF_MAX_POOLS 16
-#define WBUFF_MAX_POOL_ID WBUFF_MAX_POOLS
-
-enum wbuff_module_id {
-	WBUFF_MODULE_WMI_TX,
-	WBUFF_MODULE_CE_RX,
-	WBUFF_MAX_MODULES,
-};
 
 enum wsc_op_code {
 	WSC_UPNP = 0, /* No OP Code in UPnP transport */
@@ -249,8 +232,6 @@ enum wsc_op_code {
 #else
 #define TSO_DEBUG(fmt, args ...)
 #endif
-
-#define QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL	0xCADB
 
 #define IEEE80211_AMPDU_FLAG    0x01
 
@@ -650,8 +631,6 @@ struct mon_rx_status {
  * @enc_type: ecnryption type
  * @retried_msdu_count: retried msdu count
  * @mpdu_q: user mpdu_queue used for monitor
- * @ht_control: HT control information
- * @qos_queue_size: QoS control queue size
  */
 struct mon_rx_user_status {
 	uint32_t mcs:4,
@@ -723,8 +702,6 @@ struct mon_rx_user_status {
 	uint8_t enc_type;
 	uint16_t retried_msdu_count;
 	qdf_nbuf_queue_t mpdu_q;
-	uint32_t ht_control;
-	uint8_t qos_queue_size;
 };
 
 /**
@@ -847,8 +824,6 @@ struct qdf_radiotap_ext2 {
 #define ICMPV6_RA                     0x86
 #define ICMPV6_NS                     0x87
 #define ICMPV6_NA                     0x88
-#define ICMPV6_MLQ		      0x82
-#define ICMPV6_MLQ_OFFSET	      0x3e
 
 #define QDF_NBUF_IPA_CHECK_MASK		0x80000000
 
@@ -1167,7 +1142,6 @@ struct qdf_radiotap_ext2 {
 
 /**
  * enum qdf_proto_type - protocol type
- * @QDF_PROTO_TYPE_INVALID: INVALID
  * @QDF_PROTO_TYPE_DHCP: DHCP
  * @QDF_PROTO_TYPE_EAPOL: EAPOL
  * @QDF_PROTO_TYPE_ARP: ARP
@@ -1179,7 +1153,6 @@ struct qdf_radiotap_ext2 {
  * @QDF_PROTO_TYPE_MAX: Max enumeration
  */
 enum qdf_proto_type {
-	QDF_PROTO_TYPE_INVALID,
 	QDF_PROTO_TYPE_DHCP,
 	QDF_PROTO_TYPE_EAPOL,
 	QDF_PROTO_TYPE_ARP,
@@ -1251,11 +1224,6 @@ typedef __qdf_flow_keys_t qdf_flow_keys_t;
  * typedef qdf_nbuf_shared_info_t - Platform independent shared info
  */
 typedef __qdf_nbuf_shared_info_t qdf_nbuf_shared_info_t;
-
-/**
- * typedef qdf_nbuf_frag_t - Platform independent nbuf frag abstraction
- */
-typedef __qdf_nbuf_frag_t qdf_nbuf_frag_t;
 
 /**
  * struct qdf_nbuf_track_t - Network buffer track structure
@@ -1351,48 +1319,6 @@ qdf_nbuf_set_send_complete_flag(qdf_nbuf_t buf, bool flag)
 #define QDF_NBUF_QUEUE_WALK_SAFE(queue, var, tvar)	\
 		__qdf_nbuf_queue_walk_safe(queue, var, tvar)
 
-/**
- * qdf_is_pp_nbuf: Check if SKB memory is from page pool
- *
- * @nbuf: nbuf reference
- *
- * Return: True/False
- */
-static inline bool qdf_is_pp_nbuf(qdf_nbuf_t nbuf)
-{
-	return __qdf_is_pp_nbuf(nbuf);
-}
-
-/**
- * qdf_skip_dma_map_unmap: Check if DMA map/unmap needs to be skipped for nbuf
- *
- * @osdev: QDF device reference
- * @nbuf: nbuf reference
- * @dir: DMA direction
- *
- * Return: True/False
- */
-static inline bool
-qdf_skip_dma_map_unmap(qdf_device_t osdev, qdf_nbuf_t nbuf, qdf_dma_dir_t dir)
-{
-	return ((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
-		dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
-	       __qdf_is_pp_nbuf(nbuf) && QDF_NBUF_CB_PADDR(nbuf);
-}
-
-/**
- * qdf_nbuf_copy_header() - copy SKB header portion into another SKB
- * @to_skb: dest skb reference
- * @from_skb: source skb reference
- *
- * Return: void
- */
-static inline void
-qdf_nbuf_copy_header(struct sk_buff *to_skb, struct sk_buff *from_skb)
-{
-	return __qdf_nbuf_copy_header(to_skb, from_skb);
-}
-
 #ifdef NBUF_MAP_UNMAP_DEBUG
 /**
  * qdf_nbuf_map_check_for_leaks() - check for nbuf map leaks
@@ -1402,15 +1328,6 @@ qdf_nbuf_copy_header(struct sk_buff *to_skb, struct sk_buff *from_skb)
  * Returns: None
  */
 void qdf_nbuf_map_check_for_leaks(void);
-
-/**
- * qdf_nbuf_detect_track_list_corruption() - Detect nbuf tracker list corruption
- * @ptr: memory block pointer
- * @size: memory block size
- *
- * Returns: None
- */
-void qdf_nbuf_detect_track_list_corruption(void *ptr, uint32_t size);
 
 QDF_STATUS qdf_nbuf_map_debug(qdf_device_t osdev,
 			      qdf_nbuf_t buf,
@@ -1530,8 +1447,6 @@ QDF_STATUS qdf_nbuf_track_map_single_debug(qdf_device_t osdev, qdf_nbuf_t buf,
 
 static inline void qdf_nbuf_map_check_for_leaks(void) {}
 
-static inline void qdf_nbuf_detect_track_list_corruption(void *ptr, uint32_t size) {}
-
 static inline QDF_STATUS
 qdf_nbuf_map(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)
 {
@@ -1589,16 +1504,8 @@ qdf_nbuf_unmap_nbytes_single_paddr(qdf_device_t osdev, qdf_nbuf_t buf,
 				   qdf_dma_addr_t phy_addr, qdf_dma_dir_t dir,
 				   int nbytes)
 {
-	if (qdf_skip_dma_map_unmap(osdev, buf, dir)) {
-		dma_sync_single_for_cpu(QDF_DMA_DEV(osdev), phy_addr,
-					nbytes, __qdf_dma_dir_to_os(dir));
-		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
-			qdf_page_pool_dec_buf_count(buf);
-	} else {
-		__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf),
-					 dir, false);
-		__qdf_mem_unmap_nbytes_single(osdev, phy_addr, dir, nbytes);
-	}
+	__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf), dir, false);
+	__qdf_mem_unmap_nbytes_single(osdev, phy_addr, dir, nbytes);
 }
 
 static inline QDF_STATUS
@@ -2291,17 +2198,6 @@ static inline uint8_t qdf_nbuf_is_tso(qdf_nbuf_t nbuf)
 }
 
 /**
- * qdf_nbuf_is_uso() - is the network buffer a UDP segment offload packet?
- * @nbuf: Network buffer
- *
- * Return: 1 - this is a USO packet 0 - not a USO packet
- */
-static inline uint8_t qdf_nbuf_is_uso(qdf_nbuf_t nbuf)
-{
-	return __qdf_nbuf_is_uso(nbuf);
-}
-
-/**
  * qdf_nbuf_get_users() - function to get the number of users referencing this
  * network buffer
  *
@@ -2366,34 +2262,6 @@ QDF_STATUS qdf_nbuf_smmu_unmap_debug(qdf_nbuf_t nbuf,
 				     uint32_t line);
 
 #endif /* IPA_OFFLOAD */
-
-/**
- * typedef qdf_nbuf_direct_free_cb_t - callback invoked by
- * qdf_nbuf_free_debug() when the nbuf being freed still carries wbuff
- * dev_scratch metadata (i.e. it is being freed directly instead of via
- * wbuff_buff_put(), bypassing wbuff's pool bookkeeping entirely).
- * @nbuf: the buffer being freed
- * @func: caller of qdf_nbuf_free()
- * @line: caller's line number
- *
- * DEBUG: this indirection exists because qdf/ has no dependency on
- * wbuff/ (wbuff depends on qdf, never the reverse) -- wbuff registers
- * this callback at init time via qdf_nbuf_register_direct_free_cb() so
- * qdf_nbuf_free_debug() can record the bypass into wbuff's own trace
- * table without qdf_nbuf.c needing to know wbuff exists.
- */
-typedef void (*qdf_nbuf_direct_free_cb_t)(qdf_nbuf_t nbuf, const char *func,
-					  uint32_t line);
-
-/**
- * qdf_nbuf_register_direct_free_cb() - DEBUG: register the callback
- * invoked by qdf_nbuf_free_debug() for wbuff-owned buffers being freed
- * directly (bypassing wbuff_buff_put()).
- * @cb: callback to register, or NULL to unregister
- *
- * Return: None
- */
-void qdf_nbuf_register_direct_free_cb(qdf_nbuf_direct_free_cb_t cb);
 
 #ifdef NBUF_MEMORY_DEBUG
 
@@ -2711,18 +2579,6 @@ qdf_nbuf_dev_kfree_list_debug(qdf_nbuf_queue_head_t *nbuf_queue_head,
 			      const char *func_name,
 			      uint32_t line_num);
 
-/**
- * qdf_nbuf_linearize() - linearize nbuf with debug bookkeeping
- * @buf: Network buf instance
- *
- * Return: 0 on success, negative errno on failure
- */
-#define qdf_nbuf_linearize(buf) \
-	qdf_nbuf_linearize_debug(buf, __func__, __LINE__)
-
-int qdf_nbuf_linearize_debug(qdf_nbuf_t buf, const char *func_name,
-			     uint32_t line_num);
-
 #define qdf_nbuf_page_frag_alloc(d, s, r, a, p) \
 	qdf_nbuf_page_frag_alloc_debug(d, s, r, a, p, __func__, __LINE__)
 
@@ -2738,12 +2594,11 @@ qdf_nbuf_page_frag_alloc_debug(qdf_device_t osdev, qdf_size_t size, int reserve,
  * @a: size of the required alignment
  * @pp: Page Pool reference
  * @o: buffer offset within the page
- * @p: start address of the page
  *
  * Return: nbuf
  */
-#define qdf_nbuf_page_pool_alloc(d, s, r, a, pp, o, p) \
-	qdf_nbuf_page_pool_alloc_debug(d, s, r, a, pp, o, p, __func__, __LINE__)
+#define qdf_nbuf_page_pool_alloc(d, s, r, a, pp, o) \
+	qdf_nbuf_page_pool_alloc_debug(d, s, r, a, pp, o,  __func__, __LINE__)
 
 /**
  * qdf_nbuf_page_pool_alloc_debug() - Allocates nbuf from Kernel page pool
@@ -2753,7 +2608,6 @@ qdf_nbuf_page_frag_alloc_debug(qdf_device_t osdev, qdf_size_t size, int reserve,
  * @align: size of the required alignment
  * @pp: Page Pool reference
  * @offset: buffer offset within the page
- * @page: starting page address of the allocated buffer
  * @func: function name
  * @line: line number
  *
@@ -2762,7 +2616,7 @@ qdf_nbuf_page_frag_alloc_debug(qdf_device_t osdev, qdf_size_t size, int reserve,
 qdf_nbuf_t
 qdf_nbuf_page_pool_alloc_debug(qdf_device_t osdev, qdf_size_t size, int reserve,
 			       int align, qdf_page_pool_t pp, uint32_t *offset,
-			       qdf_page_t *page, const char *func, uint32_t line);
+			       const char *func, uint32_t line);
 /**
  * qdf_nbuf_ssr_register_region() - Register nbuf history with SSR dump
  *
@@ -2944,18 +2798,6 @@ qdf_nbuf_dev_kfree_list(qdf_nbuf_queue_head_t *nbuf_queue_head)
 	__qdf_nbuf_dev_kfree_list(nbuf_queue_head);
 }
 
-/**
- * qdf_nbuf_linearize() - linearize nbuf
- * @buf: Network buf instance
- *
- * Return: 0 on success, negative errno on failure
- */
-static inline int
-qdf_nbuf_linearize(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_linearize(buf);
-}
-
 #define qdf_nbuf_page_frag_alloc(osdev, size, reserve, align, pf_cache) \
 	qdf_nbuf_page_frag_alloc_fl(osdev, size, reserve, align, pf_cache, \
 			  __func__, __LINE__)
@@ -2977,21 +2819,20 @@ qdf_nbuf_page_frag_alloc_fl(qdf_device_t osdev, qdf_size_t size, int reserve,
  * @align: size of the required alignment
  * @pp: Page Pool reference
  * @offset: buffer offset within the page
- * @page: start address of the page
  *
  * Return: nbuf
  */
-#define qdf_nbuf_page_pool_alloc(osdev, size, reserve, align, pp, offset, page) \
+#define qdf_nbuf_page_pool_alloc(osdev, size, reserve, align, pp, offset) \
 	qdf_nbuf_page_pool_alloc_fl(osdev, size, reserve, align, pp, offset, \
-			  page, __func__, __LINE__)
+			  __func__, __LINE__)
 
 static inline qdf_nbuf_t
 qdf_nbuf_page_pool_alloc_fl(qdf_device_t osdev, qdf_size_t size, int reserve,
 			    int align, qdf_page_pool_t pp, uint32_t *offset,
-			    qdf_page_t *page, const char *func, uint32_t line)
+			    const char *func, uint32_t line)
 {
 	return __qdf_nbuf_page_pool_alloc(osdev, size, reserve, align, pp,
-					  offset, page, func, line);
+					  offset, func, line);
 }
 #endif /* NBUF_MEMORY_DEBUG */
 
@@ -4027,18 +3868,6 @@ qdf_nbuf_data_get_dhcp_subtype(uint8_t *data)
 }
 
 /**
- * qdf_nbuf_get_dhcp_transaction_id() - get DHCP transaction ID from nbuf
- * @buf: skb pointer
- *
- * Return: DHCP transaction ID
- */
-static inline uint32_t
-qdf_nbuf_get_dhcp_transaction_id(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_dhcp_transaction_id(buf);
-}
-
-/**
  * qdf_nbuf_get_eapol_subtype() - get the subtype
  *            of EAPOL packet.
  * @buf: Pointer to EAPOL packet buffer
@@ -4278,21 +4107,6 @@ static inline uint8_t
 qdf_nbuf_data_get_ipv6_proto(uint8_t *data)
 {
 	return __qdf_nbuf_data_get_ipv6_proto(data);
-}
-
-/**
- * qdf_nbuf_data_get_ipv6_proto_mlq() - get the proto type
- *            of IPV6 mlq packet.
- * @data: Pointer to IPV6 mlq packet data buffer
- *
- * This func. returns the proto type of IPV6 mlq packet.
- *
- * Return: proto type of IPV6 mlq packet.
- */
-static inline uint8_t
-qdf_nbuf_data_get_ipv6_proto_mlq(uint8_t *data)
-{
-	return __qdf_nbuf_data_get_ipv6_proto_mlq(data);
 }
 
 /**
@@ -5112,28 +4926,6 @@ uint16_t qdf_nbuf_get_ether_type(qdf_nbuf_t buf)
 }
 #endif
 
-/**
- * qdf_nbuf_get_ether_dest_addr() - get pointer to Ethernet destination address
- * @buf: Network buffer whose data starts at the Ethernet header
- *
- * Return: pointer to the 6-byte destination MAC field in the Ethernet header
- */
-static inline const uint8_t *qdf_nbuf_get_ether_dest_addr(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_ether_dest_addr(qdf_nbuf_data(buf));
-}
-
-/**
- * qdf_nbuf_get_ether_src_addr() - get pointer to Ethernet source address
- * @buf: Network buffer whose data starts at the Ethernet header
- *
- * Return: pointer to the 6-byte source MAC field in the Ethernet header
- */
-static inline const uint8_t *qdf_nbuf_get_ether_src_addr(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_ether_src_addr(qdf_nbuf_data(buf));
-}
-
 #ifdef BIG_ENDIAN_HOST
 static inline
 uint16_t qdf_nbuf_get_dot11_type(qdf_nbuf_t buf)
@@ -5698,16 +5490,22 @@ static inline void qdf_dmaaddr_to_32s(qdf_dma_addr_t dmaaddr,
 	return __qdf_dmaaddr_to_32s(dmaaddr, lo, hi);
 }
 
-#ifdef DP_FEATURE_TX_PAGE_POOL
-qdf_nbuf_t
-qdf_tx_page_pool_nbuf_alloc_map(qdf_device_t osdev, qdf_page_pool_t tx_pp,
-				qdf_size_t size);
-#else
-static inline qdf_nbuf_t
-qdf_tx_page_pool_nbuf_alloc_map(qdf_device_t osdev, qdf_page_pool_t tx_pp,
-				qdf_size_t size)
+#ifdef WLAN_DP_ENABLE_SW_TSO
+/**
+ * qdf_nbuf_sw_tso_prepare_nbuf_list() - function to divide a jumbo TSO
+ * network buffer into small network buffers.
+ *
+ * @osdev: qdf device handle
+ * @nbuf: Jumbo TSO network buffer
+ * @head_nbuf: nbuf list
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev, qdf_nbuf_t nbuf,
+				  qdf_nbuf_t *head_nbuf)
 {
-	return NULL;
+	return __qdf_nbuf_sw_tso_prepare_nbuf_list(osdev, nbuf, head_nbuf);
 }
 #endif
 
@@ -5888,31 +5686,6 @@ void qdf_nbuf_data_attr_set(qdf_nbuf_t buf, uint32_t data_attr)
 }
 
 /**
- * qdf_nbuf_set_tx_page_pool_id() - Set TX page pool ID in nbuf CB
- * @buf: Network buffer (skb on linux)
- * @pool_id: Page pool ID (6 bits, 0-63)
- *
- * Return: void
- */
-static inline
-void qdf_nbuf_set_tx_page_pool_id(qdf_nbuf_t buf, uint8_t pool_id)
-{
-	__qdf_nbuf_set_tx_page_pool_id(buf, pool_id);
-}
-
-/**
- * qdf_nbuf_get_tx_page_pool_id() - Get TX page pool ID from nbuf CB
- * @buf: Network buffer (skb on linux)
- *
- * Return: Page pool ID (6 bits, 0-63)
- */
-static inline
-uint8_t qdf_nbuf_get_tx_page_pool_id(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_tx_page_pool_id(buf);
-}
-
-/**
  * qdf_nbuf_tx_info_get() - Parse skb and get Tx metadata
  * @nbuf:		Network buffer
  * @pkt_type:		Pkt type (from enum htt_pkt_type)
@@ -5961,12 +5734,6 @@ void qdf_nbuf_tx_desc_count_display(void);
 void qdf_nbuf_tx_desc_count_clear(void);
 
 static inline qdf_nbuf_t
-qdf_nbuf_realloc_headroom_no_free(qdf_nbuf_t buf, uint32_t headroom)
-{
-	return __qdf_nbuf_realloc_headroom_no_free(buf, headroom);
-}
-
-static inline qdf_nbuf_t
 qdf_nbuf_realloc_headroom(qdf_nbuf_t buf, uint32_t headroom)
 {
 	return __qdf_nbuf_realloc_headroom(buf, headroom);
@@ -5982,6 +5749,12 @@ static inline qdf_nbuf_t
 qdf_nbuf_expand(qdf_nbuf_t buf, uint32_t headroom, uint32_t tailroom)
 {
 	return __qdf_nbuf_expand(buf, headroom, tailroom);
+}
+
+static inline int
+qdf_nbuf_linearize(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_linearize(buf);
 }
 
 static inline bool
@@ -6069,100 +5842,6 @@ static inline uint32_t qdf_nbuf_tcp_seq(qdf_nbuf_t buf)
 	return __qdf_nbuf_tcp_seq(buf);
 }
 
-/**
- * qdf_nbuf_get_tcp_psh() - get TCP PSH flag
- * @buf: network buffer
- *
- * Return: TCP PSH flag value
- */
-static inline bool qdf_nbuf_get_tcp_psh(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_tcp_psh(buf);
-}
-
-/**
- * qdf_nbuf_set_tcp_psh() - set TCP PSH flag
- * @buf: network buffer
- * @psh: PSH flag value
- *
- * Return: none
- */
-static inline void qdf_nbuf_set_tcp_psh(qdf_nbuf_t buf, bool psh)
-{
-	__qdf_nbuf_set_tcp_psh(buf, psh);
-}
-
-/**
- * qdf_nbuf_get_tcp_fin() - get TCP FIN flag
- * @buf: network buffer
- *
- * Return: TCP FIN flag value
- */
-static inline bool qdf_nbuf_get_tcp_fin(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_tcp_fin(buf);
-}
-
-/**
- * qdf_nbuf_set_tcp_fin() - set TCP FIN flag
- * @buf: network buffer
- * @fin: FIN flag value
- *
- * Return: none
- */
-static inline void qdf_nbuf_set_tcp_fin(qdf_nbuf_t buf, bool fin)
-{
-	__qdf_nbuf_set_tcp_fin(buf, fin);
-}
-
-/**
- * qdf_nbuf_get_ip_id() - get IP identification field
- * @buf: network buffer
- *
- * Return: IP ID value
- */
-static inline uint16_t qdf_nbuf_get_ip_id(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_ip_id(buf);
-}
-
-/**
- * qdf_nbuf_set_ip_id() - set IP identification field
- * @buf: network buffer
- * @id: IP ID value
- *
- * Return: none
- */
-static inline void qdf_nbuf_set_ip_id(qdf_nbuf_t buf, uint16_t id)
-{
-	__qdf_nbuf_set_ip_id(buf, id);
-}
-
-/**
- * qdf_nbuf_set_ip_tot_len() - set IP total length field
- * @buf: network buffer
- * @tot_len: total length value
- *
- * Return: none
- */
-static inline void qdf_nbuf_set_ip_tot_len(qdf_nbuf_t buf, uint16_t tot_len)
-{
-	__qdf_nbuf_set_ip_tot_len(buf, tot_len);
-}
-
-/**
- * qdf_nbuf_set_ipv6_payload_len() - set IPv6 payload length field
- * @buf: network buffer
- * @payload_len: payload length value
- *
- * Return: none
- */
-static inline void
-qdf_nbuf_set_ipv6_payload_len(qdf_nbuf_t buf, uint16_t payload_len)
-{
-	__qdf_nbuf_set_ipv6_payload_len(buf, payload_len);
-}
-
 static inline qdf_size_t qdf_nbuf_l2l3l4_hdr_len(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_l2l3l4_hdr_len(buf);
@@ -6177,206 +5856,6 @@ static inline qdf_size_t qdf_nbuf_l2l3l4_hdr_len(qdf_nbuf_t buf)
 static inline size_t qdf_nbuf_get_tcp_hdr_len(qdf_nbuf_t nbuf)
 {
 	return __qdf_nbuf_get_tcp_hdr_len(nbuf);
-}
-
-/**
- * qdf_nbuf_udp_hdr_len() - return UDP header length of the skb
- *
- * Return: size of UDP header length
- */
-static inline size_t qdf_nbuf_udp_hdr_len(void)
-{
-	return __qdf_nbuf_udp_hdr_len();
-}
-
-/**
- * qdf_nbuf_set_udp_datagram_len() - set the UDP datagram length in the UDP hdr
- * @nbuf: sk buff
- * @total_len: Total length including EIT header
- *
- * Return: none
- */
-static inline void
-qdf_nbuf_set_udp_datagram_len(qdf_nbuf_t nbuf, uint16_t total_len)
-{
-	__qdf_nbuf_set_udp_datagram_len(nbuf, total_len);
-}
-
-/**
- * qdf_nbuf_update_uso_ip_id() - Update IP ID for UDP IPv4 GSO packets
- * @nbuf: skb buffer
- * @ip_id: pointer to IP ID to be updated
- * @num_seg: number of segments
- *
- * Update the IP ID for UDP IPv4 GSO packets using ip_select_ident_segs
- *
- * Return: None
- */
-static inline void
-qdf_nbuf_update_uso_ip_id(qdf_nbuf_t nbuf, uint16_t *ip_id, uint32_t num_seg)
-{
-	__qdf_nbuf_update_uso_ip_id(nbuf, ip_id, num_seg);
-}
-
-/**
- * qdf_vlan_get_protocol() - get protocol from VLAN header
- * @nbuf: Network buffer
- *
- * Return: protocol value
- */
-static inline uint16_t qdf_vlan_get_protocol(qdf_nbuf_t nbuf)
-{
-	return __qdf_vlan_get_protocol(nbuf);
-}
-
-/**
- * qdf_nbuf_get_tcp_seq() - get raw TCP sequence number (network byte order)
- * @buf: network buffer
- *
- * Return: TCP sequence number in network byte order
- */
-static inline uint32_t qdf_nbuf_get_tcp_seq(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_tcp_seq(buf);
-}
-
-/**
- * qdf_nbuf_set_tcp_seq() - set TCP sequence number
- * @buf: network buffer
- * @seq: TCP sequence number
- *
- * Return: none
- */
-static inline void qdf_nbuf_set_tcp_seq(qdf_nbuf_t buf, uint32_t seq)
-{
-	__qdf_nbuf_set_tcp_seq(buf, seq);
-}
-
-/**
- * qdf_nbuf_get_mac_header() - get MAC header pointer
- * @nbuf: Network buffer
- *
- * Return: MAC header pointer
- */
-static inline void *qdf_nbuf_get_mac_header(qdf_nbuf_t nbuf)
-{
-	return __qdf_nbuf_get_mac_header(nbuf);
-}
-
-/**
- * qdf_nbuf_set_mac_header() - set MAC header
- * @nbuf: Network buffer
- * @offset: offset from data
- *
- * Return: None
- */
-static inline void qdf_nbuf_set_mac_header(qdf_nbuf_t nbuf, int offset)
-{
-	__qdf_nbuf_set_mac_header(nbuf, offset);
-}
-
-/**
- * qdf_nbuf_get_mac_header_len() - get MAC header length
- * @nbuf: Network buffer
- *
- * Return: MAC header length
- */
-static inline uint16_t qdf_nbuf_get_mac_header_len(qdf_nbuf_t nbuf)
-{
-	return __qdf_nbuf_get_mac_header_len(nbuf);
-}
-
-/**
- * qdf_nbuf_set_transport_header() - set transport header
- * @nbuf: Network buffer
- * @offset: offset from data
- *
- * Return: None
- */
-static inline void qdf_nbuf_set_transport_header(qdf_nbuf_t nbuf, int offset)
-{
-	__qdf_nbuf_set_transport_header(nbuf, offset);
-}
-
-/**
- * qdf_nbuf_set_network_header() - set network header
- * @nbuf: Network buffer
- * @offset: offset from data
- *
- * Return: None
- */
-static inline void qdf_nbuf_set_network_header(qdf_nbuf_t nbuf, int offset)
-{
-	__qdf_nbuf_set_network_header(nbuf, offset);
-}
-
-/**
- * qdf_nbuf_get_network_header_len() - get network header length
- * @nbuf: Network buffer
- *
- * Return: network header length
- */
-static inline uint16_t qdf_nbuf_get_network_header_len(qdf_nbuf_t nbuf)
-{
-	return __qdf_nbuf_get_network_header_len(nbuf);
-}
-
-/**
- * qdf_nbuf_get_frag() - get frag pointer
- * @nbuf: Network buffer
- * @idx: frag index
- *
- * Return: frag pointer
- */
-static inline qdf_nbuf_frag_t *qdf_nbuf_get_frag(qdf_nbuf_t nbuf, int idx)
-{
-	return __qdf_nbuf_get_frag(nbuf, idx);
-}
-
-/**
- * qdf_nbuf_frag_addr_safe() - get frag address safely
- * @frag: frag pointer
- *
- * Return: frag address
- */
-static inline void *qdf_nbuf_frag_addr_safe(qdf_nbuf_frag_t *frag)
-{
-	return __qdf_nbuf_frag_addr_safe(frag);
-}
-
-/**
- * qdf_get_nbuf_len() - get the length of the buf
- * @buf: Network buf instance
- *
- * Return: total length of this buf.
- */
-static inline qdf_size_t qdf_get_nbuf_len(qdf_nbuf_t buf)
-{
-	return __qdf_get_nbuf_len(buf);
-}
-
-/**
- * qdf_nbuf_put - add data to a buffer
- * @buf: buffer to use
- * @size: amount of data to add
- *
- * Return: A pointer to the first byte of the extra data is returned.
- */
-
-static inline void *qdf_nbuf_put(qdf_nbuf_t buf, qdf_size_t size)
-{
-	return __qdf_nbuf_put(buf, size);
-}
-
-/**
- * qdf_nbuf_frag_size() - Returns the size of a skb fragment
- * @frag: skb fragment
- *
- * Return: size of skb fragment
- */
-static inline unsigned int qdf_nbuf_frag_size(qdf_nbuf_frag_t *frag)
-{
-	return __qdf_nbuf_frag_size(frag);
 }
 
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
@@ -6458,23 +5937,6 @@ qdf_nbuf_get_last_frag_list_nbuf(qdf_nbuf_t nbuf)
  */
 unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 				      qdf_nbuf_t nbuf, uint32_t headroom_sz);
-
-/**
- * qdf_nbuf_get_radiotap_len() - get radiotap header length
- * @nbuf: Pointer to nbuf
- *
- * Return: radiotap length.
- */
-uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf);
-
-/**
- * qdf_nbuf_ieee80211_get_dest_mac() - get pointer to destination mac
- *  address
- * @nbuf: Pointer to nbuf
- *
- * Return: pointer to destination mac address
- */
-uint8_t *qdf_nbuf_ieee80211_get_dest_mac(qdf_nbuf_t nbuf);
 
 /**
  * qdf_nbuf_mark_wakeup_frame() - mark wakeup frame.
@@ -6762,6 +6224,18 @@ static inline qdf_size_t qdf_nbuf_get_truesize(qdf_nbuf_t nbuf)
 static inline qdf_size_t qdf_nbuf_get_allocsize(qdf_nbuf_t nbuf)
 {
 	return __qdf_nbuf_get_allocsize(nbuf);
+}
+
+/**
+ * qdf_is_pp_nbuf: Check if SKB memory is from page pool
+ *
+ * @nbuf: nbuf reference
+ *
+ * Return: True/False
+ */
+static inline bool qdf_is_pp_nbuf(qdf_nbuf_t nbuf)
+{
+	return __qdf_is_pp_nbuf(nbuf);
 }
 
 #ifdef NBUF_FRAG_MEMORY_DEBUG

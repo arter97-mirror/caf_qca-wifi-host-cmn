@@ -33,346 +33,23 @@
 #include "target_if_mlo_mgr.h"
 #include "utils_mlo.h"
 #include <../../core/src/wlan_cm_vdev_api.h>
-#include <wlan_mlo_link_force.h>
-#include "wlan_t2lm_api.h"
 #endif
 #include "host_diag_core_event.h"
 #include "lim_types.h"
-#include "wlan_smd_roam.h"
-#include "parser_api.h"
 
-#define LINK_RECFG_RSP_TIMEOUT 5000
+static struct mlo_link_recfg_state_tran *
+mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx);
 
-#ifdef WLAN_FEATURE_11BN_SMD
-/**
- * parse_smd_bss_transition_params() - Parse SMD BSS Transition Parameters IE
- * @ie_buf: IE buffer
- * @ie_buf_len: IE buffer length
- * @smd_params: Output structure for element info
- * @out_aid: Output parameter for extracted AID
- *
- * Parse SMD BSS Transition Parameters element for ST Preparation Response
- * as defined in IEEE 802.11bn Section 9.4.2.357.
- * Format for ST Prep Response per IEEE 802.11bn Section 9.4.2.359.3:
- * Extension IE Header:
- * +-------------+--------+---------------+
- * | Element ID  | Length | Extension ID  |
- * | (1 octet)   |(1 oct) | (1 octet)     |
- * +-------------+--------+---------------+
- * | 0xFF (255)  | varies | 0x6b (107)    |
- * +-------------+--------+---------------+
- *
- * ST Info Field:
- * +-------------+------------------+
- * | ST Control  | Optional Fields  |
- * | (1 octet)   | (variable)       |
- * +-------------+------------------+
- *
- * ST Control Field (2 octets):
- * - Bit 0: AID Present
- * - Bit 1: DL BA Info Present
- * - Bit 2: UL BA Info Present
- * - Bit 3: SCS List Present
- * - Bits 4-15: Reserved
- *
- * Optional Fields (based on ST Control bits):
- * - AID (2 octets) if bit 0 set - CRITICAL for Work Item 3
- * - DL BA Info (variable) if bit 1 set
- * - UL BA Info (variable) if bit 2 set
- * - SCS List (variable) if bit 3 set
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-static QDF_STATUS
-parse_smd_bss_transition_params(
-	uint8_t *ie_buf,
-	uint32_t ie_buf_len,
-	struct element_info *smd_params,
-	uint16_t *out_aid)
-{
-	uint8_t *ptr = ie_buf;
-	uint8_t elem_id, elem_len, ext_id;
-	uint8_t smd_info;
-	bool aid_present;
-	uint16_t aid = 0;
-	uint8_t tid_bitmap;
-	uint8_t tid;
-	uint8_t num_scs_ids;
-	uint8_t i;
-	bool dl_ba_present, ul_ba_present, scs_list_present;
-
-	if (!ie_buf || !smd_params || ie_buf_len < MIN_IE_LEN) {
-		mlo_err("Invalid parameters: ie_buf=%pK smd_params=%pK len=%u",
-			ie_buf, smd_params, ie_buf_len);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	/* Bug 3 fix: extended elements always have EID=0xff;
-	 * identity is in the Extension ID byte, not EID itself.
-	 */
-	elem_id = *ptr++;
-	if (elem_id != WLAN_ELEMID_EXTN_ELEM) {
-		mlo_debug("Not an extended element, ID=%d", elem_id);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	elem_len = *ptr++;
-	if (elem_len < SMD_BSS_TRANS_PARAMS_MIN_LEN) {
-		mlo_err("SMD BSS Transition Params too short: %d (min %d)",
-			elem_len, SMD_BSS_TRANS_PARAMS_MIN_LEN);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (ie_buf_len < (uint32_t)(elem_len + 2)) {
-		mlo_err("Buffer too small: have %u need %u",
-			ie_buf_len, elem_len + 2);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	smd_params->ptr = ie_buf;
-	smd_params->len = elem_len + 2;
-
-	ext_id = *ptr++;
-	if (ext_id != WLAN_ELEMID_EXTN_ELEM_SMD_BSS_TRANSITION) {
-		mlo_debug("Not SMD BSS Trans Params elem, ext_id=0x%02x",
-			  ext_id);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	/* Bug 2 fix: SMD BSS Transition Info is 1 octet (D1.4 §9.4.2.359),
-	 * not 2.  Reading 2 bytes consumed an AID byte, leaving the bounds
-	 * check short and returning before AID was extracted.
-	 */
-	smd_info = *ptr++;
-	aid_present      = (smd_info >> 0) & 1;
-	dl_ba_present    = (smd_info >> 1) & 1;
-	ul_ba_present    = (smd_info >> 2) & 1;
-	scs_list_present = (smd_info >> 3) & 1;
-
-	mlo_debug("SMD BSS Trans Info: 0x%02x (AID:%d DL:%d UL:%d SCS:%d)",
-		  smd_info, aid_present, dl_ba_present, ul_ba_present,
-		  scs_list_present);
-
-	/* ================================================================
-	 * Parse Optional Fields
-	 * ================================================================
-	 */
-
-	if (aid_present) {
-		if ((ptr - ie_buf) + SMD_BSS_TRANS_PARAMS_AID_LEN >
-		    ie_buf_len) {
-			mlo_err("Buffer overflow parsing AID");
-			return QDF_STATUS_E_FAILURE;
-		}
-		aid = (ptr[0] | (ptr[1] << 8)) & 0x3FFF;
-		ptr += SMD_BSS_TRANS_PARAMS_AID_LEN;
-		mlo_info("AID assigned by target AP MLD: %d", aid);
-		if (out_aid)
-			*out_aid = aid;
-	} else {
-		mlo_debug("AID not present in response");
-		if (out_aid)
-			*out_aid = 0;
-	}
-
-	if (dl_ba_present) {
-		if ((ptr - ie_buf) + 1 > ie_buf_len) {
-			mlo_err("Buffer overflow parsing DL BA TID bitmap");
-			return QDF_STATUS_E_FAILURE;
-		}
-		tid_bitmap = *ptr++;
-		mlo_debug("DL BA TID Bitmap: 0x%02x", tid_bitmap);
-		for (tid = 0; tid < MAX_BA_TIDS; tid++) {
-			if (!(tid_bitmap & BIT(tid)))
-				continue;
-			if ((ptr - ie_buf) + SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN >
-			    ie_buf_len) {
-				mlo_err("Buf ovfl parsing DL BA param TID %d",
-					tid);
-				return QDF_STATUS_E_FAILURE;
-			}
-			mlo_debug("DL BA TID %d: param=0x%04x to=%u ssc=0x%04x",
-				  tid,
-				  ptr[0] | (ptr[1] << 8),
-				  ptr[2] | (ptr[3] << 8),
-				  ptr[4] | (ptr[5] << 8));
-			ptr += SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN;
-		}
-	}
-
-	if (ul_ba_present) {
-		if ((ptr - ie_buf) + 1 > ie_buf_len) {
-			mlo_err("Buffer overflow parsing UL BA TID bitmap");
-			return QDF_STATUS_E_FAILURE;
-		}
-		tid_bitmap = *ptr++;
-		mlo_debug("UL BA TID Bitmap: 0x%02x", tid_bitmap);
-		for (tid = 0; tid < MAX_BA_TIDS; tid++) {
-			if (!(tid_bitmap & BIT(tid)))
-				continue;
-			if ((ptr - ie_buf) + SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN >
-			    ie_buf_len) {
-				mlo_err("Buf ovfl parsing UL BA param TID %d",
-					tid);
-				return QDF_STATUS_E_FAILURE;
-			}
-			mlo_debug("UL BA TID %d: param=0x%04x to=%u ssc=0x%04x",
-				  tid,
-				  ptr[0] | (ptr[1] << 8),
-				  ptr[2] | (ptr[3] << 8),
-				  ptr[4] | (ptr[5] << 8));
-			ptr += SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN;
-		}
-	}
-
-	if (scs_list_present) {
-		if ((ptr - ie_buf) + 1 > ie_buf_len) {
-			mlo_err("Buffer overflow parsing SCS List count");
-			return QDF_STATUS_E_FAILURE;
-		}
-		num_scs_ids = *ptr++;
-		mlo_debug("SCS List count: %d", num_scs_ids);
-		if ((ptr - ie_buf) + num_scs_ids > ie_buf_len) {
-			mlo_err("Buffer overflow parsing SCS IDs");
-			return QDF_STATUS_E_FAILURE;
-		}
-		for (i = 0; i < num_scs_ids && i < MLO_LINK_RECFG_MAX_SCS_IDS;
-		     i++)
-			mlo_debug("SCS ID[%d]: %d", i, *ptr++);
-		if (num_scs_ids > MLO_LINK_RECFG_MAX_SCS_IDS) {
-			mlo_warn("Skipping %d SCS IDs beyond max %d",
-				 num_scs_ids - MLO_LINK_RECFG_MAX_SCS_IDS,
-				 MLO_LINK_RECFG_MAX_SCS_IDS);
-			ptr += (num_scs_ids - MLO_LINK_RECFG_MAX_SCS_IDS);
-		}
-	}
-
-	if ((ptr - ie_buf) != (elem_len + 2))
-		mlo_warn("Consumed %ld bytes, expected %d",
-			 (long)(ptr - ie_buf), elem_len + 2);
-
-	mlo_info("SMD BSS Transition Params parsed: smd_info=0x%02x aid=%d",
-		 smd_info, aid);
-
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* WLAN_FEATURE_11BN_SMD */
-
-static enum wlan_status_code
-mlo_link_recfg_find_link_status(uint8_t link_id,
-				struct wlan_mlo_link_recfg_rsp *link_recfg_rsp);
-
-static QDF_STATUS
-mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
-				 struct link_recfg_rx_rsp *recfg_resp_data,
-				 uint16_t event_data_len);
-
-QDF_STATUS
-mlo_link_recfg_tranistion_to_next_state(
-			struct mlo_link_recfg_context *recfg_ctx);
-
-#ifdef WLAN_FEATURE_11BN_SMD
-static QDF_STATUS
-mlo_uhr_link_recfg_gen_link_assoc_rsp(
-	struct wlan_objmgr_vdev *vdev,
-	struct mlo_link_recfg_context *ctx,
-	struct wlan_mlo_link_recfg_req *link_recfg_req);
-#endif
-
-struct wlan_mlo_dev_context *
+static struct wlan_mlo_dev_context *
 mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx)
 {
 	return recfg_ctx->ml_dev;
 }
 
-struct wlan_objmgr_psoc *
+static struct wlan_objmgr_psoc *
 mlo_link_recfg_get_psoc(struct mlo_link_recfg_context *recfg_ctx)
 {
 	return recfg_ctx->psoc;
-}
-
-QDF_STATUS mlo_link_recfg_validate_roam_invoke(
-		struct wlan_objmgr_psoc *psoc,
-		struct wlan_objmgr_vdev *vdev)
-{
-	if (!wlan_mlme_is_link_recfg_support(psoc))
-		return QDF_STATUS_SUCCESS;
-	if (mlo_is_link_recfg_in_progress(vdev)) {
-		mlo_debug("reject invoke due to recfg in-progress");
-		return QDF_STATUS_E_BUSY;
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static void mlo_link_refg_done_work_handler(void *ctx)
-{
-	struct mlo_link_recfg_context *recfg_ctx = ctx;
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	qdf_list_node_t *node = NULL;
-
-	if (!recfg_ctx) {
-		mlo_err("Invalid recfg_ctx");
-		return;
-	}
-	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		return;
-	}
-	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
-	while (qdf_list_remove_front(&recfg_ctx->recfg_done_list,
-				     &node) ==
-	       QDF_STATUS_SUCCESS) {
-		ml_link_recfg_sm_lock_release(mlo_dev_ctx);
-		mlme_cm_send_link_reconfig_status((void *)node);
-		ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
-	}
-	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
-}
-
-static void mlo_link_refg_flush_recfg_done_data(
-		struct mlo_link_recfg_context *recfg_ctx)
-{
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	qdf_list_node_t *node = NULL;
-
-	if (!recfg_ctx) {
-		mlo_err("Invalid recfg_ctx");
-		return;
-	}
-	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		return;
-	}
-	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
-	while (qdf_list_remove_front(&recfg_ctx->recfg_done_list,
-				     &node) ==
-	       QDF_STATUS_SUCCESS) {
-		mlo_debug("flush pending recfg done data");
-		mlme_cm_free_link_reconfig_done_data((void *)node);
-	}
-	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
-}
-
-static void mlo_link_refg_done_indication(struct wlan_objmgr_vdev *vdev)
-{
-	struct recfg_done_data_hdr *recfg_done_data;
-	struct mlo_link_recfg_context *recfg_ctx =
-		vdev->mlo_dev_ctx->link_recfg_ctx;
-	bool sched;
-
-	recfg_done_data = (struct recfg_done_data_hdr *)
-			mlme_cm_populate_link_recfg_done_data(vdev);
-	if (!recfg_done_data) {
-		mlo_err("fail to populate recfg done data");
-		return;
-	}
-	qdf_list_insert_back(&recfg_ctx->recfg_done_list,
-			     &recfg_done_data->node);
-	sched = qdf_sched_work(0, &recfg_ctx->recfg_indication_work);
-	mlo_debug("sched recfg work %d", sched);
 }
 
 bool mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev)
@@ -390,27 +67,6 @@ bool mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev)
 		return true;
 
 	return false;
-}
-
-static bool
-mlo_link_recfg_is_no_comm(
-	struct mlo_link_recfg_context *recfg_ctx)
-{
-	uint8_t join_pending_vdev_id;
-
-	join_pending_vdev_id =
-		recfg_ctx->curr_recfg_req.join_pending_vdev_id;
-
-	if (join_pending_vdev_id == WLAN_INVALID_VDEV_ID ||
-	    recfg_ctx->curr_recfg_req.recfg_type !=
-				link_recfg_del_add_no_common_link)
-		return false;
-
-	mlo_debug("no comm link recfg_type %d join_pending_vdev_id %d",
-		  recfg_ctx->curr_recfg_req.recfg_type,
-		  join_pending_vdev_id);
-
-	return true;
 }
 
 void mlo_link_recfg_init_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
@@ -458,34 +114,6 @@ mlo_link_recfg_get_substate(struct wlan_mlo_dev_context *mlo_dev_ctx)
 	return curr_substate;
 }
 
-bool
-mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev)
-{
-	struct wlan_objmgr_psoc *psoc;
-
-	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc) {
-		mlo_debug("null psoc");
-		return false;
-	}
-	if (!vdev->mlo_dev_ctx) {
-		mlo_debug("null mlo_dev_ctx");
-		return false;
-	}
-
-	if (!wlan_mlme_is_link_recfg_support(psoc)) {
-		mlo_debug("link_recfg not enabled");
-		return false;
-	}
-
-	if (!vdev->mlo_dev_ctx->link_recfg_ctx) {
-		mlo_debug("null link_recfg_ctx");
-		return false;
-	}
-
-	return true;
-}
-
 QDF_STATUS
 mlo_link_recfg_sm_deliver_event_sync(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				     enum wlan_link_recfg_sm_evt event,
@@ -505,9 +133,6 @@ mlo_link_recfg_sm_deliver_event(struct wlan_mlo_dev_context *mlo_dev_ctx,
 	if (!mlo_dev_ctx)
 		return QDF_STATUS_E_NULL_VALUE;
 
-	if (!mlo_dev_ctx->link_recfg_ctx)
-		return QDF_STATUS_SUCCESS;
-
 	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
 	status = mlo_link_recfg_sm_deliver_event_sync(mlo_dev_ctx,
 						      event,
@@ -517,7 +142,7 @@ mlo_link_recfg_sm_deliver_event(struct wlan_mlo_dev_context *mlo_dev_ctx,
 	return status;
 }
 
-void
+static void
 mlo_link_recfg_sm_transition_to(struct mlo_link_recfg_context *recfg_ctx,
 				enum wlan_link_recfg_sm_state state)
 {
@@ -525,22 +150,18 @@ mlo_link_recfg_sm_transition_to(struct mlo_link_recfg_context *recfg_ctx,
 }
 
 uint8_t
-mlo_link_recfg_dialog_token(
-			struct mlo_link_recfg_context *recfg_ctx,
-			struct mlo_link_recfg_state_req *req)
+mlo_link_recfg_dialog_token(struct mlo_link_recfg_state_req *req)
 {
-	if (!req || !recfg_ctx)
+	if (!req)
 		return 0;
 
-	if (recfg_ctx->last_dialog_token == WLAN_MAX_DIALOG_TOKEN)
+	if (req->dialog_token == WLAN_MAX_DIALOG_TOKEN)
 		/* wrap is ok */
-		recfg_ctx->last_dialog_token = WLAN_MIN_DIALOG_TOKEN;
+		req->dialog_token = WLAN_MIN_DIALOG_TOKEN;
 	else
-		recfg_ctx->last_dialog_token += 1;
+		req->dialog_token += 1;
 
-	req->dialog_token = recfg_ctx->last_dialog_token;
 	mlo_debug("gen dialog token %d", req->dialog_token);
-
 	return req->dialog_token;
 }
 
@@ -666,29 +287,6 @@ mlo_ser_link_recfg_cb(struct wlan_serialization_command *cmd,
 
 #define MLO_LINK_RECFG_MAX_TIMEOUT 35000
 
-static QDF_STATUS
-mlo_copy_recfg_req(struct mlo_link_recfg_context *recfg_ctx,
-		   struct wlan_mlo_link_recfg_req *recfg_req)
-{
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-
-	if (!recfg_ctx || !recfg_req)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	mlo_dev_lock_acquire(mlo_dev_ctx);
-	qdf_mem_copy(&recfg_ctx->curr_recfg_req, recfg_req,
-		     sizeof(*recfg_req));
-	mlo_dev_lock_release(mlo_dev_ctx);
-
-	return QDF_STATUS_SUCCESS;
-}
-
 /**
  * mlo_ser_link_recfg_cmd() - The API will serialize link reconfig
  * command in serialization queue.
@@ -782,14 +380,10 @@ mlo_link_recfg_update_channel_freq(struct wlan_objmgr_psoc *psoc,
 {
 	struct wlan_objmgr_pdev *pdev;
 	struct scan_cache_entry *scan_entry;
-	uint8_t i, tx_nss, rx_nss;
+	uint8_t i;
 	struct wlan_mlo_link_recfg_bss_info *link;
 	struct mlo_link_info *ap_link_info;
-	struct mlo_mgr_context *g_mlo_ctx;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	QDF_STATUS (*link_add_fetch_nss_cb)(uint8_t vdev_id,
-					    struct scan_cache_entry *scan_entry,
-					    uint8_t *tx_nss, uint8_t *rx_nss);
 
 	pdev = wlan_objmgr_get_pdev_by_id(psoc, 0, WLAN_LINK_RECFG_ID);
 	if (!pdev) {
@@ -800,22 +394,6 @@ mlo_link_recfg_update_channel_freq(struct wlan_objmgr_psoc *psoc,
 		mlo_err("recfg_req null");
 		return QDF_STATUS_E_INVAL;
 	}
-
-	g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
-	if (!g_mlo_ctx) {
-		mlo_err("Global MLO ctx NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (!g_mlo_ctx->mlme_ops ||
-	    !g_mlo_ctx->mlme_ops->mlo_mlme_ext_link_add_fetch_nss) {
-		mlo_err("No callback to fetch NSS");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	link_add_fetch_nss_cb =
-		g_mlo_ctx->mlme_ops->mlo_mlme_ext_link_add_fetch_nss;
-
 	link = &recfg_req->add_link_info.link[0];
 	for (i = 0; i < recfg_req->add_link_info.num_links &&
 			i < WLAN_MAX_ML_BSS_LINKS; i++) {
@@ -828,19 +406,8 @@ mlo_link_recfg_update_channel_freq(struct wlan_objmgr_psoc *psoc,
 			break;
 		}
 		link[i].freq = scan_entry->channel.chan_freq;
-		status = link_add_fetch_nss_cb(recfg_req->vdev_id, scan_entry,
-					       &tx_nss, &rx_nss);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_debug("Failed to fetch NSS for %d, status %d",
-				  link[i].freq, status);
-			util_scan_free_cache_entry(scan_entry);
-			break;
-		}
-
-		link[i].cap_tx_nss = tx_nss;
-		link[i].cap_rx_nss = rx_nss;
-		mlo_debug("add: freq %d link id %d Tx/Rx NSS %dx%d " QDF_MAC_ADDR_FMT "",
-			  link[i].freq, link[i].link_id, tx_nss, rx_nss,
+		mlo_debug("add: freq %d link id %d " QDF_MAC_ADDR_FMT "",
+			  link[i].freq, link[i].link_id,
 			  QDF_MAC_ADDR_REF(link[i].ap_link_addr.bytes));
 
 		util_scan_free_cache_entry(scan_entry);
@@ -865,36 +432,12 @@ mlo_link_recfg_update_channel_freq(struct wlan_objmgr_psoc *psoc,
 		}
 
 		link[i].freq = ap_link_info->link_chan_info->ch_freq;
-		link[i].self_link_addr = ap_link_info->link_addr;
-		mlo_debug("del: freq %d link id %d " QDF_MAC_ADDR_FMT " self addr " QDF_MAC_ADDR_FMT "",
+		mlo_debug("del: freq %d link id %d " QDF_MAC_ADDR_FMT "",
 			  link[i].freq, link[i].link_id,
-			  QDF_MAC_ADDR_REF(link[i].ap_link_addr.bytes),
-			  QDF_MAC_ADDR_REF(link[i].self_link_addr.bytes));
+			  QDF_MAC_ADDR_REF(link[i].ap_link_addr.bytes));
 	}
 
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
-
-	return status;
-}
-
-static QDF_STATUS
-mlo_link_recfg_send_complete_cmd(struct wlan_objmgr_psoc *psoc,
-				 struct wlan_mlo_link_recfg_complete_params *complete_params)
-{
-	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
-	QDF_STATUS status;
-
-	mlo_tx_ops = target_if_mlo_get_tx_ops(psoc);
-	if (!mlo_tx_ops) {
-		mlo_err("tx_ops is null!");
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-
-	status = mlo_tx_ops->send_mlo_link_recfg_complete_cmd(psoc,
-							      complete_params);
-	if (QDF_IS_STATUS_ERROR(status))
-		mlo_err("send_mlo_link_recfg_complete_cmd failed %d",
-			status);
 
 	return status;
 }
@@ -908,7 +451,6 @@ mlo_mgr_link_recfg_indication_event_handler(
 	struct wlan_mlo_link_recfg_req recfg_req = {0};
 	QDF_STATUS status;
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
 
 	if (!evt_params) {
 		mlo_err("Invalid params");
@@ -925,17 +467,6 @@ mlo_mgr_link_recfg_indication_event_handler(
 	if (!mlo_dev_ctx) {
 		mlo_err("mlo_ctx null");
 		status = QDF_STATUS_E_INVAL;
-		goto end;
-	}
-
-	if (!cm_is_vdev_connected(vdev)) {
-		mlo_err("vdev is NOT in connected state, send complete cmd to with failure status");
-		complete_params.ap_mld_addr = evt_params->ap_mld_addr;
-		complete_params.vdev_id = evt_params->vdev_id;
-		complete_params.reassoc_if_failure = 0;
-		complete_params.status = 1;
-		mlo_link_recfg_send_complete_cmd(psoc, &complete_params);
-		status = QDF_STATUS_E_FAILURE;
 		goto end;
 	}
 
@@ -1047,14 +578,6 @@ QDF_STATUS
 mlo_link_recfg_validate_request(struct wlan_objmgr_vdev *vdev,
 				struct wlan_mlo_link_recfg_req *req)
 {
-#ifdef WLAN_FEATURE_11BN_SMD
-	/* [G2] Block AP-initiated link reconfig while SMD cleanup is pending */
-	if (cm_is_vdev_smd_roam_sync_in_progress(vdev)) {
-		mlo_warn("vdev %d: reject link reconfig — SMD_ROAM_SYNC in progress",
-			 wlan_vdev_get_id(vdev));
-		return QDF_STATUS_E_BUSY;
-	}
-#endif
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -1071,7 +594,7 @@ QDF_STATUS mlo_link_recfg_request_params(struct wlan_objmgr_psoc *psoc,
 	return status;
 }
 
-QDF_STATUS
+static QDF_STATUS
 mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
 			       struct wlan_mlo_link_recfg_req *recfg_req,
 			       uint32_t *add_link_set,
@@ -1079,9 +602,7 @@ mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
 			       uint32_t *del_link_set,
 			       uint8_t *del_link_num,
 			       uint32_t *curr_link_set,
-			       uint8_t *curr_link_num,
-			       uint32_t *curr_standby_set,
-			       uint8_t *curr_standby_num)
+			       uint8_t *curr_link_num)
 {
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
 	struct mlo_link_info *link_info;
@@ -1096,7 +617,7 @@ mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
 	}
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
 			continue;
 
@@ -1114,11 +635,6 @@ mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
 		}
 		*curr_link_set |= 1 << link_info->link_id;
 		(*curr_link_num)++;
-
-		if (link_info->vdev_id == WLAN_INVALID_VDEV_ID) {
-			*curr_standby_set |= 1 << link_info->link_id;
-			(*curr_standby_num)++;
-		}
 	}
 
 	link = &recfg_req->add_link_info.link[0];
@@ -1131,11 +647,10 @@ mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
 		*del_link_set |= 1 << link[i].link_id;
 	*del_link_num = recfg_req->del_link_info.num_links;
 
-	mlo_debug("add link num %d bitmap 0x%x del num %d bitmap 0x%x curr num %d bitmap 0x%x standby %d 0x%x",
+	mlo_debug("add link num %d bitmap 0x%x del num %d bitmap 0x%x curr num %d bitmap 0x%x",
 		  *add_link_num, *add_link_set,
 		  *del_link_num, *del_link_set,
-		  *curr_link_num, *curr_link_set,
-		  *curr_standby_num, *curr_standby_set);
+		  *curr_link_num, *curr_link_set);
 
 	return status;
 
@@ -1150,22 +665,12 @@ mlo_link_recfg_has_idle_vdev_for_add_link(
 	struct wlan_mlo_link_recfg_bss_info *link_add;
 	struct wlan_mlo_link_recfg_bss_info tmp;
 	bool idle_vdev_assigned = false;
-	uint8_t i, j;
+	uint8_t i;
 	struct wlan_objmgr_vdev *vdev;
-	struct mlo_link_info *link_info;
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	struct wlan_mlo_link_recfg_bss_info *link_add_reject = NULL;
-	struct wlan_mlo_link_recfg_bss_info *link_add_accept = NULL;
 
 	if (!req->add_link_info.num_links) {
 		mlo_err("unexpected add link num 0");
 		return false;
-	}
-
-	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		return QDF_STATUS_E_INVAL;
 	}
 
 	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
@@ -1176,120 +681,42 @@ mlo_link_recfg_has_idle_vdev_for_add_link(
 
 	for (i = 0; i < req->add_link_info.num_links; i++) {
 		link_add = &req->add_link_info.link[i];
-		if (link_add->status_code != STATUS_SUCCESS) {
-			mlo_debug("link id %d add reject status code %d",
-				  link_add->link_id,
-				  link_add->status_code);
-			link_add_reject = link_add;
+
+		if (link_add->vdev_id == WLAN_INVALID_VDEV_ID)
+			continue;
+
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+					psoc, link_add->vdev_id,
+					WLAN_LINK_RECFG_ID);
+		if (!vdev) {
+			mlo_err("Invalid VDEV id %d", link_add->vdev_id);
 			continue;
 		}
-		for (j = 0; j < WLAN_MAX_ML_BSS_LINKS; j++) {
-			link_info = &mlo_dev_ctx->sta_ctx->links_info[j];
 
-			if (link_info->link_id != link_add->link_id)
-				continue;
-
-			if (!qdf_is_macaddr_equal(&link_add->self_link_addr,
-						  &link_info->link_addr)) {
-				mlo_err("link %d info self " QDF_MAC_ADDR_FMT " not equal ADD_LINK: " QDF_MAC_ADDR_FMT "",
-					link_info->link_id,
-					QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
-					QDF_MAC_ADDR_REF(link_add->self_link_addr.bytes));
-				continue;
-			}
-			if (link_info->vdev_id == WLAN_INVALID_VDEV_ID) {
-				link_add_accept = link_add;
-				continue;
-			}
-
-			vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-						psoc, link_info->vdev_id,
-						WLAN_LINK_RECFG_ID);
-			if (!vdev) {
-				mlo_err("Invalid VDEV id %d",
-					link_info->vdev_id);
-				continue;
-			}
-
-			if (!cm_is_vdev_disconnected(vdev)) {
-				wlan_objmgr_vdev_release_ref(
-						vdev, WLAN_LINK_RECFG_ID);
-				continue;
-			}
+		if (!cm_is_vdev_disconnected(vdev)) {
 			wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
-
-			idle_vdev_assigned = true;
-			mlo_debug("idle vdev %d self mac " QDF_MAC_ADDR_FMT " assigned to add link %d ap addr " QDF_MAC_ADDR_FMT "",
-				  link_add->vdev_id,
-				  QDF_MAC_ADDR_REF(
-					link_add->self_link_addr.bytes),
-				  link_add->link_id,
-				  QDF_MAC_ADDR_REF(
-					link_add->ap_link_addr.bytes));
-			/* move the link to first slot for trigger connect in
-			 * mlo_link_recfg_add_link_connect.
-			 */
-			tmp = req->add_link_info.link[0];
-			req->add_link_info.link[0] = *link_add;
-			*link_add = tmp;
-			goto found;
+			continue;
 		}
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+		/* todo: add validate vdev mac with link info link_add */
+
+		idle_vdev_assigned = true;
+		mlo_debug("idle vdev %d self mac " QDF_MAC_ADDR_FMT " assigned to add link %d ap addr " QDF_MAC_ADDR_FMT "",
+			  link_add->vdev_id,
+			  QDF_MAC_ADDR_REF(
+				link_add->self_link_addr.bytes),
+			  link_add->link_id,
+			  QDF_MAC_ADDR_REF(
+				link_add->ap_link_addr.bytes));
+		/* move the link to first slot for trigger connect in
+		 * mlo_link_recfg_add_link_connect.
+		 */
+		tmp = req->add_link_info.link[0];
+		req->add_link_info.link[0] = *link_add;
+		*link_add = tmp;
+		break;
 	}
-	/* Check link reject case, L1 -> L1 L2 L3,
-	 * L2 is rejected, L3 is accepted. use vdev previously assigned
-	 * for L2 to connect to L3. Need mac address change for the vdev.
-	 */
-	if (link_add_reject && link_add_accept) {
-		for (j = 0; j < WLAN_MAX_ML_BSS_LINKS; j++) {
-			link_info = &mlo_dev_ctx->sta_ctx->links_info[j];
 
-			if (link_info->vdev_id == WLAN_INVALID_VDEV_ID)
-				continue;
-
-			if (link_info->link_id != WLAN_INVALID_LINK_ID)
-				continue;
-
-			if (!qdf_is_macaddr_equal(
-					&link_add_reject->self_link_addr,
-					&link_info->link_addr))
-				continue;
-
-			vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-						psoc, link_info->vdev_id,
-						WLAN_LINK_RECFG_ID);
-			if (!vdev) {
-				mlo_err("Invalid VDEV id %d",
-					link_info->vdev_id);
-				continue;
-			}
-
-			if (!cm_is_vdev_disconnected(vdev)) {
-				wlan_objmgr_vdev_release_ref(
-						vdev, WLAN_LINK_RECFG_ID);
-				continue;
-			}
-			wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
-
-			idle_vdev_assigned = true;
-			link_add_accept->vdev_id = link_info->vdev_id;
-			mlo_debug("rej link %d idle vdev %d self mac " QDF_MAC_ADDR_FMT " assigned to add link %d ap addr " QDF_MAC_ADDR_FMT "",
-				  link_add_reject->link_id,
-				  link_add_accept->vdev_id,
-				  QDF_MAC_ADDR_REF(
-					link_add_accept->self_link_addr.bytes),
-				  link_add_accept->link_id,
-				  QDF_MAC_ADDR_REF(
-					link_add_accept->ap_link_addr.bytes));
-			/* move the link to first slot for trigger connect in
-			 * mlo_link_recfg_add_link_connect.
-			 */
-			tmp = req->add_link_info.link[0];
-			req->add_link_info.link[0] = *link_add_accept;
-			*link_add_accept = tmp;
-			goto found;
-		}
-	}
-found:
 	return idle_vdev_assigned;
 }
 
@@ -1297,8 +724,7 @@ static struct mlo_link_info *
 mlo_link_recfg_find_link_info_with_active_vdev(
 	struct wlan_objmgr_psoc *psoc,
 	struct wlan_mlo_dev_context *mlo_dev_ctx,
-	struct wlan_mlo_link_recfg_bss_info *link_add,
-	struct wlan_mlo_link_recfg_bss_info **standby_accepted_link)
+	struct wlan_mlo_link_recfg_bss_info *link_add)
 {
 	struct wlan_objmgr_vdev *vdev;
 	struct mlo_link_info *link_info;
@@ -1306,7 +732,10 @@ mlo_link_recfg_find_link_info_with_active_vdev(
 	uint8_t j;
 
 	for (j = 0; j < WLAN_MAX_ML_BSS_LINKS; j++) {
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[j];
+		link_info = &mlo_dev_ctx->link_ctx->links_info[j];
+
+		if (link_info->vdev_id == WLAN_INVALID_VDEV_ID)
+			continue;
 
 		if (link_info->link_id != link_add->link_id)
 			continue;
@@ -1317,12 +746,6 @@ mlo_link_recfg_find_link_info_with_active_vdev(
 				link_info->link_id,
 				QDF_MAC_ADDR_REF(link_add->self_link_addr.bytes),
 				QDF_MAC_ADDR_REF(link_add->self_link_addr.bytes));
-			continue;
-		}
-
-		if (link_info->vdev_id == WLAN_INVALID_VDEV_ID) {
-			if (standby_accepted_link && !*standby_accepted_link)
-				*standby_accepted_link = link_add;
 			continue;
 		}
 
@@ -1365,12 +788,9 @@ mlo_link_recfg_has_active_vdev_for_add_link(
 {
 	struct wlan_objmgr_psoc *psoc;
 	struct wlan_mlo_link_recfg_bss_info *link_add;
-	struct wlan_objmgr_vdev *vdev;
-	uint8_t i, j;
+	uint8_t i;
 	struct mlo_link_info *link_info;
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	struct wlan_mlo_link_recfg_bss_info *link_add_reject = NULL;
-	struct wlan_mlo_link_recfg_bss_info *link_add_accept = NULL;
 
 	if (!req->add_link_info.num_links) {
 		mlo_err("unexpected add link num 0");
@@ -1394,13 +814,6 @@ mlo_link_recfg_has_active_vdev_for_add_link(
 	 */
 	for (i = 0; i < req->add_link_info.num_links; i++) {
 		link_add = &req->add_link_info.link[i];
-		if (link_add->status_code != STATUS_SUCCESS) {
-			mlo_debug("link id %d add reject status code %d",
-				  link_add->link_id,
-				  link_add->status_code);
-			link_add_reject = link_add;
-			continue;
-		}
 
 		/* Find the link info from mlo mgr for the added link.
 		 * The link id and ap link address have been updated to
@@ -1412,15 +825,11 @@ mlo_link_recfg_has_active_vdev_for_add_link(
 		link_info = mlo_link_recfg_find_link_info_with_active_vdev(
 						psoc,
 						mlo_dev_ctx,
-						link_add,
-						&link_add_accept);
-		if (!link_info) {
-			mlo_debug("no find link info for add link self addr " QDF_MAC_ADDR_FMT "",
-				  QDF_MAC_ADDR_REF(link_add->self_link_addr.bytes));
+						link_add);
+		if (!link_info)
 			continue;
-		}
 		link_add->vdev_id = link_info->vdev_id;
-		mlo_debug("assign active vdev %d curr self link addr: " QDF_MAC_ADDR_FMT " for add link %d freq %d",
+		mlo_debug("assign active vdev %d self link addr: " QDF_MAC_ADDR_FMT " for add link %d freq %d",
 			  link_info->vdev_id,
 			  QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
 			  link_add->link_id,
@@ -1437,65 +846,7 @@ mlo_link_recfg_has_active_vdev_for_add_link(
 		link_sw_req->reason = MLO_LINK_SWITCH_REASON_HOST_ADD_LINK;
 		return true;
 	}
-	/* Check link reject case, for example L1 L2(deleted) -> L1 L3 L4,
-	 * L3 is rejected, L4 is accepted. use vdev previously assigned
-	 * for L2 to connect to L4. Need mac address change for the vdev by
-	 * link switch.
-	 */
-	if (link_add_reject && link_add_accept) {
-		for (j = 0; j < WLAN_MAX_ML_BSS_LINKS; j++) {
-			link_info = &mlo_dev_ctx->sta_ctx->links_info[j];
 
-			if (link_info->vdev_id == WLAN_INVALID_VDEV_ID)
-				continue;
-
-			if (!qdf_is_macaddr_equal(
-					&link_add_reject->self_link_addr,
-					 &link_info->link_addr))
-				continue;
-
-			vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-						psoc, link_info->vdev_id,
-						WLAN_LINK_RECFG_ID);
-			if (!vdev) {
-				mlo_err("Invalid VDEV id %d",
-					link_info->vdev_id);
-				continue;
-			}
-
-			if (!cm_is_vdev_disconnected(vdev)) {
-				wlan_objmgr_vdev_release_ref(
-						vdev, WLAN_LINK_RECFG_ID);
-				continue;
-			}
-			wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
-			break;
-		}
-		if (j == WLAN_MAX_ML_BSS_LINKS) {
-			mlo_debug("no find link info for rej self link add " QDF_MAC_ADDR_FMT "",
-				  QDF_MAC_ADDR_REF(link_add_reject->self_link_addr.bytes));
-			goto end;
-		}
-		link_add_accept->vdev_id = link_info->vdev_id;
-		mlo_debug("link rej, assign active vdev %d curr self link addr: " QDF_MAC_ADDR_FMT " for add link %d freq %d",
-			  link_info->vdev_id,
-			  QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
-			  link_add_accept->link_id,
-			  link_add_accept->freq);
-		mlo_debug("old link id %d flag 0x%x on vdev %d ",
-			  link_info->link_id,
-			  (uint32_t)link_info->link_status_flags,
-			  link_info->vdev_id);
-		link_sw_req->vdev_id = link_add_accept->vdev_id;
-		link_sw_req->curr_ieee_link_id = link_info->link_id;
-		link_sw_req->new_ieee_link_id = link_add_accept->link_id;
-		link_sw_req->new_primary_freq = link_add_accept->freq;
-		link_sw_req->new_phymode = 0;
-		link_sw_req->reason = MLO_LINK_SWITCH_REASON_HOST_ADD_LINK;
-		return true;
-	}
-
-end:
 	return false;
 }
 
@@ -1546,9 +897,6 @@ mlo_link_recfg_is_standby_link_present_for_link_switch(
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
 	struct mlo_link_info *link_info;
 	uint8_t i;
-	struct ml_link_force_state force_state = {0};
-	struct wlan_objmgr_psoc *psoc;
-	struct wlan_objmgr_vdev *vdev;
 
 	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
 	if (!mlo_dev_ctx) {
@@ -1556,26 +904,8 @@ mlo_link_recfg_is_standby_link_present_for_link_switch(
 		return false;
 	}
 
-	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
-	if (!psoc) {
-		mlo_err("psoc null");
-		return false;
-	}
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-				psoc, recfg_ctx->curr_recfg_req.vdev_id,
-				WLAN_LINK_RECFG_ID);
-
-	if (!vdev) {
-		mlo_debug("invalid vdev for id %d",
-			  recfg_ctx->curr_recfg_req.vdev_id);
-		return false;
-	}
-	ml_nlink_get_curr_force_state(psoc, vdev, &force_state);
-	ml_nlink_dump_force_state(&force_state, "");
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
-
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
 
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
 			continue;
@@ -1605,11 +935,6 @@ mlo_link_recfg_is_standby_link_present_for_link_switch(
 				  link_info->link_id,
 				  QDF_MAC_ADDR_REF(
 				  link_info->ap_link_addr.bytes));
-			if (force_state.force_inactive_bitmap &
-				1 << link_info->link_id) {
-				mlo_debug("standby link id %d is inactive, wait for link switch",
-					  link_info->link_id);
-			}
 			return true;
 		}
 	}
@@ -1642,7 +967,7 @@ mlo_link_recfg_is_link_switch_in_progress(
 	return false;
 }
 
-void
+static void
 mlo_link_recfg_update_scan_mlme(struct wlan_objmgr_vdev *vdev,
 				struct qdf_mac_addr *ap_link_addr,
 				enum scan_entry_connection_state
@@ -1718,7 +1043,7 @@ mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(
 				mlo_dev_ctx,
 				req->del_link_info.link[i].link_id);
 		if (!link_info) {
-			mlo_debug("link info null for link id %d",
+			mlo_debug("unexpected link info null for link id %d",
 				  req->del_link_info.link[i].link_id);
 			continue;
 		}
@@ -1744,8 +1069,6 @@ mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(
 						SCAN_ENTRY_CON_STATE_NONE);
 
 		mlo_mgr_clear_ap_link_info(vdev, &link_info->ap_link_addr);
-		ml_nlink_update_force_state_on_link_delete(
-				vdev, req->del_link_info.link[i].link_id);
 	}
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
@@ -1766,7 +1089,6 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 	struct scan_cache_entry *scan_entry;
 	struct wlan_channel channel;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	bool link_update_only = false;
 
 	if (!req->add_link_info.num_links)
 		return QDF_STATUS_SUCCESS;
@@ -1802,13 +1124,8 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 	for (i = 0; i < req->add_link_info.num_links; i++) {
 		add_link = &req->add_link_info.link[i];
 
-		/* check link add status_code before update link info */
-		if (add_link->status_code != STATUS_SUCCESS) {
-			mlo_debug("link id %d add with failure status code %d",
-				  add_link->link_id,
-				  add_link->status_code);
-			continue;
-		}
+		/* todo: check link add status_code before update link info */
+
 		link_info = mlo_mgr_get_link_info_by_self_addr(
 				vdev,
 				&add_link->self_link_addr);
@@ -1819,26 +1136,8 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 			status = QDF_STATUS_E_INVAL;
 			break;
 		}
-		if (link_info->link_id == add_link->link_id &&
-		    recfg_ctx->curr_recfg_req.recfg_type ==
-			link_recfg_del_add_no_common_link) {
-			/* add special check for no common link case,
-			 * in which we update mlo mgr before action frame sent
-			 */
-			if (recfg_ctx->curr_recfg_req.join_pending_vdev_id !=
-				WLAN_INVALID_VDEV_ID &&
-			    recfg_ctx->curr_recfg_req.join_pending_vdev_id !=
-				link_info->vdev_id) {
-				mlo_debug("unexpected join pending vdev %d, link info %d link id %d",
-					  recfg_ctx->curr_recfg_req.join_pending_vdev_id,
-					  link_info->vdev_id,
-					  link_info->link_id);
-				status = QDF_STATUS_E_INVAL;
-				break;
-			}
-			link_update_only = true;
-		} else if (link_info->link_id != WLAN_INVALID_LINK_ID &&
-			   !qdf_atomic_test_bit(
+		if (link_info->link_id != WLAN_INVALID_LINK_ID &&
+		    !qdf_atomic_test_bit(
 				LS_F_AP_REMOVAL_BIT,
 				&link_info->link_status_flags)) {
 			mlo_debug("can't updated link %d to mgr connected link id %d ap link " QDF_MAC_ADDR_FMT "",
@@ -1847,13 +1146,6 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 				  QDF_MAC_ADDR_REF(add_link->ap_link_addr.bytes));
 			status = QDF_STATUS_E_INVAL;
 			break;
-		} else if (link_info->link_id == add_link->link_id) {
-			/* link delete and add back case, for example:
-			 * AB->A->AB, do not flush cached link assoc response,
-			 * since the cache is updated after receive link recfg
-			 * response for same link id.
-			 */
-			link_update_only = true;
 		}
 
 		scan_entry = wlan_scan_get_entry_by_bssid(pdev,
@@ -1875,27 +1167,23 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 
 		if (channel.ch_width == CH_WIDTH_20MHZ)
 			channel.ch_cfreq1 = channel.ch_freq;
-		if (!link_update_only)
-			mlo_free_cache_link_assoc_rsp(vdev, link_info->link_id);
 
-		mlo_debug("curr self link mac " QDF_MAC_ADDR_FMT " vdev %d ",
+		mlo_free_cache_link_assoc_rsp(vdev, link_info->link_id);
+
+		mlo_debug("updated self link mac " QDF_MAC_ADDR_FMT " vdev %d ",
 			  QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
 			  link_info->vdev_id);
 
 		mlo_debug("delete old link id %d ap link " QDF_MAC_ADDR_FMT "",
 			  link_info->link_id,
 			  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
-		mlo_debug("update to added link id %d, Tx/Rx NSS %dx%d, ap link " QDF_MAC_ADDR_FMT " ch %d phymode %d",
+		mlo_debug("update to added link id %d ap link " QDF_MAC_ADDR_FMT " ch %d phymode %d",
 			  add_link->link_id,
-			  add_link->cap_tx_nss, add_link->cap_rx_nss,
 			  QDF_MAC_ADDR_REF(add_link->ap_link_addr.bytes),
 			  channel.ch_freq,
 			  channel.ch_phymode);
 
 		mlo_dev_lock_acquire(mlo_dev_ctx);
-		if (link_info->link_id != WLAN_INVALID_LINK_ID)
-			ml_nlink_update_force_state_on_link_delete(
-				vdev, link_info->link_id);
 		qdf_mem_copy(&link_info->ap_link_addr, &add_link->ap_link_addr,
 			     QDF_MAC_ADDR_SIZE);
 		qdf_mem_copy(link_info->link_chan_info, &channel,
@@ -1905,8 +1193,6 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 		link_info->is_link_active = false;
 		link_info->chan_freq = add_link->freq;
 		link_info->link_status_code = STATUS_SUCCESS;
-		link_info->cnx_tx_nss = add_link->cap_tx_nss;
-		link_info->cnx_rx_nss = add_link->cap_rx_nss;
 		mlo_dev_lock_release(mlo_dev_ctx);
 		mlo_link_recfg_update_scan_mlme(vdev,
 						&link_info->ap_link_addr,
@@ -1967,9 +1253,6 @@ mlo_link_recfg_get_add_partner_links(
 		link_info = mlo_mgr_get_ap_link_by_link_id(
 				mlo_dev_ctx,
 				link_add->link_id);
-		if (!link_info && smd_roam_in_progress(recfg_ctx))
-			link_info = smd_get_prepared_ap_link_info(
-					vdev, &link_add->ap_link_addr);
 		if (!link_info) {
 			mlo_debug("unexpected link info null for link id %d",
 				  link_add->link_id);
@@ -2001,61 +1284,6 @@ mlo_link_recfg_get_add_partner_links(
 	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
 
 	return status;
-}
-
-static QDF_STATUS
-mlo_link_recfg_update_partner_info(struct mlo_link_recfg_context *recfg_ctx)
-{
-	struct wlan_mlo_sta *sta_ctx;
-	struct mlo_partner_info *ml_partner_info;
-	struct mlo_link_info *link_info;
-	uint8_t i, idx = 0;
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-
-	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-	sta_ctx = mlo_dev_ctx->sta_ctx;
-	if (!sta_ctx) {
-		mlo_err("sta_ctx null");
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-	ml_partner_info = &sta_ctx->ml_partner_info;
-	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		if (idx >= QDF_ARRAY_SIZE(ml_partner_info->partner_link_info))
-			break;
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
-
-		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
-			continue;
-
-		if (link_info->link_id == WLAN_INVALID_LINK_ID)
-			continue;
-
-		if (link_info->link_status_code)
-			continue;
-
-		ml_partner_info->partner_link_info[idx].link_addr =
-			link_info->ap_link_addr;
-		ml_partner_info->partner_link_info[idx].link_id =
-			link_info->link_id;
-		ml_partner_info->partner_link_info[idx].vdev_id =
-			link_info->vdev_id;
-		ml_partner_info->partner_link_info[idx].link_status_code =
-			link_info->link_status_code;
-		ml_partner_info->partner_link_info[idx].chan_freq =
-			link_info->link_chan_info->ch_freq;
-		mlo_debug("[%d] update partner link id %d vdev %d",
-			  idx,
-			  ml_partner_info->partner_link_info[idx].link_id,
-			  ml_partner_info->partner_link_info[idx].vdev_id);
-		idx++;
-	}
-	ml_partner_info->num_partner_links = idx;
-
-	return QDF_STATUS_SUCCESS;
 }
 
 static QDF_STATUS
@@ -2172,20 +1400,11 @@ mlo_link_recfg_add_standby_link(struct mlo_link_recfg_context *recfg_ctx,
 		return QDF_STATUS_E_NULL_VALUE;
 	}
 
-	/* assumption is only one standby link existing.
-	 * this api will only handle the cases: AB->ABC
-	 */
+	/* assumption is only one standby link existing */
 	if (req->add_link_info.num_links != 1) {
 		mlo_err("unexpected standby link add num %d",
 			req->add_link_info.num_links);
 		return QDF_STATUS_E_INVAL;
-	}
-	/* check link add status_code before update link info */
-	if (req->add_link_info.link[0].status_code != STATUS_SUCCESS) {
-		mlo_debug("link id %d add with failure status code %d",
-			  req->add_link_info.link[0].link_id,
-			  req->add_link_info.link[0].status_code);
-		return QDF_STATUS_SUCCESS;
 	}
 
 	link_info = mlo_mgr_get_ap_link_by_link_id(
@@ -2241,113 +1460,6 @@ mlo_link_recfg_add_standby_link(struct mlo_link_recfg_context *recfg_ctx,
 }
 
 static QDF_STATUS
-mlo_link_recfg_update_mac_addr_request(struct wlan_mlo_dev_context *mlo_dev_ctx,
-				       struct wlan_objmgr_vdev *vdev,
-				       struct qdf_mac_addr *new_link_addr)
-{
-	QDF_STATUS status = QDF_STATUS_E_INVAL;
-	struct mlo_link_recfg_context *recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
-
-	if (!recfg_ctx)
-		goto out;
-	mlo_err("vdev %d update mac addr to " QDF_MAC_ADDR_FMT "",
-		wlan_vdev_get_id(vdev),
-		QDF_MAC_ADDR_REF(new_link_addr->bytes));
-	wlan_vdev_mlme_set_link_recfg_mac_update_in_progress(vdev);
-	recfg_ctx->macaddr_updating_vdev_id =
-		wlan_vdev_get_id(vdev);
-	recfg_ctx->old_macaddr_updating_vdev = *new_link_addr;
-	status = wlan_vdev_mlme_send_set_mac_addr(
-				*new_link_addr,
-				mlo_dev_ctx->mld_addr,
-				vdev);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_err("mlme MAC update failed");
-		recfg_ctx->macaddr_updating_vdev_id = WLAN_INVALID_VDEV_ID;
-		qdf_zero_macaddr(&recfg_ctx->old_macaddr_updating_vdev);
-		goto out;
-	}
-	wlan_vdev_mlme_set_macaddr(vdev, new_link_addr->bytes);
-	wlan_vdev_mlme_set_linkaddr(vdev, new_link_addr->bytes);
-	status = ucfg_dp_update_link_mac_addr(vdev,
-					      new_link_addr,
-					      true);
-	if (QDF_IS_STATUS_ERROR(status))
-		mlo_err("DP link MAC update failed");
-out:
-	return status;
-}
-
-QDF_STATUS mlo_link_recfg_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
-					    uint8_t resp_status)
-{
-	QDF_STATUS status = QDF_STATUS_E_INVAL;
-	struct mlo_mgr_context *g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
-	struct wlan_mlo_dev_context *mlo_dev_ctx = NULL;
-	struct mlo_link_recfg_context *recfg_ctx = NULL;
-	struct qdf_mac_addr *macaddr = NULL;
-
-	if (resp_status) {
-		mlo_err("VDEV %d set MAC address response %d",
-			wlan_vdev_get_id(vdev), resp_status);
-		goto out;
-	}
-
-	if (!g_mlo_ctx) {
-		mlo_err("global mlo ctx NULL");
-		goto out;
-	}
-	if (!g_mlo_ctx->osif_ops->mlo_link_recfg_osif_update_mac_addr) {
-		mlo_err("mlo_link_recfg_osif_update_mac_addr NULL");
-		goto out;
-	}
-	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		goto out;
-	}
-	recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
-	if (!recfg_ctx) {
-		mlo_err("recfg_ctx null");
-		goto out;
-	}
-	macaddr = (struct qdf_mac_addr *)wlan_vdev_mlme_get_macaddr(vdev);
-	mlo_debug("Dynamic vdev %d resp received, updating vdev %d old mac " QDF_MAC_ADDR_FMT " new " QDF_MAC_ADDR_FMT "",
-		  wlan_vdev_get_id(vdev), recfg_ctx->macaddr_updating_vdev_id,
-		  QDF_MAC_ADDR_REF(recfg_ctx->old_macaddr_updating_vdev.bytes),
-		  QDF_MAC_ADDR_REF(macaddr->bytes));
-	if (wlan_vdev_get_id(vdev) != recfg_ctx->macaddr_updating_vdev_id) {
-		mlo_err("vdev id mismatch");
-		goto out;
-	}
-	if (qdf_is_macaddr_zero(&recfg_ctx->old_macaddr_updating_vdev)) {
-		mlo_err("vdev old mac zero");
-		goto out;
-	}
-
-	status =
-	g_mlo_ctx->osif_ops->mlo_link_recfg_osif_update_mac_addr(
-		vdev,
-		&recfg_ctx->old_macaddr_updating_vdev,
-		(struct qdf_mac_addr *)wlan_vdev_mlme_get_macaddr(vdev));
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_debug("VDEV %d OSIF MAC addr update failed %d old mac " QDF_MAC_ADDR_FMT "",
-			  wlan_vdev_get_id(vdev), status,
-			  QDF_MAC_ADDR_REF(
-				recfg_ctx->old_macaddr_updating_vdev.bytes));
-		goto out;
-	}
-out:
-	if (recfg_ctx) {
-		recfg_ctx->macaddr_updating_vdev_id = WLAN_INVALID_VDEV_ID;
-		qdf_zero_macaddr(&recfg_ctx->old_macaddr_updating_vdev);
-	}
-	wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress(vdev);
-
-	return status;
-}
-
-static QDF_STATUS
 mlo_link_recfg_add_link_connect(struct wlan_objmgr_vdev *recfg_vdev,
 				struct mlo_link_recfg_state_req *req)
 {
@@ -2361,7 +1473,6 @@ mlo_link_recfg_add_link_connect(struct wlan_objmgr_vdev *recfg_vdev,
 	struct wlan_objmgr_vdev *assoc_vdev;
 	struct wlan_objmgr_vdev *vdev = NULL;
 	struct wlan_mlo_link_recfg_bss_info *link_add;
-	bool need_self_mac_update = false;
 
 	psoc = wlan_vdev_get_psoc(recfg_vdev);
 	if (!psoc) {
@@ -2403,34 +1514,18 @@ mlo_link_recfg_add_link_connect(struct wlan_objmgr_vdev *recfg_vdev,
 	vdev_mac = wlan_vdev_mlme_get_linkaddr(vdev);
 	if (!qdf_is_macaddr_equal(&mlo_link_info->link_addr,
 				  (struct qdf_mac_addr *)vdev_mac)) {
-		mlo_debug("vdev MAC address not equal for the mlo mgr Link ID VDEV: " QDF_MAC_ADDR_FMT ", MLO_LINK: " QDF_MAC_ADDR_FMT"",
-			  QDF_MAC_ADDR_REF(vdev_mac),
-			  QDF_MAC_ADDR_REF(mlo_link_info->link_addr.bytes));
-		need_self_mac_update = true;
+		mlo_err("vdev MAC address not equal for the mlo mgr Link ID VDEV: " QDF_MAC_ADDR_FMT ", MLO_LINK: " QDF_MAC_ADDR_FMT"",
+			QDF_MAC_ADDR_REF(vdev_mac),
+			QDF_MAC_ADDR_REF(mlo_link_info->link_addr.bytes));
+		goto out;
 	}
 
 	if (!qdf_is_macaddr_equal(&link_add->self_link_addr,
 				  (struct qdf_mac_addr *)vdev_mac)) {
-		mlo_debug("vdev MAC address not equal for the Add Link ID VDEV: " QDF_MAC_ADDR_FMT ", ADD_LINK: " QDF_MAC_ADDR_FMT"",
-			  QDF_MAC_ADDR_REF(vdev_mac),
-			  QDF_MAC_ADDR_REF(link_add->ap_link_addr.bytes));
-		need_self_mac_update = true;
-	}
-	if (need_self_mac_update) {
-		if (cm_is_vdev_disconnected(vdev)) {
-			status = mlo_link_recfg_update_mac_addr_request(
-						mlo_dev_ctx,
-						vdev,
-						&link_add->self_link_addr);
-			if (QDF_IS_STATUS_ERROR(status))
-				goto out;
-		} else {
-			mlo_err("unexpected not disconned vdev %d assign for add link %d",
-				link_add->vdev_id,
-				link_add->link_id);
-			status = QDF_STATUS_E_INVAL;
-			goto out;
-		}
+		mlo_err("vdev MAC address not equal for the Add Link ID VDEV: " QDF_MAC_ADDR_FMT ", ADD_LINK: " QDF_MAC_ADDR_FMT"",
+			QDF_MAC_ADDR_REF(vdev_mac),
+			QDF_MAC_ADDR_REF(link_add->ap_link_addr.bytes));
+		goto out;
 	}
 
 	sta_ctx = mlo_dev_ctx->sta_ctx;
@@ -2765,204 +1860,6 @@ void mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
 			result, wlan_vdev_get_id(vdev), status);
 }
 
-QDF_STATUS mlo_link_recfg_link_add_join_req(struct wlan_objmgr_vdev *vdev)
-{
-	QDF_STATUS status;
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	struct mlo_link_recfg_context *recfg_ctx;
-	struct mlo_link_recfg_state_tran *tran;
-
-	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	if (!mlo_dev_ctx) {
-		mlo_err("invalid mlo_dev_ctx");
-		return QDF_STATUS_E_INVAL;
-	}
-	recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
-	if (!recfg_ctx) {
-		mlo_err("invalid recfg_ctx");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
-	mlo_debug("vdev %d recfg_type %d join_pending_vdev_id %d",
-		  wlan_vdev_get_id(vdev),
-		  recfg_ctx->curr_recfg_req.recfg_type,
-		  recfg_ctx->curr_recfg_req.join_pending_vdev_id);
-	/* for common link cases, we always send action frm before
-	 * link add connecting. no needs pending the join request,
-	 * just return success to process the cached link assoc
-	 * response.
-	 */
-	if (recfg_ctx->curr_recfg_req.recfg_type !=
-				link_recfg_del_add_no_common_link) {
-		status = QDF_STATUS_SUCCESS;
-		goto end;
-	}
-	/* for non-common link case, trigger link recfg action frame tx
-	 * in the middle of link add connecting.
-	 * Continue the peer assoc later after receive resp and generate
-	 * link assoc response for added link, return
-	 * QDF_STATUS_E_PENDING for such case.
-	 */
-	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
-	if (!tran) {
-		mlo_err("curr tran ctx null");
-		status = QDF_STATUS_E_INVAL;
-		goto end;
-	}
-	recfg_ctx->curr_recfg_req.join_pending_vdev_id =
-			wlan_vdev_get_id(vdev);
-	status = mlo_link_recfg_sm_deliver_event_sync(
-					recfg_ctx->ml_dev,
-					WLAN_LINK_RECFG_SM_EV_XMIT_REQ,
-					sizeof(tran->req), &tran->req);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		recfg_ctx->curr_recfg_req.join_pending_vdev_id =
-			WLAN_INVALID_VDEV_ID;
-		mlo_err("state %d event %d status %d",
-			tran->state, tran->event, status);
-	} else {
-		status = QDF_STATUS_E_PENDING;
-	}
-end:
-	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
-
-	return status;
-}
-
-static QDF_STATUS
-mlo_link_recfg_link_add_join_continue(struct wlan_objmgr_vdev *vdev,
-				      QDF_STATUS recfg_rsp_status)
-{
-	QDF_STATUS status;
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	struct mlo_link_recfg_context *recfg_ctx;
-	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
-	struct wlan_objmgr_psoc *psoc;
-	uint8_t join_pending_vdev_id;
-
-	if (!mlo_ctx || !mlo_ctx->mlme_ops ||
-	    !mlo_ctx->mlme_ops->mlo_mlme_ext_link_add_join_continue) {
-		mlo_err("invalid link_add_join_continue cb");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	if (!mlo_dev_ctx) {
-		mlo_err("invalid mlo_dev_ctx");
-		return QDF_STATUS_E_INVAL;
-	}
-	recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
-	if (!recfg_ctx) {
-		mlo_err("invalid recfg_ctx");
-		return QDF_STATUS_E_INVAL;
-	}
-	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
-	if (!psoc) {
-		mlo_err("invalid psoc");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
-	join_pending_vdev_id =
-		recfg_ctx->curr_recfg_req.join_pending_vdev_id;
-	mlo_debug("recfg_type %d join_pending_vdev_id %d",
-		  recfg_ctx->curr_recfg_req.recfg_type,
-		  join_pending_vdev_id);
-	if (recfg_ctx->curr_recfg_req.recfg_type !=
-				link_recfg_del_add_no_common_link ||
-	    join_pending_vdev_id == WLAN_INVALID_VDEV_ID) {
-		ml_link_recfg_sm_lock_release(mlo_dev_ctx);
-		return QDF_STATUS_SUCCESS;
-	}
-
-	recfg_ctx->curr_recfg_req.join_pending_vdev_id = WLAN_INVALID_VDEV_ID;
-	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
-	mlo_debug("continue vdev %d link add connecting, resp status %d",
-		  join_pending_vdev_id, recfg_rsp_status);
-
-	status = mlo_ctx->mlme_ops->mlo_mlme_ext_link_add_join_continue(
-						psoc,
-						join_pending_vdev_id,
-						recfg_rsp_status);
-	if (QDF_IS_STATUS_ERROR(status))
-		mlo_err("link add no-common failed %d", status);
-
-	return status;
-}
-
-static void
-mlo_link_recfg_abort_link_add_no_comm(
-	struct mlo_link_recfg_context *recfg_ctx)
-{
-	QDF_STATUS status;
-	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
-	struct wlan_objmgr_psoc *psoc;
-	uint8_t join_pending_vdev_id;
-
-	if (!mlo_ctx || !mlo_ctx->mlme_ops ||
-	    !mlo_ctx->mlme_ops->mlo_mlme_ext_link_add_join_continue) {
-		mlo_err("invalid link_add_join_continue cb");
-		return;
-	}
-
-	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
-	if (!psoc) {
-		mlo_err("invalid psoc");
-		return;
-	}
-
-	join_pending_vdev_id =
-		recfg_ctx->curr_recfg_req.join_pending_vdev_id;
-	mlo_debug("recfg_type %d join_pending_vdev_id %d",
-		  recfg_ctx->curr_recfg_req.recfg_type,
-		  join_pending_vdev_id);
-	/* for non-common link case, continue link add connecting
-	 * after recevive the link recfg response.
-	 */
-	if (join_pending_vdev_id == WLAN_INVALID_VDEV_ID ||
-	    recfg_ctx->curr_recfg_req.recfg_type !=
-				link_recfg_del_add_no_common_link)
-		return;
-
-	recfg_ctx->curr_recfg_req.join_pending_vdev_id = WLAN_INVALID_VDEV_ID;
-	status = mlo_ctx->mlme_ops->mlo_mlme_ext_link_add_join_continue(
-						psoc,
-						join_pending_vdev_id,
-						QDF_STATUS_E_INVAL);
-	if (QDF_IS_STATUS_ERROR(status))
-		mlo_err("link add no-common failed %d", status);
-}
-
-bool mlo_link_recfg_is_start_as_active(struct wlan_objmgr_vdev *vdev)
-{
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	struct mlo_link_recfg_context *recfg_ctx;
-
-	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	if (!mlo_dev_ctx) {
-		mlo_err("invalid mlo_dev_ctx");
-		return false;
-	}
-	recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
-	if (!recfg_ctx) {
-		mlo_err("invalid recfg_ctx");
-		return false;
-	}
-
-	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
-	mlo_debug("recfg_type %d", recfg_ctx->curr_recfg_req.recfg_type);
-	if (recfg_ctx->curr_recfg_req.recfg_type !=
-				link_recfg_del_add_no_common_link) {
-		ml_link_recfg_sm_lock_release(mlo_dev_ctx);
-		return false;
-	}
-
-	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
-
-	return true;
-}
-
 static QDF_STATUS
 mlo_link_recfg_del_link_by_inact(
 		struct mlo_link_recfg_context *recfg_ctx,
@@ -2975,10 +1872,6 @@ mlo_link_recfg_del_link_by_inact(
 	uint16_t del_link_bitmap = 0;
 	uint8_t i;
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	struct ml_link_force_state force_state = {0};
-	uint32_t force_inactive_bitmap = 0;
-	uint32_t force_active_bitmap = 0;
-	bool use_force_active_inactive = false;
 
 	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
 	if (!psoc) {
@@ -3012,57 +1905,23 @@ mlo_link_recfg_del_link_by_inact(
 					req->del_link_info.link[i].link_id,
 					true);
 	}
-	ml_nlink_get_curr_force_state(psoc, vdev, &force_state);
-	ml_nlink_dump_force_state(&force_state, "");
-	force_inactive_bitmap = del_link_bitmap;
-	/* if deleted link is force active previously, we have to remove
-	 * from previous force active bitmap.
-	 */
-	if (del_link_bitmap & force_state.force_active_bitmap) {
-		force_active_bitmap = force_state.force_active_bitmap &
-				~del_link_bitmap;
-		use_force_active_inactive = true;
-	}
-	mlo_debug("vdev %d delete link bitmap 0x%x force act 0x%x inact 0x%x use act-inact %d",
-		  recfg_req->vdev_id, del_link_bitmap,
-		  force_active_bitmap, force_inactive_bitmap,
-		  use_force_active_inactive);
+	mlo_debug("vdev %d delete link bitmap 0x%x", recfg_req->vdev_id,
+		  del_link_bitmap);
 
-	if (use_force_active_inactive)
-		status =
-		policy_mgr_mlo_sta_set_nlink(
-				psoc, wlan_vdev_get_id(vdev),
-				MLO_LINK_FORCE_REASON_LINK_DELETE,
-				MLO_LINK_FORCE_MODE_ACTIVE_INACTIVE,
-				0,
-				force_active_bitmap,
-				force_inactive_bitmap,
-				link_ctrl_f_dont_reschedule_workqueue |
-				(smd_roam_in_progress(recfg_ctx) ?
-				 link_ctrl_f_smd_link_recfg :
-				 link_ctrl_f_link_recfg) |
-				link_ctrl_f_overwrite_active_bitmap |
-				link_ctrl_f_overwrite_inactive_bitmap);
-	else
-		status =
-		policy_mgr_mlo_sta_set_nlink(
-				psoc, wlan_vdev_get_id(vdev),
-				MLO_LINK_FORCE_REASON_LINK_DELETE,
-				MLO_LINK_FORCE_MODE_INACTIVE,
-				0,
-				force_inactive_bitmap,
-				0,
-				link_ctrl_f_dont_reschedule_workqueue |
-				(smd_roam_in_progress(recfg_ctx) ?
-				 link_ctrl_f_smd_link_recfg :
-				 link_ctrl_f_link_recfg));
+	status =
+	policy_mgr_mlo_sta_set_nlink(psoc, wlan_vdev_get_id(vdev),
+				     MLO_LINK_FORCE_REASON_LINK_DELETE,
+				     MLO_LINK_FORCE_MODE_INACTIVE,
+				     0,
+				     del_link_bitmap,
+				     0,
+				     link_ctrl_f_dont_reschedule_workqueue |
+				     link_ctrl_f_link_recfg);
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 
 	return status;
 }
-
-#define VDEV_TX_DATA_PAUSE_NO_COMM (30 * 1000)
 
 QDF_STATUS
 mlo_link_recfg_send_request_frame(
@@ -3073,7 +1932,7 @@ mlo_link_recfg_send_request_frame(
 	struct link_recfg_tx_result tx_result;
 	struct wlan_objmgr_vdev *vdev = NULL;
 	struct wlan_objmgr_peer *peer = NULL;
-	QDF_STATUS status, qdf_status;
+	QDF_STATUS status;
 	uint8_t vdev_id;
 
 	if (!req) {
@@ -3088,7 +1947,7 @@ mlo_link_recfg_send_request_frame(
 
 	args.category = ACTION_CATEGORY_PROTECTED_EHT;
 	args.action = EHT_LINK_RECONFIG_REQUEST;
-	args.arg1 = mlo_link_recfg_dialog_token(recfg_ctx, req);
+	args.arg1 = mlo_link_recfg_dialog_token(req);
 
 	peer = wlan_objmgr_get_peer_by_mac(recfg_ctx->psoc,
 					   (uint8_t *)&req->peer_mac,
@@ -3115,17 +1974,7 @@ mlo_link_recfg_send_request_frame(
 						WLAN_LINK_RECFG_SM_EV_XMIT_STATUS,
 						sizeof(struct link_recfg_tx_result),
 						&tx_result);
-	} else {
-		qdf_status = qdf_mc_timer_start(
-				&recfg_ctx->link_recfg_rsp_timer,
-				LINK_RECFG_RSP_TIMEOUT);
-		if (QDF_IS_STATUS_ERROR(qdf_status))
-			mlo_err("Failed to start the timer");
 	}
-	if (mlo_link_recfg_is_no_comm(recfg_ctx))
-		wlan_mlo_send_vdev_pause(recfg_ctx->psoc, vdev, vdev_id,
-					 VDEV_TX_DATA_PAUSE_NO_COMM,
-					 MLO_VDEV_PAUSE_TYPE_TX_DATA);
 
 	wlan_objmgr_peer_release_ref(peer, WLAN_MLO_MGR_ID);
 	return status;
@@ -3135,8 +1984,7 @@ static QDF_STATUS
 mlo_link_recfg_assign_self_link_addr(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct wlan_mlo_link_recfg_req *recfg_req,
-			uint32_t del_link_set,
-			uint32_t *first_del_link_set_no_common)
+			uint32_t del_link_set)
 {
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
 	struct mlo_link_info *link_info;
@@ -3173,7 +2021,7 @@ mlo_link_recfg_assign_self_link_addr(
 	 */
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS &&
 	     idx < recfg_req->add_link_info.num_links; i++) {
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
 		if (allocated_bitmap & (1 << i))
 			continue;
 
@@ -3213,72 +2061,7 @@ mlo_link_recfg_assign_self_link_addr(
 		}
 	}
 
-	/* 2. if FW indicate preferred vdev id for added link, validate it
-	 * and use it, this happens in non-common link cases:
-	 * for example:
-	 * L1 L2 -> L3
-	 * FW may indicate vdev id (from L1 or L2) for L3. here assign vdev
-	 * to L3.
-	 * The link will be deleted firstly. use the vdev on the deleted
-	 * link to connect to new L3.
-	 */
-	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS &&
-	     idx < recfg_req->add_link_info.num_links; i++) {
-		/* only checking the first one is enough */
-		if (link_add[idx].vdev_id == WLAN_INVALID_VDEV_ID)
-			break;
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
-		if (allocated_bitmap & (1 << i))
-			continue;
-		if (link_info->vdev_id != link_add[idx].vdev_id)
-			continue;
-
-		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-					psoc, link_info->vdev_id,
-					WLAN_MLO_MGR_ID);
-		if (!vdev) {
-			mlo_err("Invalid VDEV id %d", link_info->vdev_id);
-			continue;
-		}
-
-		if (!cm_is_vdev_connected(vdev)) {
-			wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-			continue;
-		}
-
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-
-		if (qdf_atomic_test_bit(
-				LS_F_AP_REMOVAL_BIT,
-				&link_info->link_status_flags) ||
-		    del_link_set & (1 << link_info->link_id)) {
-			link_add[idx].self_link_addr = link_info->link_addr;
-			mlo_debug("fw preferred vdev %d for add link %d",
-				  link_add[idx].vdev_id,
-				  link_add[idx].link_id);
-			mlo_debug("assign active self link addr: " QDF_MAC_ADDR_FMT " for add link %d freq %d vdev %d",
-				  QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
-				  link_add[idx].link_id,
-				  link_add[idx].freq,
-				  link_info->vdev_id);
-			mlo_debug("old link id %d flag 0x%x on vdev %d ",
-				  link_info->link_id,
-				  (uint32_t)link_info->link_status_flags,
-				  link_info->vdev_id);
-			if (!*first_del_link_set_no_common) {
-				*first_del_link_set_no_common |=
-					1 << link_info->link_id;
-				mlo_debug("select link %d to delete first if no common link",
-					  link_info->link_id);
-			}
-
-			idx++;
-			allocated_bitmap |= 1 << i;
-			break;
-		}
-	}
-
-	/* 3. select the link deleted active vdev's self mac as 3th choice
+	/* 2. select the link deleted active vdev's self mac as 2nd choice
 	 * for added link
 	 * for example:
 	 * L1 L2 -> L1 (L2 del, but vdev active) -> L1 L3.
@@ -3286,7 +2069,7 @@ mlo_link_recfg_assign_self_link_addr(
 	 */
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS &&
 	     idx < recfg_req->add_link_info.num_links; i++) {
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
 		if (allocated_bitmap & (1 << i))
 			continue;
 
@@ -3323,37 +2106,20 @@ mlo_link_recfg_assign_self_link_addr(
 				  link_info->link_id,
 				  (uint32_t)link_info->link_status_flags,
 				  link_info->vdev_id);
-			/* no common link case:
-			 * L1 L2 -> L3, to select the first deleted link.
-			 * and use the vdev on the deleted link to connect
-			 * to new L3.
-			 */
-			if (!qdf_atomic_test_bit(
-					LS_F_AP_REMOVAL_BIT,
-					&link_info->link_status_flags) &&
-			    del_link_set & (1 << link_info->link_id)) {
-				if (!*first_del_link_set_no_common) {
-					*first_del_link_set_no_common |=
-						1 << link_info->link_id;
-					mlo_debug("select link %d to delete first if no common link",
-						  link_info->link_id);
-				}
-			}
-
 			idx++;
 			allocated_bitmap |= 1 << i;
 		}
 	}
 
-	/* 4. select the non-assoc idle or deleted standby link's self mac
-	 * as 4th choice for added link
+	/* 3. select the non-assoc idle or deleted standby link's self mac
+	 * as 3th choice for added link
 	 * for example:
 	 * L1 L2 -> L1 L2 L3, use the idle non-assoc link's self mac
 	 * L1 L2 L3 -> L1 L2 L4, use the deleted standby link's self mac
 	 */
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS &&
 	     idx < recfg_req->add_link_info.num_links; i++) {
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
 		if (allocated_bitmap & (1 << i))
 			continue;
 
@@ -3390,7 +2156,7 @@ mlo_link_recfg_assign_self_link_addr(
 	return status;
 }
 
-QDF_STATUS
+static QDF_STATUS
 mlo_link_recfg_set_tx_link_addr(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct wlan_mlo_link_recfg_req *recfg_req,
@@ -3403,9 +2169,6 @@ mlo_link_recfg_set_tx_link_addr(
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct wlan_objmgr_pdev *pdev;
 	struct wlan_objmgr_psoc *psoc;
-	struct qdf_mac_addr standby_link_peer_mac;
-
-	qdf_zero_macaddr(&standby_link_peer_mac);
 
 	/* decide which link will be used to send action frame */
 	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
@@ -3427,7 +2190,7 @@ mlo_link_recfg_set_tx_link_addr(
 	}
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
 			continue;
 
@@ -3443,12 +2206,8 @@ mlo_link_recfg_set_tx_link_addr(
 			continue;
 		}
 
-		if (link_info->vdev_id == WLAN_INVALID_VDEV_ID) {
-			if ((1 << link_info->link_id) & candidate_link_set)
-				standby_link_peer_mac =
-					link_info->ap_link_addr;
+		if (link_info->vdev_id == WLAN_INVALID_VDEV_ID)
 			continue;
-		}
 
 		if (!cm_is_vdevid_connected(pdev, link_info->vdev_id))
 			continue;
@@ -3462,14 +2221,8 @@ mlo_link_recfg_set_tx_link_addr(
 	}
 
 	if (i == WLAN_MAX_ML_BSS_LINKS) {
-		if (!qdf_is_macaddr_zero(&standby_link_peer_mac)) {
-			req->peer_mac = standby_link_peer_mac;
-			mlo_debug("selected tx ap link addr: " QDF_MAC_ADDR_FMT " - standby",
-				  QDF_MAC_ADDR_REF(req->peer_mac.bytes));
-		} else {
-			status = QDF_STATUS_E_INVAL;
-			mlo_debug("no found valid peer mac");
-		}
+		status = QDF_STATUS_E_INVAL;
+		mlo_debug("no found valid peer mac");
 	}
 
 	if (pdev)
@@ -3479,262 +2232,11 @@ mlo_link_recfg_set_tx_link_addr(
 }
 
 static QDF_STATUS
-mlo_link_recfg_fill_del_link_no_common(
-				struct mlo_link_recfg_context *recfg_ctx,
-				struct wlan_mlo_link_recfg_req *recfg_req,
-				uint32_t del_link_set_no_common,
-				uint32_t curr_standby_set,
-				struct wlan_mlo_link_recfg_info *del_link_info,
-				uint32_t *final_del_link_set_no_common)
-{
-	uint8_t i, idx = 0;
-	struct wlan_mlo_link_recfg_bss_info *link_del;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-
-	*final_del_link_set_no_common = 0;
-	for (i = 0; i < recfg_req->del_link_info.num_links; i++) {
-		link_del = &recfg_req->del_link_info.link[i];
-
-		if ((del_link_set_no_common | curr_standby_set) &
-		    (1 << link_del->link_id)) {
-			if (idx >= WLAN_MAX_ML_BSS_LINKS) {
-				mlo_err("unexpected del link num");
-				status = QDF_STATUS_E_INVAL;
-				break;
-			}
-			del_link_info->link[idx++] = *link_del;
-			*final_del_link_set_no_common |=
-					1 << link_del->link_id;
-			mlo_debug("del link %d in no-common",
-				  link_del->link_id);
-		}
-	}
-	del_link_info->num_links = idx;
-	mlo_debug("del_link_set_no_common 0x%x standby 0x%x final_del_link_set_no_common 0x%x num %d",
-		  del_link_set_no_common, curr_standby_set,
-		  *final_del_link_set_no_common, idx);
-
-	return status;
-}
-
-static QDF_STATUS mlo_link_pre_link_add_handler(
-			struct mlo_link_recfg_context *recfg_ctx,
-			struct mlo_link_recfg_state_req *req)
-{
-	QDF_STATUS status;
-
-	status = mlo_link_recfg_update_added_link_in_mlo_mgr(
-						recfg_ctx, req);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_err("to update add link");
-		return status;
-	}
-
-	return status;
-}
-
-static QDF_STATUS mlo_link_invoke_pre_link_add_handler(
-			struct mlo_link_recfg_context *recfg_ctx,
-			struct mlo_link_recfg_state_req *req)
-{
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct mlo_link_recfg_state_tran *tran;
-
-	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
-	if (!tran) {
-		mlo_err("curr tran ctx null");
-		return QDF_STATUS_E_INVAL;
-	}
-	if (tran->pre_link_add_handler)
-		status = tran->pre_link_add_handler(recfg_ctx, req);
-
-	return status;
-}
-
-/**
- * mlo_link_recfg_defer_rsp_handler() - Defer reconfiguration
- * response processing
- * @recfg_ctx: Reconfiguration context
- * @recfg_resp_data: Reconfiguration response data
- * @event_data_len: Length of the reconfiguration response data
- *
- * This callback is invoked after receiving a reconfiguration response
- * in specific scenarios, such as transitioning from state AB to BC where
- * A is forcefully active and B is forcefully inactive.
- * In these cases, the MLO link information must be updated in the MLO
- * manager after receiving the response.
- * The DEL_LINK state is required to mark the link as deleted in the
- * host/firmware before removing the link information data structure.
- * This callback is added to handle such cases and bypass the call to
- * mlo_link_recfg_response_received.
- *
- * Return: QDF_STATUS
- */
-static QDF_STATUS mlo_link_recfg_defer_rsp_handler(
-				struct mlo_link_recfg_context *recfg_ctx,
-				struct link_recfg_rx_rsp *recfg_resp_data,
-				uint16_t event_data_len)
-{
-	struct mlo_link_recfg_state_tran *tran;
-	QDF_STATUS status;
-
-	if (!recfg_ctx || !recfg_resp_data || !event_data_len)
-		return QDF_STATUS_E_INVAL;
-
-	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
-	if (!tran) {
-		mlo_err("curr tran ctx null");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (QDF_TIMER_STATE_RUNNING ==
-		qdf_mc_timer_get_current_state(&recfg_ctx->link_recfg_rsp_timer)) {
-		status = qdf_mc_timer_stop(&recfg_ctx->link_recfg_rsp_timer);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("Failed to stop the Link Recfg rsp timer");
-			return QDF_STATUS_E_FAILURE;
-		}
-	}
-
-	if (QDF_IS_STATUS_ERROR(recfg_resp_data->status)) {
-		mlo_err("RX response failure %d", recfg_resp_data->status);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	mlo_debug("RX response success, to defer proc it");
-	mlo_link_recfg_update_state_req_from_rsp(recfg_ctx, tran);
-
-	mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
-
-	return QDF_STATUS_E_ALREADY;
-}
-
-static QDF_STATUS mlo_link_invoke_defer_rsp_handler(
-			struct mlo_link_recfg_context *recfg_ctx,
-			struct link_recfg_rx_rsp *recfg_resp_data,
-			uint16_t event_data_len)
-{
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct mlo_link_recfg_state_tran *tran;
-
-	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
-	if (!tran) {
-		mlo_err("curr tran ctx null");
-		return QDF_STATUS_E_INVAL;
-	}
-	if (tran->defer_rsp_handler)
-		status = tran->defer_rsp_handler(recfg_ctx, recfg_resp_data,
-						 event_data_len);
-	return status;
-}
-
-/**
- * mlo_link_recfg_proc_defer_rsp_handler() - Process deferred recfg response
- * @recfg_ctx: Reconfiguration context
- *
- * This callback is invoked in a dummy XMIT_REQ state to call
- * mlo_link_recfg_response_received, which was previously skipped by
- * mlo_link_recfg_defer_rsp_handler. It updates the link info to the MLO
- * manager after the DEL_LINK state.
- *
- * Return: QDF_STATUS
- */
-static QDF_STATUS mlo_link_recfg_proc_defer_rsp_handler(
-			struct mlo_link_recfg_context *recfg_ctx)
-{
-	QDF_STATUS status;
-	struct link_recfg_rx_rsp link_recfg_rx_rsp = {0};
-
-	link_recfg_rx_rsp.status = QDF_STATUS_SUCCESS;
-	status = mlo_link_recfg_response_received(
-		recfg_ctx, (struct link_recfg_rx_rsp *)&link_recfg_rx_rsp,
-		sizeof(struct link_recfg_rx_rsp));
-	if (QDF_IS_STATUS_SUCCESS(status))
-		status = QDF_STATUS_E_ALREADY;
-
-	return status;
-}
-
-static QDF_STATUS mlo_link_invoke_proc_defer_rsp_handler(
-			struct mlo_link_recfg_context *recfg_ctx)
-{
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct mlo_link_recfg_state_tran *tran;
-
-	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
-	if (!tran) {
-		mlo_err("curr tran ctx null");
-		return QDF_STATUS_E_INVAL;
-	}
-	if (tran->proc_defer_rsp_handler)
-		status = tran->proc_defer_rsp_handler(recfg_ctx);
-
-	return status;
-}
-
-static bool mlo_link_recfg_xmit_req_first(
-		struct mlo_link_recfg_context *recfg_ctx,
-		struct wlan_mlo_link_recfg_req *recfg_req,
-		uint32_t curr_link_set,
-		uint32_t del_link_set,
-		uint32_t curr_standby_set)
-{
-	struct ml_link_force_state force_state = {0};
-	struct wlan_objmgr_psoc *psoc;
-	struct wlan_objmgr_vdev *vdev;
-	bool xmit_first = false;
-	uint32_t xmit_link = 0;
-
-	if (!del_link_set)
-		return xmit_first;
-
-	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
-	if (!psoc) {
-		mlo_err("psoc null");
-		return QDF_STATUS_E_INVAL;
-	}
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-					psoc,
-					recfg_req->vdev_id,
-					WLAN_LINK_RECFG_ID);
-	if (!vdev) {
-		mlo_debug("invalid vdev for id %d",
-			  recfg_req->vdev_id);
-		return xmit_first;
-	}
-	ml_nlink_get_curr_force_state(psoc, vdev, &force_state);
-	ml_nlink_dump_force_state(&force_state, "del_link_set 0x%x",
-				  del_link_set);
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
-
-	/* for common link cases: del-add recfg or del only:
-	 * if non-deleted link is force inactive because of force link
-	 * command for some reason, we have to send the link recfg req
-	 * frame on deleted link at first. after that we can
-	 * force delete the link. the transition state list will change
-	 * accordingly.
-	 */
-	xmit_link = curr_link_set & ~force_state.force_inactive_bitmap;
-	if (xmit_link & ~del_link_set)
-		return xmit_first;
-
-	mlo_debug("xmit_first xmit_link 0x%x", xmit_link);
-	xmit_first = true;
-
-	return xmit_first;
-}
-
-QDF_STATUS
 mlo_link_recfg_tranistion_to_next_state(
 			struct mlo_link_recfg_context *recfg_ctx)
 {
 	QDF_STATUS status;
 	struct mlo_link_recfg_state_tran *tran, *prev;
-
-	if (!recfg_ctx) {
-		mlo_err("recfg_ctx is NULL");
-		return QDF_STATUS_E_NULL_VALUE;
-	}
 
 	if (recfg_ctx->sm.curr_state_idx != -1 &&
 	    recfg_ctx->sm.curr_state_idx >=
@@ -3751,13 +2253,6 @@ mlo_link_recfg_tranistion_to_next_state(
 			  prev->state, prev->event);
 	}
 	recfg_ctx->sm.curr_state_idx++;
-
-	if (recfg_ctx->sm.curr_state_idx >=
-	    QDF_ARRAY_SIZE(recfg_ctx->sm.state_list)) {
-		mlo_err("curr_state_idx is out of bound %d",
-			recfg_ctx->sm.curr_state_idx);
-		return QDF_STATUS_E_FAILURE;
-	}
 	tran = &recfg_ctx->sm.state_list[recfg_ctx->sm.curr_state_idx];
 	mlo_debug("next idx %d st %d evt %d",
 		  recfg_ctx->sm.curr_state_idx,
@@ -3775,41 +2270,6 @@ mlo_link_recfg_tranistion_to_next_state(
 	return status;
 }
 
-static QDF_STATUS
-two_frm_del_xmit_handler(struct mlo_link_recfg_context *recfg_ctx)
-{
-	struct mlo_link_recfg_state_tran *tran;
-
-	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
-	if (!tran) {
-		mlo_err("curr tran ctx null");
-		return QDF_STATUS_E_INVAL;
-	}
-	qdf_mem_zero(&recfg_ctx->curr_recfg_req.add_link_info,
-		     sizeof(struct wlan_mlo_link_recfg_info));
-	recfg_ctx->curr_recfg_req.del_link_info = tran->req.del_link_info;
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static QDF_STATUS
-two_frm_add_xmit_handler(struct mlo_link_recfg_context *recfg_ctx)
-{
-	struct mlo_link_recfg_state_tran *tran;
-
-	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
-	if (!tran) {
-		mlo_err("curr tran ctx null");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	qdf_mem_zero(&recfg_ctx->curr_recfg_req.del_link_info,
-		     sizeof(struct wlan_mlo_link_recfg_info));
-	recfg_ctx->curr_recfg_req.add_link_info = tran->req.add_link_info;
-
-	return QDF_STATUS_SUCCESS;
-}
-
 QDF_STATUS
 mlo_link_recfg_create_transition_list(
 			struct mlo_link_recfg_context *recfg_ctx,
@@ -3817,28 +2277,8 @@ mlo_link_recfg_create_transition_list(
 {
 	uint32_t curr_link_set = 0, add_link_set = 0, del_link_set = 0;
 	uint8_t curr_link_num = 0, add_link_num = 0, del_link_num = 0;
-	uint8_t curr_standby_num = 0;
-	uint32_t curr_standby_set = 0;
-	uint32_t del_link_set_no_common = 0;
 	struct mlo_link_recfg_state_tran *next = &recfg_ctx->sm.state_list[0];
 	QDF_STATUS status;
-	bool xmit_first;
-
-	recfg_ctx->internal_reason_code = link_recfg_success;
-
-	mlo_debug("is_user_req %d xmit num frms %d", recfg_req->is_user_req,
-		  recfg_ctx->link_recfg_bm.num_frames);
-	recfg_req->send_two_link_recfg_frms =
-		recfg_ctx->link_recfg_bm.num_frames > 1;
-	/* reset num to 0, the num should be configured for each run */
-	recfg_ctx->link_recfg_bm.num_frames = 0;
-
-	if (smd_roam_in_progress(recfg_ctx)) {
-		status = smd_create_link_recfg_transition_list(recfg_ctx,
-							       recfg_req);
-		mlo_debug("SMD create link recfg status %d", status);
-		return status;
-	}
 
 	mlo_link_recfg_get_link_bitmap(recfg_ctx,
 				       recfg_req,
@@ -3847,23 +2287,12 @@ mlo_link_recfg_create_transition_list(
 				       &del_link_set,
 				       &del_link_num,
 				       &curr_link_set,
-				       &curr_link_num,
-				       &curr_standby_set,
-				       &curr_standby_num);
-
-	/* decide xmit action frame first or not */
-	xmit_first = mlo_link_recfg_xmit_req_first(
-					recfg_ctx,
-					recfg_req,
-					curr_link_set,
-					del_link_set,
-					curr_standby_set);
+				       &curr_link_num);
 
 	/* alloc self mac for link add */
 	status = mlo_link_recfg_assign_self_link_addr(
 					recfg_ctx, recfg_req,
-					del_link_set,
-					&del_link_set_no_common);
+					del_link_set);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlo_err("fail to ssign self link for added links status %d",
 			status);
@@ -3872,39 +2301,20 @@ mlo_link_recfg_create_transition_list(
 
 	/* create transition flow */
 	recfg_ctx->sm.curr_state_idx = -1;
-	recfg_ctx->macaddr_updating_vdev_id = WLAN_INVALID_VDEV_ID;
-	qdf_zero_macaddr(&recfg_ctx->old_macaddr_updating_vdev);
-
 	qdf_mem_zero(&recfg_ctx->sm.state_list[0],
 		     sizeof(recfg_ctx->sm.state_list[0]) *
 		     MAX_RECFG_TRANSITION);
-	recfg_req->recfg_type = link_recfg_undefined;
-	recfg_req->join_pending_vdev_id = WLAN_INVALID_VDEV_ID;
 	if (recfg_req->add_link_info.num_links &&
 	    !recfg_req->del_link_info.num_links) {
 		/* Add link only */
-		mlo_debug("add link only");
-		recfg_req->recfg_type = link_recfg_add_only;
-		next->state = WLAN_LINK_RECFG_S_TTLM;
-		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
-		next->req.del_link_info = recfg_req->add_link_info;
-		next->abort_handler = NULL;
-		next++;
-		recfg_req->recfg_type = link_recfg_add_only;
 		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
 		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
 		next->req.add_link_info = recfg_req->add_link_info;
 		/* select ap link to be used to send action frame */
-		status =
 		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
 						recfg_req,
 						&next->req,
 						curr_link_set);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("fail to set tx frame link addr status %d",
-				status);
-			return status;
-		}
 		next->abort_handler = NULL;
 		next++;
 		next->state = WLAN_LINK_RECFG_S_ADD_LINK;
@@ -3915,110 +2325,10 @@ mlo_link_recfg_create_transition_list(
 		next->state = WLAN_LINK_RECFG_S_COMPLETED;
 		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
 		next->req.add_link_info = recfg_req->add_link_info;
-		next->abort_handler = NULL;
-	} else if (!recfg_req->add_link_info.num_links &&
-		   recfg_req->del_link_info.num_links &&
-		   xmit_first) {
-		/* Del link only xmit frm first */
-		mlo_debug("del link only - send frm first");
-		recfg_req->recfg_type = link_recfg_del_only;
-		next->state = WLAN_LINK_RECFG_S_TTLM;
-		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
-		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
-		next->req.del_link_info = recfg_req->del_link_info;
-		status =
-		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
-						recfg_req,
-						&next->req,
-						curr_link_set &
-						~del_link_set);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("fail to set tx frame link addr status %d",
-				status);
-			return status;
-		}
-		/* response will be processed in dummy XMIT_REQ state.
-		 * defer_rsp_handler cb will skip the response frame
-		 * handing in sm. Because DEL_LINK state is needed to
-		 * to mark link as deleted in host/fw before remove
-		 * the link info data struct.
-		 */
-		next->defer_rsp_handler =
-			mlo_link_recfg_defer_rsp_handler;
-		next->abort_handler = NULL;
-		next++;
-		recfg_req->recfg_type = link_recfg_del_only;
-		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
-		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-		next++;
-		/* Add dummy XMIT_REQ state to process the deferred response
-		 * frame. proc_defer_rsp_handler cb will update
-		 * internal link info and other data struct.
-		 */
-		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
-		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->proc_defer_rsp_handler =
-			mlo_link_recfg_proc_defer_rsp_handler;
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_COMPLETED;
-		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
-		next->req.del_link_info = recfg_req->del_link_info;
 		next->abort_handler = NULL;
 	} else if (!recfg_req->add_link_info.num_links &&
 		   recfg_req->del_link_info.num_links) {
 		/* Del link only */
-		mlo_debug("del link only");
-		recfg_req->recfg_type = link_recfg_del_only;
-		next->state = WLAN_LINK_RECFG_S_TTLM;
-		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
-		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
-		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
-		next->req.del_link_info = recfg_req->del_link_info;
-		status =
-		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
-						recfg_req,
-						&next->req,
-						curr_link_set &
-						~del_link_set);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("fail to set tx frame link addr status %d",
-				status);
-			return status;
-		}
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_COMPLETED;
-		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-	} else if ((curr_link_set & ~del_link_set) && add_link_set &&
-		   recfg_req->send_two_link_recfg_frms &&
-		   !recfg_req->is_user_req) {
-		/* (L1L2 -> L2 L3) Del link L1 then add L3 */
-		mlo_debug("send 2 OTA frames - del and add link");
-		recfg_req->recfg_type = link_recfg_two_frm_del_add_common_link;
-		next->state = WLAN_LINK_RECFG_S_TTLM;
-		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-		next++;
-		recfg_ctx->copied_recfg_req = *recfg_req;
 		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
 		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
 		next->req.del_link_info = recfg_req->del_link_info;
@@ -4032,99 +2342,14 @@ mlo_link_recfg_create_transition_list(
 						&next->req,
 						curr_link_set &
 						~del_link_set);
-		next->two_frame_xmit_handler = two_frm_del_xmit_handler;
 		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
-		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
-		recfg_req = &recfg_ctx->copied_recfg_req;
-		next->req.add_link_info = recfg_req->add_link_info;
-		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
-						recfg_req,
-						&next->req,
-						curr_link_set &
-						~del_link_set);
-		next->two_frame_xmit_handler = two_frm_add_xmit_handler;
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_ADD_LINK;
-		next->event = WLAN_LINK_RECFG_SM_EV_ADD_LINK;
-		next->req.add_link_info = recfg_req->add_link_info;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_COMPLETED;
-		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
-		next->req.add_link_info = recfg_req->add_link_info;
-		next->abort_handler = NULL;
-	} else if ((curr_link_set & ~del_link_set) && add_link_set &&
-		   xmit_first) {
-		/* Add and Del link with common link, xmit frame first */
-		mlo_debug("del and add link - send frm first");
-		recfg_req->recfg_type = link_recfg_del_add_common_link;
-		next->state = WLAN_LINK_RECFG_S_TTLM;
-		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
-		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->req.add_link_info = recfg_req->add_link_info;
-		status =
-		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
-						recfg_req,
-						&next->req,
-						curr_link_set &
-						~del_link_set);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("fail to set tx frame link addr status %d",
-				status);
-			return status;
-		}
-		/* response will be processed in dummy XMIT_REQ state.
-		 * defer_rsp_handler cb will skip the response frame
-		 * handing in sm. Because DEL_LINK state is needed to
-		 * to mark link as deleted in host/fw before remove
-		 * the link info data struct.
-		 */
-		next->defer_rsp_handler =
-			mlo_link_recfg_defer_rsp_handler;
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
-		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-		next++;
-		/* Add dummy XMIT_REQ state to process the deferred response
-		 * frame. proc_defer_rsp_handler cb will update
-		 * internal link info and other data struct.
-		 */
-		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
-		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->req.add_link_info = recfg_req->add_link_info;
-		next->proc_defer_rsp_handler =
-			mlo_link_recfg_proc_defer_rsp_handler;
-		next->abort_handler = NULL;
-		next++;
-		next->state = WLAN_LINK_RECFG_S_ADD_LINK;
-		next->event = WLAN_LINK_RECFG_SM_EV_ADD_LINK;
-		next->req.add_link_info = recfg_req->add_link_info;
 		next++;
 		next->state = WLAN_LINK_RECFG_S_COMPLETED;
 		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
 		next->req.del_link_info = recfg_req->del_link_info;
-		next->req.add_link_info = recfg_req->add_link_info;
 		next->abort_handler = NULL;
 	} else if ((curr_link_set & ~del_link_set) && add_link_set) {
 		/* Add and Del link with common link */
-		mlo_debug("del and add link");
-		recfg_req->recfg_type = link_recfg_del_add_common_link;
-		next->state = WLAN_LINK_RECFG_S_TTLM;
-		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
-		next->req.del_link_info = recfg_req->del_link_info;
-		next->abort_handler = NULL;
-		next++;
 		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
 		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
 		next->req.del_link_info = recfg_req->del_link_info;
@@ -4134,17 +2359,11 @@ mlo_link_recfg_create_transition_list(
 		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
 		next->req.del_link_info = recfg_req->del_link_info;
 		next->req.add_link_info = recfg_req->add_link_info;
-		status =
 		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
 						recfg_req,
 						&next->req,
 						curr_link_set &
 						~del_link_set);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("fail to set tx frame link addr status %d",
-				status);
-			return status;
-		}
 		next->abort_handler = NULL;
 		next++;
 		next->state = WLAN_LINK_RECFG_S_ADD_LINK;
@@ -4158,97 +2377,32 @@ mlo_link_recfg_create_transition_list(
 		next->abort_handler = NULL;
 	} else if ((curr_link_set == del_link_set) && add_link_set) {
 		/* Add and Del link with no common link */
-		mlo_debug("del and add link - no common link");
-		recfg_req->recfg_type = link_recfg_del_add_no_common_link;
-		if (del_link_num > 1) {
-			/* select the first link to delete from
-			 * del_link_set_no_common,
-			 * L1 L2 - > L3, select one of del_link_info to
-			 * del first.
-			 */
-			mlo_debug("del_link_set_no_common 0x%x",
-				  del_link_set_no_common);
-			next->state = WLAN_LINK_RECFG_S_TTLM;
-			next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
-			next->req.del_link_info = recfg_req->del_link_info;
-			next->abort_handler = NULL;
-			next++;
-			next->state = WLAN_LINK_RECFG_S_DEL_LINK;
-			next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
-			next->abort_handler = NULL;
-			status =
-			mlo_link_recfg_fill_del_link_no_common(
-						recfg_ctx,
-						recfg_req,
-						del_link_set_no_common,
-						curr_standby_set,
-						&next->req.del_link_info,
-						&del_link_set_no_common);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				mlo_err("fail to fill del link info status %d",
-					status);
-				return status;
-			}
-			next++;
-		} else {
-			next->state = WLAN_LINK_RECFG_S_TTLM;
-			next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
-			next->req.del_link_info = recfg_req->del_link_info;
-			next++;
-			/* L1 - > L2 */
-		}
-		next->state = WLAN_LINK_RECFG_S_ADD_LINK;
-		next->event = WLAN_LINK_RECFG_SM_EV_ADD_LINK;
-		next->abort_handler = NULL;
-		next->pre_link_add_handler = mlo_link_pre_link_add_handler;
-		next->req.add_link_info = recfg_req->add_link_info;
-		/* to fill del link as well for action frame tx
-		 * fill the tx link address for frame tx.
-		 */
-		next->req.del_link_info = recfg_req->del_link_info;
-		status =
-		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
-						recfg_req,
-						&next->req,
-						curr_link_set &
-						~del_link_set_no_common);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("fail to set tx frame link addr status %d",
-				status);
-			return status;
-		}
-		next++;
-
 		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
 		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
+		/* todo: select one of del_link_info to del first */
+		next->req.del_link_info = recfg_req->del_link_info;
 		next->abort_handler = NULL;
-		/* To delete the left of links */
-		del_link_set_no_common =
-			del_link_set & ~del_link_set_no_common;
-		status =
-		mlo_link_recfg_fill_del_link_no_common(
-					recfg_ctx,
-					recfg_req,
-					del_link_set_no_common,
-					curr_standby_set,
-					&next->req.del_link_info,
-					&del_link_set_no_common);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("fail to fill del link info status %d",
-				status);
-			return status;
-		}
 		next++;
-
+		next->state = WLAN_LINK_RECFG_S_ADD_LINK;
+		next->event = WLAN_LINK_RECFG_SM_EV_ADD_LINK;
+		next->req.add_link_info = recfg_req->add_link_info;
+		next->abort_handler = NULL;
+		next++;
+		if (del_link_num > 1) {
+			next->state = WLAN_LINK_RECFG_S_DEL_LINK;
+			next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
+			// the others of del_link_set.
+			next->req.del_link_info = recfg_req->del_link_info;
+			next->abort_handler = NULL;
+			next++;
+		}
 		next->state = WLAN_LINK_RECFG_S_COMPLETED;
 		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
-		next->abort_handler = NULL;
 		next->req.del_link_info = recfg_req->del_link_info;
 		next->req.add_link_info = recfg_req->add_link_info;
+		next->abort_handler = NULL;
 	} else {
 		/* not supported */
-		mlo_err("not supported, unexpected request del set 0x%x add set 0x%x curr set 0x%x",
-			del_link_set, add_link_set, curr_link_set);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -4259,7 +2413,7 @@ mlo_link_recfg_create_transition_list(
 	return status;
 }
 
-struct mlo_link_recfg_state_tran *
+static struct mlo_link_recfg_state_tran *
 mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx)
 {
 	if (recfg_ctx->sm.curr_state_idx >= 0 &&
@@ -4295,182 +2449,14 @@ mlo_link_recfg_del_link_completed(struct mlo_link_recfg_context *recfg_ctx)
 	mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
 }
 
-void
-mlo_link_recfg_update_state_req_from_rsp(
-			struct mlo_link_recfg_context *recfg_ctx,
-			struct mlo_link_recfg_state_tran *tran)
-{
-	uint8_t i;
-	uint8_t link_id;
-	struct wlan_mlo_link_recfg_info *add_link_info;
-	struct wlan_mlo_link_recfg_rsp *link_recfg_rsp =
-					&recfg_ctx->curr_recfg_rsp;
-
-	for (; tran < &recfg_ctx->sm.state_list[MAX_RECFG_TRANSITION];
-								tran++) {
-		if (tran->state == WLAN_LINK_RECFG_S_COMPLETED)
-			break;
-		add_link_info = &tran->req.add_link_info;
-		for (i = 0; i < add_link_info->num_links; i++) {
-			link_id = add_link_info->link[i].link_id;
-			add_link_info->link[i].status_code =
-				mlo_link_recfg_find_link_status(
-						link_id, link_recfg_rsp);
-		}
-	}
-}
-
-static void
-mlo_link_recfg_send_status(struct mlo_link_recfg_context *recfg_ctx)
-{
-	struct wlan_mlo_link_recfg_req *recfg_req;
-	struct wlan_objmgr_psoc *psoc;
-	struct wlan_objmgr_vdev *vdev;
-
-	recfg_req = &recfg_ctx->curr_recfg_req;
-	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
-	if (!psoc) {
-		mlo_err("psoc is null");
-		return;
-	}
-
-	if (!recfg_req->send_two_link_recfg_frms)
-		return;
-
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-				psoc, recfg_ctx->curr_recfg_req.vdev_id,
-				WLAN_MLO_MGR_ID);
-	if (!vdev) {
-		mlo_err("link vdev is null");
-		return;
-	}
-
-	/* Send link reconfig status to userspace */
-	mlo_link_refg_done_indication(vdev);
-	recfg_req->send_two_link_recfg_frms = false;
-	qdf_mem_zero(&recfg_req->del_link_info.link[0],
-		     sizeof(struct wlan_mlo_link_recfg_bss_info));
-	recfg_req->del_link_info.num_links = 0;
-
-	/* free link recfg ctx ies */
-	mlo_link_recfg_ctx_free_ies(recfg_ctx);
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-}
-
 static QDF_STATUS
-mlo_link_recfg_handle_rsp(struct mlo_link_recfg_context *recfg_ctx,
-			  struct mlo_link_recfg_state_tran *tran)
-{
-	QDF_STATUS status;
-
-	if (!recfg_ctx || !tran)
-		return QDF_STATUS_E_INVAL;
-
-	/* Handle link recfg link del.
-	 * If deleted link is standby, remove link info from mlo mgr.
-	 * For example:
-	 * L1 L2 L3, del L2, link switch to L3. remove standby L2.
-	 * or L1 L2 L3, del standby L3, then remove standby L3.
-	 */
-	mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(recfg_ctx, &tran->req);
-
-	/* propagate link add status code from ap to "add link" state
-	 * request.
-	 */
-	mlo_link_recfg_update_state_req_from_rsp(recfg_ctx, tran);
-
-	status = mlo_link_recfg_update_added_link_in_mlo_mgr(
-							recfg_ctx, &tran->req);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_err("RX response failure");
-		return status;
-	}
-
-	mlo_link_recfg_update_partner_info(recfg_ctx);
-	mlo_link_recfg_store_key(recfg_ctx, &tran->req);
-	mlo_link_recfg_send_status(recfg_ctx);
-	/* handle link recfg link add rejected case */
-
-	return status;
-}
-
-#ifdef WLAN_FEATURE_11BN_SMD
-/**
- * mlo_link_recfg_smd_gen_link_assoc_rsp() - Generate SMD link assoc responses
- * @recfg_ctx: Link reconfiguration context
- *
- * Check if the received response is a UHR ST prep response (Type=0) with
- * accepted links during SMD roaming, and if so, generate link-specific
- * association response frames for the accepted links.
- *
- * Return: None
- */
-static void
-mlo_link_recfg_smd_gen_link_assoc_rsp(struct mlo_link_recfg_context *recfg_ctx)
-{
-	struct wlan_objmgr_vdev *vdev = NULL;
-	struct wlan_objmgr_psoc *psoc;
-	QDF_STATUS status;
-	uint8_t i;
-
-	/* Get vdev for response generation */
-	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
-	if (psoc) {
-		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-				psoc, 1,
-				WLAN_MLO_MGR_ID);
-	}
-
-	/* Check if this is UHR ST prep response (Type=0) with accepted links */
-	if (vdev && recfg_ctx->curr_recfg_rsp.type == UHR_LINK_RECONFIG_TYPE_ST_PREP &&
-	    recfg_ctx->curr_recfg_req.add_link_info.num_links > 0) {
-
-		mlo_info("UHR ST prep response: dialog=%d type=%d count=%d aid=%d",
-			 recfg_ctx->curr_recfg_rsp.dialog_token,
-			 recfg_ctx->curr_recfg_rsp.type,
-			 recfg_ctx->curr_recfg_rsp.count,
-			 recfg_ctx->curr_recfg_rsp.assigned_aid);
-
-		/* Log status for each link */
-		for (i = 0; i < recfg_ctx->curr_recfg_rsp.count; i++) {
-			mlo_info("  Link %d: link_id=%d status=%d (%s)",
-				 i,
-				 recfg_ctx->curr_recfg_rsp.recfg_status_list[i].link_id,
-				 recfg_ctx->curr_recfg_rsp.recfg_status_list[i].status_code,
-				 (recfg_ctx->curr_recfg_rsp.recfg_status_list[i].status_code == STATUS_SUCCESS) ?
-				 "ACCEPTED" : "REJECTED");
-		}
-
-		mlo_info("Generating link-specific association responses for accepted links");
-
-		/* Generate link-specific association responses */
-		status = mlo_uhr_link_recfg_gen_link_assoc_rsp(vdev, recfg_ctx,
-							       &recfg_ctx->curr_recfg_req);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("Failed to generate link assoc responses, status=%d", status);
-			/* Continue with normal flow - not fatal for backward compatibility */
-		} else {
-			mlo_info("Link-specific association responses generated successfully");
-		}
-	}
-
-	if (vdev)
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-}
-#else
-static void
-mlo_link_recfg_smd_gen_link_assoc_rsp(struct mlo_link_recfg_context *recfg_ctx)
-{
-}
-#endif /* WLAN_FEATURE_11BN_SMD */
-
-static QDF_STATUS
-mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
-				struct link_recfg_rx_rsp *recfg_resp_data,
-				uint16_t event_data_len)
+mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
+				 struct link_recfg_rx_rsp *recfg_resp_data,
+				 uint16_t event_data_len)
 {
 	struct mlo_link_recfg_state_tran *tran;
 	QDF_STATUS status;
+
 
 	if (!recfg_ctx || !recfg_resp_data || !event_data_len)
 		return QDF_STATUS_E_INVAL;
@@ -4481,61 +2467,37 @@ mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	if (QDF_TIMER_STATE_RUNNING ==
-		qdf_mc_timer_get_current_state(&recfg_ctx->link_recfg_rsp_timer)) {
-		status = qdf_mc_timer_stop(&recfg_ctx->link_recfg_rsp_timer);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("Failed to stop the Link Recfg rsp timer");
-			return QDF_STATUS_E_FAILURE;
-		}
-	}
-
 	if (QDF_IS_STATUS_ERROR(recfg_resp_data->status)) {
-		mlo_err("RX response failure %d", recfg_resp_data->status);
+		mlo_err("RX response failure");
 		return QDF_STATUS_E_INVAL;
 	}
 
-	mlo_debug("RX response success");
+	/* notify kernel/supplicant for del only req/rsp
+	 *	osif_notify_link_reconfig();
+	 */
+	mlo_err("RX response success");
 
-	if (smd_roam_in_progress(recfg_ctx)) {
-		status = smd_st_prep_response_received(recfg_ctx, tran);
-		mlo_link_recfg_smd_gen_link_assoc_rsp(recfg_ctx);
-	} else {
-		status = mlo_link_recfg_handle_rsp(recfg_ctx, tran);
-	}
+	/* Handle link recfg link del.
+	 * If deleted link is standby, remove link info from mlo mgr.
+	 * For example:
+	 * L1 L2 L3, del L2, link switch to L3. remove standby L2.
+	 * or L1 L2 L3, del standby L3, then remove standby L3.
+	 */
+	mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(recfg_ctx, &tran->req);
 
-	return status;
-}
-
-static QDF_STATUS
-mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
-				 struct link_recfg_rx_rsp *recfg_resp_data,
-				 uint16_t event_data_len)
-{
-	QDF_STATUS status;
-
-	status = mlo_link_recfg_response_handler(recfg_ctx,
-						 recfg_resp_data,
-						 event_data_len);
+	status = mlo_link_recfg_update_added_link_in_mlo_mgr(
+							recfg_ctx, &tran->req);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_err("RX response handler failure status %d", status);
+		mlo_err("RX response failure");
 		return status;
 	}
+
+	mlo_link_recfg_store_key(recfg_ctx, &tran->req);
+	/* handle link recfg link add rejected case */
 
 	status = mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
 
 	return status;
-}
-
-static void
-mlo_link_recfg_abort_ttlm_ongoing(struct mlo_link_recfg_context *recfg_ctx)
-{
-	recfg_ctx->internal_reason_code = link_recfg_aborted_neg_ttlm_ongoing;
-	/* move to abort state to complete link reconfig */
-	mlo_link_recfg_sm_transition_to(recfg_ctx, WLAN_LINK_RECFG_S_ABORT);
-	mlo_link_recfg_sm_deliver_event_sync(
-			recfg_ctx->ml_dev, WLAN_LINK_RECFG_SM_EV_COMPLETED,
-			0, NULL);
 }
 
 static void
@@ -4562,122 +2524,18 @@ mlo_link_recfg_add_link_aborted(struct mlo_link_recfg_context *recfg_ctx)
 			0, NULL);
 }
 
-static bool mlo_link_recfg_reassoc_if_failure(
-		struct mlo_link_recfg_context *recfg_ctx,
-		bool success)
-{
-	bool reassoc_if_failure = false;
-
-	if (success)
-		return false;
-
-	switch (recfg_ctx->internal_reason_code) {
-	case link_recfg_set_link_cmd_timeout:
-	case link_recfg_set_link_cmd_rejected:
-	case link_recfg_del_link_wait_fw_link_switch_timeout:
-	case link_recfg_del_link_fw_link_switch_rejected:
-	case link_recfg_del_link_link_switch_comp_with_fail:
-	case link_recfg_rsp_timeout:
-	case link_recfg_concurrency_failed:
-	case link_recfg_aborted_neg_ttlm_ongoing:
-	case link_recfg_tx_failed:
-	case link_recfg_rsp_status_failure:
-		reassoc_if_failure = true;
-		break;
-	case link_recfg_nb_sb_disconnect:
-	default:
-		reassoc_if_failure = false;
-		break;
-	}
-
-	if (recfg_ctx->curr_recfg_req.recfg_type ==
-			link_recfg_del_add_no_common_link &&
-	    recfg_ctx->internal_reason_code != link_recfg_create_tran_failed &&
-	    recfg_ctx->internal_reason_code != link_recfg_nb_sb_disconnect)
-		reassoc_if_failure = true;
-
-	mlo_debug("recfg type %d internal_reason_code %d reassoc_if_failure %d",
-		  recfg_ctx->curr_recfg_req.recfg_type,
-		  recfg_ctx->internal_reason_code,
-		  reassoc_if_failure);
-
-	return reassoc_if_failure;
-}
-
-void
-mlo_link_recfg_abort_if_in_progress(struct wlan_objmgr_vdev *vdev,
-				    bool is_link_switch_discon)
-{
-	struct mlo_link_recfg_context *recfg_ctx;
-
-	if (!vdev || !vdev->mlo_dev_ctx || !vdev->mlo_dev_ctx->link_recfg_ctx)
-		return;
-
-	recfg_ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
-
-	if (mlo_is_link_recfg_in_progress(vdev) &&
-	    is_link_switch_discon)
-		return;
-
-	if (wlan_vdev_mlme_is_mlo_vdev(vdev) &&
-	    mlo_is_link_recfg_in_progress(vdev)) {
-		mlo_link_recfg_sm_deliver_event(
-			recfg_ctx->ml_dev,
-			WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND,
-			0, NULL);
-	}
-}
-
-static QDF_STATUS
-mlo_link_recfg_add_link_update_mapping(struct wlan_objmgr_vdev *vdev,
-				       struct mlo_link_recfg_context *recfg_ctx)
-{
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct wlan_mlo_link_recfg_req *recfg_req;
-	struct wlan_objmgr_peer *peer;
-	struct wlan_mlo_peer_context *ml_peer;
-
-	if (!vdev) {
-		mlo_err("peer is null");
-		status = QDF_STATUS_E_NULL_VALUE;
-		goto end;
-	}
-
-	peer = wlan_objmgr_vdev_try_get_bsspeer(vdev, WLAN_MLO_MGR_ID);
-	if (!peer) {
-		mlo_err("peer is null");
-		status = QDF_STATUS_E_NULL_VALUE;
-		goto end;
-	}
-
-	ml_peer = peer->mlo_peer_ctx;
-	recfg_req = &recfg_ctx->curr_recfg_req;
-	if (recfg_req->add_link_info.num_links) {
-		status = wlan_t2lm_handle_link_recfg_add_update(peer);
-		if (QDF_IS_STATUS_ERROR(status))
-			mlo_err("T2LM mapping update failed");
-	}
-	wlan_objmgr_peer_release_ref(peer, WLAN_MLO_MGR_ID);
-end:
-	return status;
-}
-
 static void
 mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 			bool success)
 {
 	struct wlan_mlo_link_recfg_req *recfg_req;
 	struct wlan_objmgr_psoc *psoc;
-	struct wlan_objmgr_pdev *pdev;
 	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
 	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
 	struct wlan_objmgr_vdev *vdev;
 	QDF_STATUS status;
-	uint8_t vdev_id;
-	uint8_t rso_stop_req_bitmap;
 
 	recfg_req = &recfg_ctx->curr_recfg_req;
-	vdev_id = recfg_ctx->curr_recfg_req.vdev_id;
 
 	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
 	if (!psoc) {
@@ -4704,143 +2562,34 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 		return;
 	}
 
-	pdev = wlan_vdev_get_pdev(vdev);
-	if (!pdev) {
-		mlo_err("Failed to find pdev");
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-		return;
-	}
-
-	if (recfg_req->add_link_info.num_links && success) {
-		mlo_link_recfg_add_link_update_mapping(vdev, recfg_ctx);
-	}
-
 	if (recfg_req->is_fw_ind_received) {
 		/* send wmi link config complete command to firmware
 		 * only if the fw has indicated event to host.
 		 */
 		complete_params.ap_mld_addr =
 				recfg_req->fw_ind_param.ap_mld_addr;
-		complete_params.reassoc_if_failure =
-			mlo_link_recfg_reassoc_if_failure(
-					recfg_ctx, success);
+		complete_params.reassoc_if_failure = false;
 		complete_params.status = success ? 0 : 1;
 		complete_params.vdev_id = recfg_req->fw_ind_param.vdev_id;
-		status = mlo_link_recfg_send_complete_cmd(psoc, &complete_params);
+		status = mlo_tx_ops->send_mlo_link_recfg_complete_cmd(
+						psoc, &complete_params);
 		if (QDF_IS_STATUS_ERROR(status))
 			mlo_err("send_mlo_link_recfg_complete_cmd failed %d",
 				status);
 	}
 	/* Send link reconfig status to userspace */
-	mlo_link_refg_done_indication(vdev);
-
+	mlme_cm_send_link_reconfig_status(vdev);
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	/* reset state tran index and move to init state  */
 	recfg_ctx->sm.curr_state_idx = -1;
-	recfg_req->recfg_type = link_recfg_undefined;
-	recfg_req->join_pending_vdev_id = WLAN_INVALID_VDEV_ID;
-	recfg_ctx->internal_reason_code = link_recfg_success;
 
 	mlo_link_recfg_sm_transition_to(recfg_ctx, WLAN_LINK_RECFG_S_INIT);
-
-	rso_stop_req_bitmap =
-		mlme_get_rso_pending_disable_req_bitmap(psoc, vdev_id);
-	if (rso_stop_req_bitmap) {
-		mlme_clear_rso_pending_disable_req_bitmap(psoc,
-							  vdev_id);
-		wlan_cm_disable_rso(pdev, vdev_id, rso_stop_req_bitmap,
-				    REASON_DRIVER_DISABLED);
-	}
-
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 
 	/* remove reconfig ser command */
 	mlo_remove_link_recfg_cmd(recfg_ctx);
 
 	/* free link recfg ctx ies */
 	mlo_link_recfg_ctx_free_ies(recfg_ctx);
-
-	/* re-evaluate link force state */
-	if (success)
-		ml_nlink_conn_change_notify(
-				psoc, vdev_id,
-				ml_nlink_link_recfg_completed_evt,
-				NULL);
-}
-
-static bool
-mlo_link_recfg_handle_ttlm(struct mlo_link_recfg_context *recfg_ctx,
-			   struct mlo_link_recfg_state_req *req)
-{
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	struct wlan_objmgr_peer *peer;
-	struct wlan_objmgr_vdev *vdev;
-	struct wlan_mlo_peer_context *ml_peer;
-	uint8_t i;
-	uint8_t link_id_mask = 0;
-	struct wlan_t2lm_info *t2lm_nego = NULL;
-	uint16_t t2lm_mapped_link_bmap;
-	QDF_STATUS status;
-	bool status_ttlm = true;
-
-	if (!recfg_ctx || !req) {
-		mlo_err("recfg_ctx or req is null");
-		return false;
-	}
-
-	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		return false;
-	}
-
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
-				recfg_ctx->psoc,
-				recfg_ctx->curr_recfg_req.vdev_id,
-				WLAN_LINK_RECFG_ID);
-	if (!vdev) {
-		mlo_err("vdev is null");
-		return false;
-	}
-
-	peer = wlan_objmgr_vdev_try_get_bsspeer(vdev, WLAN_LINK_RECFG_ID);
-	if (!peer) {
-		mlo_err("peer is null");
-		status_ttlm = false;
-		goto end;
-	}
-	ml_peer = peer->mlo_peer_ctx;
-
-	if (wlan_t2lm_is_peer_neg_in_progress(ml_peer)) {
-		mlo_debug("T2LM Peer negotiation in progress");
-		status_ttlm = false;
-		goto end;
-	}
-
-	t2lm_nego = &ml_peer->t2lm_policy.t2lm_negotiated_info.t2lm_info[WLAN_T2LM_BIDI_DIRECTION];
-	t2lm_mapped_link_bmap = t2lm_nego->ieee_link_map_tid[0];
-
-	if (req->del_link_info.num_links) {
-		for (i = 0; i < req->del_link_info.num_links; i++) {
-			link_id_mask = (1 << req->del_link_info.link[i].link_id);
-			if (link_id_mask & t2lm_mapped_link_bmap) {
-				status = wlan_t2lm_handle_link_recfg_del_update(peer);
-				if (QDF_IS_STATUS_ERROR(status)) {
-					mlo_err("T2LM mapping update failed");
-					status_ttlm = false;
-					goto end;
-				} else {
-					status_ttlm = true;
-					goto end;
-				}
-			}
-		}
-	}
-
-end:
-	if (peer)
-		wlan_objmgr_peer_release_ref(peer, WLAN_LINK_RECFG_ID);
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
-	return status_ttlm;
 }
 
 static enum wlan_link_recfg_sm_state
@@ -4944,16 +2693,14 @@ mlo_link_recfg_ser_timeout_sm_handler(
 		}
 		break;
 	case WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_ADD_CONN:
-		mlo_link_recfg_abort_link_add_no_comm(recfg_ctx);
-		break;
 	case WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_ADD_CONN:
 		/* add partner link timeout */
+
 		break;
 	case WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW:
-		mlo_link_recfg_abort_link_add_no_comm(recfg_ctx);
-		break;
 	case WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_LINK_SW:
 		/* timeout link switch req */
+
 		break;
 	default:
 		mlo_err("unexpected substate %d when ser timeout vdev %d",
@@ -4967,127 +2714,6 @@ abort:
 	mlo_link_recfg_sm_deliver_event_sync(
 			recfg_ctx->ml_dev, WLAN_LINK_RECFG_SM_EV_COMPLETED,
 			0, NULL);
-}
-
-static QDF_STATUS
-mlo_link_recfg_no_common_link_event(void *ctx,
-				    uint16_t event,
-				    uint16_t event_data_len,
-				    void *event_data)
-{
-	struct mlo_link_recfg_context *recfg_ctx = ctx;
-	struct mlo_link_recfg_state_req *req;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct link_recfg_tx_result *tx_status;
-
-	if (recfg_ctx->curr_recfg_req.recfg_type !=
-				link_recfg_del_add_no_common_link) {
-		mlo_debug("unexpected event %d in link recfg type %d",
-			  event, recfg_ctx->curr_recfg_req.recfg_type);
-		return QDF_STATUS_SUCCESS;
-	}
-
-	switch (event) {
-	case WLAN_LINK_RECFG_SM_EV_XMIT_REQ:
-		req = (struct mlo_link_recfg_state_req *)event_data;
-		status =
-		mlo_link_recfg_send_request_frame(recfg_ctx, req);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("error to send frame %d", status);
-			recfg_ctx->internal_reason_code =
-				link_recfg_tx_failed;
-		}
-		break;
-	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
-		/* Handle tx failure */
-		req = (struct mlo_link_recfg_state_req *)event_data;
-		tx_status = (struct link_recfg_tx_result *)event_data;
-		status = tx_status->status;
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("error to send frame status %d", status);
-			recfg_ctx->internal_reason_code =
-				link_recfg_tx_failed;
-			if (smd_roam_in_progress(recfg_ctx))
-				smd_roam_prep_fail(recfg_ctx, req);
-		}
-		break;
-	case WLAN_LINK_RECFG_SM_EV_RX_RSP:
-		status = mlo_link_recfg_response_handler(
-			recfg_ctx, (struct link_recfg_rx_rsp *)event_data,
-			event_data_len);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("error to handle resp status %d", status);
-			recfg_ctx->internal_reason_code =
-				link_recfg_rsp_status_failure;
-		}
-		break;
-	case WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT:
-		req = (struct mlo_link_recfg_state_req *)event_data;
-		status = QDF_STATUS_E_TIMEOUT;
-		recfg_ctx->internal_reason_code =
-			link_recfg_rsp_timeout;
-		if (smd_roam_in_progress(recfg_ctx))
-			smd_roam_prep_fail(recfg_ctx, req);
-		mlo_link_recfg_abort_link_add_no_comm(recfg_ctx);
-		break;
-	default:
-		break;
-	}
-
-	return status;
-}
-
-static void mlo_link_recfg_timeout(void *data)
-{
-	QDF_STATUS status;
-	struct wlan_mlo_dev_context *mlo_dev_ctx =
-		(struct wlan_mlo_dev_context *)data;
-
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		return;
-	}
-
-	if (!mlo_dev_ctx->link_recfg_ctx) {
-		mlo_err("link_recfg_ctx null");
-		return;
-	}
-
-	mlo_debug("deliver timeout event");
-	status = mlo_link_recfg_sm_deliver_event(
-			mlo_dev_ctx,
-			WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT,
-			0, NULL);
-	if (QDF_IS_STATUS_ERROR(status))
-		mlo_err("failed to deliver timeout event");
-}
-
-static void mlo_link_recfg_sm_timer_start(
-	struct mlo_link_recfg_context *recfg_ctx, uint32_t timeout_ms)
-{
-	QDF_STATUS status;
-
-	qdf_mc_timer_stop(&recfg_ctx->sm.sm_timer);
-	status = qdf_mc_timer_start(&recfg_ctx->sm.sm_timer, timeout_ms);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_debug("cannot start sm timer");
-		return;
-	}
-}
-
-static void mlo_link_recfg_sm_timer_stop(
-	struct mlo_link_recfg_context *recfg_ctx)
-{
-	qdf_mc_timer_stop(&recfg_ctx->sm.sm_timer);
-}
-
-static void
-mlo_link_recfg_rx_rsp_timeout_sm_handler(
-	struct mlo_link_recfg_context *recfg_ctx)
-{
-	/* add handling for rx rsp timeout */
-	recfg_ctx->internal_reason_code = link_recfg_rsp_timeout;
-	mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 }
 
 /* WLAN_LINK_RECFG_S_INIT */
@@ -5110,7 +2736,6 @@ mlo_link_recfg_state_init_event(void *ctx,
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_FW_IND:
 	case WLAN_LINK_RECFG_SM_EV_USER_REQ:
-	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
 		/* validate request */
 
 		/* transition to start */
@@ -5154,10 +2779,10 @@ mlo_link_recfg_state_start_event(void *ctx,
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_FW_IND:
 	case WLAN_LINK_RECFG_SM_EV_USER_REQ:
-	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
 		mlo_link_recfg_sm_transition_to(
 			ctx,
 			WLAN_LINK_RECFG_SS_START_PENDING);
+
 		status = mlo_link_recfg_sm_deliver_event_sync(
 				recfg_ctx->ml_dev, WLAN_LINK_RECFG_SM_EV_START,
 				event_data_len, event_data);
@@ -5192,49 +2817,22 @@ mlo_link_recfg_subst_start_pending_event(void *ctx,
 					 uint16_t event_data_len,
 					 void *event_data)
 {
-	struct wlan_objmgr_psoc *psoc;
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
 	struct wlan_mlo_link_recfg_req *recfg_req;
 	QDF_STATUS status;
 
-	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
-	if (!psoc) {
-		mlo_err("psoc is null");
-		return false;
-	}
-
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_START:
 		recfg_req = (struct wlan_mlo_link_recfg_req *)event_data;
-		if (smd_roam_in_progress(recfg_ctx)) {
-			status = mlo_copy_recfg_req(recfg_ctx, recfg_req);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				mlo_err("Copy for Link recfg failed");
-				event_handled = false;
-				break;
-			}
-			mlo_link_recfg_sm_deliver_event_sync(
-				recfg_ctx->ml_dev,
-				WLAN_LINK_RECFG_SM_EV_ACTIVE,
-				0, NULL);
-		} else {
-			status = mlo_ser_link_recfg_cmd(recfg_ctx, recfg_req);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				event_handled = false;
-				/* todo: handle error if link recfg ser is failed */
-				break;
-			}
+		status = mlo_ser_link_recfg_cmd(recfg_ctx, recfg_req);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			event_handled = false;
+			/* todo: handle error if link recfg ser is failed */
+			break;
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_ACTIVE:
-		if (policy_mgr_link_reconfig_is_concurrency_present(psoc)) {
-			recfg_ctx->internal_reason_code =
-						link_recfg_concurrency_failed;
-			mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
-			break;
-		}
-
 		recfg_req = &recfg_ctx->curr_recfg_req;
 		if (recfg_req->is_user_req) {
 			/* for user initiated request, we need to send
@@ -5254,17 +2852,10 @@ mlo_link_recfg_subst_start_pending_event(void *ctx,
 			status = mlo_link_recfg_create_transition_list(
 				recfg_ctx,
 				&recfg_ctx->curr_recfg_req);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				recfg_ctx->internal_reason_code =
-					link_recfg_create_tran_failed;
-				mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
-			}
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
-		recfg_ctx->internal_reason_code =
-			link_recfg_nb_sb_disconnect;
 		/* todo: handle disc or roam if link recfg ser not active */
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 		break;
@@ -5292,53 +2883,25 @@ mlo_link_recfg_subst_start_active_entry(void *ctx)
 			ctx, WLAN_LINK_RECFG_SS_START_ACTIVE);
 }
 
-static void
-mlo_link_recfg_send_recfg_req_cmd(struct mlo_link_recfg_context *ctx,
-				  struct wlan_mlo_link_recfg_req *recfg_req)
-{
-	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops = NULL;
-
-	mlo_tx_ops = &ctx->psoc->soc_cb.tx_ops->mlo_ops;
-	if (!mlo_tx_ops || !mlo_tx_ops->send_link_reconfig_req_params_cmd) {
-		mlo_err("mlo_tx_ops is null");
-		return;
-	}
-
-	mlo_tx_ops->send_link_reconfig_req_params_cmd(ctx->psoc, recfg_req);
-}
-
 static bool
 mlo_link_recfg_subst_start_active_event(void *ctx,
 					uint16_t event,
 					uint16_t event_data_len,
 					void *event_data)
 {
-	struct wlan_objmgr_psoc *psoc;
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
 	struct wlan_mlo_link_recfg_req *recfg_req;
 	struct wlan_mlo_link_recfg_req *fw_ind_recfg_req;
 	QDF_STATUS status;
 
-	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
-	if (!psoc) {
-		mlo_err("psoc is null");
-		return false;
-	}
-
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_ACTIVE:
-		if (policy_mgr_link_reconfig_is_concurrency_present(psoc)) {
-			recfg_ctx->internal_reason_code =
-					link_recfg_concurrency_failed;
-			mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
-			break;
-		}
-
 		recfg_req = &recfg_ctx->curr_recfg_req;
 		if (recfg_req->is_user_req) {
-			/* send link reconfig wmi WMI_MLO_LINK_RECONFIG_CMDID */
-			mlo_link_recfg_send_recfg_req_cmd(ctx, recfg_req);
+			/* send link reconfig wmi WMI_MLO_LINK_RECONFIG_CMDID
+			 * and wait for WLAN_LINK_RECFG_SM_EV_FW_IND
+			 */
 		} else {
 			/* unexpected for ap initiated */
 		}
@@ -5356,29 +2919,12 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 		recfg_req->add_link_info = fw_ind_recfg_req->add_link_info;
 		recfg_req->del_link_info = fw_ind_recfg_req->del_link_info;
 		recfg_req->fw_ind_param = fw_ind_recfg_req->fw_ind_param;
-		if (recfg_req->fw_ind_param.trigger_result) {
-			mlo_debug("fw reject result %d",
-				  recfg_req->fw_ind_param.trigger_result);
-			/* fw rejected link recfg request, no need
-			 * send recfg complete to fw.
-			 */
-			recfg_req->is_fw_ind_received = false;
-			mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
-			break;
-		}
 		status = mlo_link_recfg_create_transition_list(
 					recfg_ctx,
 					&recfg_ctx->curr_recfg_req);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			recfg_ctx->internal_reason_code =
-				link_recfg_create_tran_failed;
-			mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
-		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
-		recfg_ctx->internal_reason_code =
-			link_recfg_nb_sb_disconnect;
 		/* handle disc or roam if link recfg ser is active */
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 		break;
@@ -5396,125 +2942,6 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 
 static void
 mlo_link_recfg_subst_start_active_exit(void *ctx)
-{
-}
-
-static void
-mlo_link_recfg_update_ttlm_done(struct mlo_link_recfg_context *recfg_ctx,
-				bool status)
-{
-	/* handle update ttlm status done */
-	if (status) {
-		/* transition to next state */
-		mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
-	} else {
-		mlo_err("Update TTLM failed, abort Link Recfg");
-		mlo_link_recfg_abort_ttlm_ongoing(recfg_ctx);
-	}
-}
-
-#ifdef WLAN_FEATURE_11BN_SMD
-static void
-mlo_link_recfg_state_wait_entry(void *ctx)
-{
-	mlo_link_recfg_sm_state_update(ctx, WLAN_LINK_RECFG_S_WAIT,
-				       WLAN_LINK_RECFG_SS_IDLE);
-}
-
-static bool
-mlo_link_recfg_state_wait_event(void *ctx,
-				uint16_t event,
-				uint16_t event_data_len,
-				void *event_data)
-{
-	struct mlo_link_recfg_context *recfg_ctx = ctx;
-	bool event_handled = true;
-	bool status;
-
-	switch (event) {
-	case WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC:
-		mlo_link_recfg_sm_transition_to(
-			ctx,
-			WLAN_LINK_RECFG_SS_WAIT_SMD_EXEC);
-		status = mlo_link_recfg_sm_deliver_event_sync(
-				recfg_ctx->ml_dev, event,
-				event_data_len, event_data);
-		break;
-	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
-		/* transition to init */
-		mlo_link_recfg_sm_transition_to(ctx,
-						WLAN_LINK_RECFG_S_INIT);
-		mlo_link_recfg_sm_deliver_event_sync(
-					recfg_ctx->ml_dev, event,
-					event_data_len, event_data);
-		break;
-	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
-		mlo_debug("WAIT state disconnect, aborting SMD link recfg");
-		mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
-		mlo_link_recfg_sm_deliver_event_sync(recfg_ctx->ml_dev,
-						     WLAN_LINK_RECFG_SM_EV_COMPLETED,
-						     0, NULL);
-		break;
-	default:
-		event_handled = false;
-		break;
-	}
-
-	return event_handled;
-}
-
-static void
-mlo_link_recfg_state_wait_exit(void *ctx)
-{
-}
-#else
-static inline void mlo_link_recfg_state_wait_entry(void *ctx) {}
-
-static inline void mlo_link_recfg_state_wait_exit(void *ctx) {}
-
-static inline bool
-mlo_link_recfg_state_wait_event(void *ctx, uint16_t event,
-				uint16_t event_data_len, void *event_data)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_11BN_SMD */
-
-/* WLAN_LINK_RECFG_S_TTLM */
-static void
-mlo_link_recfg_state_update_ttlm_entry(void *ctx)
-{
-	mlo_link_recfg_sm_state_update(ctx, WLAN_LINK_RECFG_S_TTLM,
-				       WLAN_LINK_RECFG_SS_IDLE);
-}
-
-static bool
-mlo_link_recfg_state_update_ttlm_event(void *ctx,
-				       uint16_t event,
-				       uint16_t event_data_len,
-				       void *event_data)
-{
-	struct mlo_link_recfg_context *recfg_ctx = ctx;
-	bool event_handled = true;
-	struct mlo_link_recfg_state_req *req;
-	bool status;
-
-	switch (event) {
-	case WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM:
-		req = (struct mlo_link_recfg_state_req *)event_data;
-		status = mlo_link_recfg_handle_ttlm(recfg_ctx, req);
-		mlo_link_recfg_update_ttlm_done(recfg_ctx, status);
-		break;
-	default:
-		event_handled = false;
-		break;
-	}
-
-	return event_handled;
-}
-
-static void
-mlo_link_recfg_state_update_ttlm_exit(void *ctx)
 {
 }
 
@@ -5573,106 +3000,6 @@ mlo_link_recfg_state_del_link_exit(void *ctx)
 {
 }
 
-#ifdef WLAN_FEATURE_11BN_SMD
-static void
-mlo_link_recfg_subst_wait_smd_exec_entry(void *ctx)
-{
-	if (mlo_link_recfg_sm_get_state(ctx) != WLAN_LINK_RECFG_S_WAIT)
-		QDF_BUG(0);
-
-	mlo_link_recfg_sm_set_substate(
-			ctx, WLAN_LINK_RECFG_SS_WAIT_SMD_EXEC);
-	// TODO: Start wait for execution timer
-}
-
-static void
-mlo_link_recfg_subst_wait_smd_exec_exit(void *ctx)
-{
-}
-
-static bool
-mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
-					 uint16_t event,
-					 uint16_t event_data_len,
-					 void *event_data)
-{
-	struct mlo_link_recfg_context *recfg_ctx = ctx;
-	bool event_handled = true;
-	struct mlo_link_recfg_state_req *req;
-
-	switch (event) {
-	case WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC:
-		req = (struct mlo_link_recfg_state_req *)event_data;
-		if (QDF_IS_STATUS_ERROR(smd_roam_prep_complete(recfg_ctx, req))) {
-			mlo_debug("smd_roam_prep_complete failed, aborting");
-			mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
-			mlo_link_recfg_sm_deliver_event_sync(recfg_ctx->ml_dev,
-							     WLAN_LINK_RECFG_SM_EV_COMPLETED,
-							     0, NULL);
-		}
-		break;
-	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
-	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
-		/*
-		 * Disconnect or new roam arrived while waiting for FW ST Exec.
-		 * ST Prep is complete and WMI_ROAM_SYNCH_START_CMD was already
-		 * sent. Clear SMD state so the host does not send a stale
-		 * WMI_ROAM_SYNCH_COMPLETE if the sync event still arrives.
-		 * Then move Link Recfg SM to ABORT → COMPLETED.
-		 */
-		smd_abort_link_recfg(recfg_ctx);
-		mlo_link_recfg_sm_transition_to(recfg_ctx,
-						WLAN_LINK_RECFG_S_ABORT);
-		mlo_link_recfg_sm_deliver_event_sync(
-				recfg_ctx->ml_dev,
-				WLAN_LINK_RECFG_SM_EV_COMPLETED,
-				0, NULL);
-		break;
-	case WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT:
-		mlo_debug("SMD WAIT_SMD_EXEC timeout, aborting link recfg");
-		mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
-		mlo_link_recfg_sm_deliver_event_sync(recfg_ctx->ml_dev,
-						     WLAN_LINK_RECFG_SM_EV_COMPLETED,
-						     0, NULL);
-		break;
-	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
-		/* transition to init */
-		mlo_link_recfg_sm_transition_to(ctx,
-						WLAN_LINK_RECFG_S_INIT);
-		mlo_link_recfg_sm_deliver_event_sync(
-					recfg_ctx->ml_dev, event,
-					event_data_len, event_data);
-		break;
-	default:
-		event_handled = false;
-		break;
-	}
-
-	return event_handled;
-}
-#else
-static void
-mlo_link_recfg_subst_wait_smd_exec_entry(void *ctx)
-{
-}
-
-static void
-mlo_link_recfg_subst_wait_smd_exec_exit(void *ctx)
-{
-}
-
-static bool
-mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
-					 uint16_t event,
-					 uint16_t event_data_len,
-					 void *event_data)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_11BN_SMD */
-
-#define DEL_LINK_SET_LINK_TIMEOUT 14000
-
 /* WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_SET_LINK */
 static void
 mlo_link_recfg_subst_del_link_wait_set_link_entry(void *ctx)
@@ -5682,7 +3009,6 @@ mlo_link_recfg_subst_del_link_wait_set_link_entry(void *ctx)
 
 	mlo_link_recfg_sm_set_substate(
 			ctx, WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_SET_LINK);
-	mlo_link_recfg_sm_timer_start(ctx, DEL_LINK_SET_LINK_TIMEOUT);
 }
 
 static bool
@@ -5695,49 +3021,21 @@ mlo_link_recfg_subst_del_link_wait_set_link_event(void *ctx,
 	bool event_handled = true;
 	struct mlo_link_recfg_state_req *req;
 	struct set_link_resp *set_link_resp;
-	QDF_STATUS status;
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_DEL_LINK:
-		/*
-		 * WAR: In SMD roaming the FW already knows which links to
-		 * deactivate (it drove the roam via repurpose TLVs) and does
-		 * not respond to WMI_MLO_LINK_SET_ACTIVE_CMDID, causing the SM
-		 * to stall until serialization timeout (~10-21 s).  Skip the
-		 * force-inactive WMI entirely and proceed directly.
-		 */
-		if (smd_roam_in_progress(recfg_ctx)) {
-			mlo_debug("SMD roam WAR: skip force-inactive WMI, proceed directly");
-			smd_link_recfg_del_link_completed(recfg_ctx);
-			break;
-		}
-
 		req = (struct mlo_link_recfg_state_req *)event_data;
-		status =
 		mlo_link_recfg_del_link_by_inact(recfg_ctx, req);
-		if (status != QDF_STATUS_E_PENDING &&
-		    QDF_IS_STATUS_ERROR(status)) {
-			mlo_debug("set link inactive return error %d, abort del link",
-				  status);
-			recfg_ctx->internal_reason_code =
-				link_recfg_set_link_cmd_rejected;
-			mlo_link_recfg_del_link_aborted(recfg_ctx);
-		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SET_LINK_RSP:
-		mlo_link_recfg_sm_timer_stop(ctx);
 		set_link_resp = (struct set_link_resp *)event_data;
 		if (set_link_resp->status) {
 			mlo_debug("set link inactive failed, abort del link");
-			recfg_ctx->internal_reason_code =
-				link_recfg_set_link_cmd_rejected;
 			mlo_link_recfg_del_link_aborted(recfg_ctx);
 			break;
 		}
 
-		if (smd_roam_in_progress(recfg_ctx)) {
-			smd_link_recfg_del_link_completed(recfg_ctx);
-		} else if (mlo_link_recfg_is_standby_link_present_for_link_switch(
+		if (mlo_link_recfg_is_standby_link_present_for_link_switch(
 							recfg_ctx)) {
 			/* ABC -> AC: B is set inactive for delete,
 			 * link switch is expected. fw should link
@@ -5752,21 +3050,17 @@ mlo_link_recfg_subst_del_link_wait_set_link_event(void *ctx,
 			 * by set link inactive
 			 */
 			mlo_link_recfg_del_link_completed(recfg_ctx);
+
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
-		recfg_ctx->internal_reason_code =
-			link_recfg_nb_sb_disconnect;
 		/* transition to abort state */
 		mlo_link_recfg_sm_transition_to(
 			ctx, WLAN_LINK_RECFG_SS_DEL_LINK_ABORT_WAIT_SET_LINK);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT:
-	case WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT:
-		/* handle serialization timeout or set link timeout */
-		recfg_ctx->internal_reason_code =
-			link_recfg_set_link_cmd_timeout;
+		/* handle serialization timeout */
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 		break;
 	default:
@@ -5780,7 +3074,6 @@ mlo_link_recfg_subst_del_link_wait_set_link_event(void *ctx,
 static void
 mlo_link_recfg_subst_del_link_wait_set_link_exit(void *ctx)
 {
-	mlo_link_recfg_sm_timer_stop(ctx);
 }
 
 /* WLAN_LINK_RECFG_SS_DEL_LINK_ABORT_WAIT_SET_LINK */
@@ -5792,7 +3085,6 @@ mlo_link_recfg_subst_del_link_abort_wait_set_link_entry(void *ctx)
 
 	mlo_link_recfg_sm_set_substate(
 			ctx, WLAN_LINK_RECFG_SS_DEL_LINK_ABORT_WAIT_SET_LINK);
-	mlo_link_recfg_sm_timer_start(ctx, DEL_LINK_SET_LINK_TIMEOUT);
 }
 
 static bool
@@ -5806,14 +3098,10 @@ mlo_link_recfg_subst_del_link_abort_wait_set_link_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_SET_LINK_RSP:
-		mlo_link_recfg_sm_timer_stop(ctx);
 		mlo_link_recfg_del_link_aborted(recfg_ctx);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT:
-	case WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT:
-		/* handle serialization timeout or set link timeout */
-		recfg_ctx->internal_reason_code =
-			link_recfg_set_link_cmd_timeout;
+		/* handle serialization timeout */
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 		break;
 	default:
@@ -5827,10 +3115,7 @@ mlo_link_recfg_subst_del_link_abort_wait_set_link_event(void *ctx,
 static void
 mlo_link_recfg_subst_del_link_abort_wait_set_link_exit(void *ctx)
 {
-	mlo_link_recfg_sm_timer_stop(ctx);
 }
-
-#define DEL_LINK_WAIT_LINK_SWITCH_TIMEOUT 8000
 
 /* WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_LINK_SW */
 static void
@@ -5841,7 +3126,6 @@ mlo_link_recfg_subst_del_link_wait_link_sw_entry(void *ctx)
 
 	mlo_link_recfg_sm_set_substate(
 			ctx, WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_LINK_SW);
-	mlo_link_recfg_sm_timer_start(ctx, DEL_LINK_WAIT_LINK_SWITCH_TIMEOUT);
 }
 
 static bool
@@ -5857,14 +3141,13 @@ mlo_link_recfg_subst_del_link_wait_link_sw_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_SET_LINK_RSP:
-		/* fw link reconfig indication event has been started
-		 * in mlo_link_recfg_subst_del_link_wait_link_sw_entry.
+		/* start timer for fw link reconfig indication event.
+		 * now using WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT to abort link sw.
 		 */
 		break;
 	case WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_IND:
 		/* cancel fw link reconfig indication timer.
 		 */
-		mlo_link_recfg_sm_timer_stop(ctx);
 		link_switch_ind = (struct link_switch_ind *)event_data;
 		if (QDF_IS_STATUS_ERROR(link_switch_ind->status)) {
 			/* unexpected link switch maybe rejected by other
@@ -5873,9 +3156,6 @@ mlo_link_recfg_subst_del_link_wait_link_sw_event(void *ctx,
 			 */
 			mlo_debug("link switch rejected status %d",
 				  link_switch_ind->status);
-			recfg_ctx->internal_reason_code =
-				link_recfg_del_link_fw_link_switch_rejected;
-			mlo_link_recfg_del_link_aborted(recfg_ctx);
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_RSP:
@@ -5883,8 +3163,6 @@ mlo_link_recfg_subst_del_link_wait_link_sw_event(void *ctx,
 		if (QDF_IS_STATUS_ERROR(link_switch_rsp->status)) {
 			mlo_debug("link switch comp with failure status %d",
 				  link_switch_rsp->status);
-			recfg_ctx->internal_reason_code =
-				link_recfg_del_link_link_switch_comp_with_fail;
 			mlo_link_recfg_del_link_aborted(recfg_ctx);
 			break;
 		}
@@ -5892,8 +3170,6 @@ mlo_link_recfg_subst_del_link_wait_link_sw_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
-		recfg_ctx->internal_reason_code =
-			link_recfg_nb_sb_disconnect;
 		if (mlo_link_recfg_is_link_switch_in_progress(recfg_ctx)) {
 			/* transition to abort state */
 			mlo_link_recfg_sm_transition_to(
@@ -5906,12 +3182,6 @@ mlo_link_recfg_subst_del_link_wait_link_sw_event(void *ctx,
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT:
-	case WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT:
-		/* handle serialization timeout or wait for fw link switch
-		 * timeout
-		 */
-		recfg_ctx->internal_reason_code =
-			link_recfg_del_link_wait_fw_link_switch_timeout;
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 		break;
 	default:
@@ -5925,7 +3195,6 @@ mlo_link_recfg_subst_del_link_wait_link_sw_event(void *ctx,
 static void
 mlo_link_recfg_subst_del_link_wait_link_sw_exit(void *ctx)
 {
-	mlo_link_recfg_sm_timer_stop(ctx);
 }
 
 /* WLAN_LINK_RECFG_SS_DEL_LINK_ABORT_WAIT_LINK_SW */
@@ -5958,8 +3227,6 @@ mlo_link_recfg_subst_del_link_abort_wait_link_sw_event(void *ctx,
 		mlo_link_recfg_del_link_aborted(recfg_ctx);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT:
-		recfg_ctx->internal_reason_code =
-			link_recfg_del_link_wait_fw_link_switch_timeout;
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 		break;
 	default:
@@ -5983,61 +3250,6 @@ mlo_link_recfg_state_add_link_entry(void *ctx)
 				       WLAN_LINK_RECFG_SS_IDLE);
 }
 
-#ifdef WLAN_FEATURE_11BN_SMD
-static bool
-mlo_smd_handle_add_link_event(void *ctx,
-			      struct mlo_link_recfg_context *recfg_ctx,
-			      uint16_t event,
-			      struct mlo_link_recfg_state_req *req)
-{
-	struct wlan_mlo_link_switch_req link_sw_req = {0};
-
-	if (smd_link_recfg_has_idle_vdev_for_add_link(
-				recfg_ctx, req, &link_sw_req)) {
-		mlo_info("Idle vdev found for link addition, skipping disconnect");
-		mlo_link_recfg_sm_transition_to(
-			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
-		mlo_link_recfg_sm_deliver_event_sync(
-			recfg_ctx->ml_dev, event,
-			sizeof(link_sw_req), &link_sw_req);
-		return true;
-	} else if (smd_link_recfg_has_active_vdev_for_add_link(
-					recfg_ctx, req, &link_sw_req)) {
-		mlo_link_recfg_sm_transition_to(
-			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
-		mlo_link_recfg_sm_deliver_event_sync(
-			recfg_ctx->ml_dev, event,
-			sizeof(link_sw_req), &link_sw_req);
-		return true;
-	} else if (smd_cleanup_curr_ap_link(recfg_ctx, req, &link_sw_req)) {
-		/* cleanup_vdev scenario: add_link_info is empty, del_link_info
-		 * carries the current AP link to bring down (multi-to-single roam).
-		 * Trigger a disconnect-only link switch.
-		 */
-		mlo_debug("SMD cleanup vdev: triggering disconnect-only link switch");
-		mlo_link_recfg_sm_transition_to(
-			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
-		mlo_link_recfg_sm_deliver_event_sync(
-			recfg_ctx->ml_dev, event,
-			sizeof(link_sw_req), &link_sw_req);
-		return true;
-	} else {
-		mlo_debug("No vdev (active or idle) available for link addition, aborting");
-		mlo_link_recfg_add_link_aborted(recfg_ctx);
-	}
-	return false;
-}
-#else
-static inline bool
-mlo_smd_handle_add_link_event(void *ctx,
-			      struct mlo_link_recfg_context *recfg_ctx,
-			      uint16_t event,
-			      struct mlo_link_recfg_state_req *req)
-{
-	return true;
-}
-#endif /* WLAN_FEATURE_11BN_SMD */
-
 static bool
 mlo_link_recfg_state_add_link_event(void *ctx,
 				    uint16_t event,
@@ -6048,16 +3260,10 @@ mlo_link_recfg_state_add_link_event(void *ctx,
 	struct mlo_link_recfg_state_req *req;
 	bool event_handled = true;
 	struct wlan_mlo_link_switch_req link_sw_req = {0};
-	QDF_STATUS status;
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_ADD_LINK:
 		req = (struct mlo_link_recfg_state_req *)event_data;
-		status = mlo_link_invoke_pre_link_add_handler(ctx, req);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_link_recfg_add_link_aborted(recfg_ctx);
-			break;
-		}
 		if (mlo_link_recfg_has_idle_vdev_for_add_link(
 					recfg_ctx, req)) {
 			/* A-> AB : use idle vdev to connect new add link */
@@ -6082,19 +3288,9 @@ mlo_link_recfg_state_add_link_event(void *ctx,
 				sizeof(link_sw_req), &link_sw_req);
 		} else {
 			/* AB -> ABC : add standby link C */
-			status = mlo_link_recfg_add_standby_link(recfg_ctx,
-								 req);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				mlo_link_recfg_add_link_aborted(recfg_ctx);
-				break;
-			}
+			mlo_link_recfg_add_standby_link(recfg_ctx, req);
 			mlo_link_recfg_add_link_completed(recfg_ctx);
 		}
-		break;
-	case WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK:
-		req = (struct mlo_link_recfg_state_req *)event_data;
-		event_handled = mlo_smd_handle_add_link_event(ctx, recfg_ctx,
-							      event, req);
 		break;
 	default:
 		event_handled = false;
@@ -6149,21 +3345,8 @@ mlo_link_recfg_subst_add_link_wait_add_conn_event(void *ctx,
 		}
 		mlo_link_recfg_add_link_completed(recfg_ctx);
 		break;
-	case WLAN_LINK_RECFG_SM_EV_XMIT_REQ:
-	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
-	case WLAN_LINK_RECFG_SM_EV_RX_RSP:
-	case WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT:
-		status =
-		mlo_link_recfg_no_common_link_event(ctx, event,
-						    event_data_len,
-						    event_data);
-		if (QDF_IS_STATUS_ERROR(status))
-			event_handled = false;
-		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
-		recfg_ctx->internal_reason_code =
-			link_recfg_nb_sb_disconnect;
 		/* transition to abort state */
 		mlo_link_recfg_sm_transition_to(
 			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_ADD_CONN);
@@ -6244,13 +3427,11 @@ mlo_link_recfg_subst_add_link_wait_link_sw_event(void *ctx,
 {
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	struct wlan_mlo_link_switch_req *link_sw_req;
-	struct link_switch_rsp *link_switch_rsp;
 	QDF_STATUS status;
 	bool event_handled = true;
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_ADD_LINK:
-	case WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK:
 		link_sw_req = (struct wlan_mlo_link_switch_req *)event_data;
 		status = mlo_link_recfg_host_trigger_link_switch(recfg_ctx,
 								 link_sw_req);
@@ -6261,34 +3442,14 @@ mlo_link_recfg_subst_add_link_wait_link_sw_event(void *ctx,
 		 * using serialization timeout to abort the state.
 		 */
 		break;
-	case WLAN_LINK_RECFG_SM_EV_XMIT_REQ:
-	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
-	case WLAN_LINK_RECFG_SM_EV_RX_RSP:
-	case WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT:
-		status =
-		mlo_link_recfg_no_common_link_event(ctx, event,
-						    event_data_len,
-						    event_data);
-		if (QDF_IS_STATUS_ERROR(status))
-			event_handled = false;
-		break;
 	case WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_IND:
 		// cancel fw link reconfig indication timer.
 		break;
 	case WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_RSP:
-		link_switch_rsp = (struct link_switch_rsp *)event_data;
-		if (QDF_IS_STATUS_ERROR(link_switch_rsp->status)) {
-			mlo_debug("link switch comp with failure status %d",
-				  link_switch_rsp->status);
-			mlo_link_recfg_add_link_aborted(recfg_ctx);
-			break;
-		}
 		mlo_link_recfg_add_link_completed(recfg_ctx);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
-		recfg_ctx->internal_reason_code =
-			link_recfg_nb_sb_disconnect;
 		if (mlo_link_recfg_is_link_switch_in_progress(recfg_ctx)) {
 			/* transition to abort state */
 			mlo_link_recfg_sm_transition_to(
@@ -6373,44 +3534,13 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 {
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	struct mlo_link_recfg_state_req *req;
-	struct mlo_link_recfg_state_tran *tran =
-		mlo_link_recfg_get_curr_tran_req(recfg_ctx);
 	bool event_handled = true;
 	QDF_STATUS status;
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_XMIT_REQ:
 		req = (struct mlo_link_recfg_state_req *)event_data;
-		status = mlo_link_invoke_proc_defer_rsp_handler(recfg_ctx);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			if (status == QDF_STATUS_E_ALREADY)
-				break;
-			mlo_err("error to proc defer resp status %d", status);
-			mlo_link_recfg_sm_transition_to(
-					ctx, WLAN_LINK_RECFG_S_ABORT);
-			mlo_link_recfg_sm_deliver_event_sync(
-					recfg_ctx->ml_dev,
-					WLAN_LINK_RECFG_SM_EV_COMPLETED,
-					0, NULL);
-			break;
-		}
-
-		if (tran && tran->two_frame_xmit_handler) {
-			status = tran->two_frame_xmit_handler(recfg_ctx);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				mlo_link_recfg_sm_transition_to(
-					ctx, WLAN_LINK_RECFG_S_ABORT);
-				mlo_link_recfg_sm_deliver_event_sync(
-					recfg_ctx->ml_dev,
-					WLAN_LINK_RECFG_SM_EV_COMPLETED,
-					0, NULL);
-				break;
-			}
-		}
-		if (req->recfg_type == link_recfg_st_prep_add_link)
-			smd_uhr_link_recfg_send_request_frame(recfg_ctx, req);
-		else
-			mlo_link_recfg_send_request_frame(recfg_ctx, req);
+		mlo_link_recfg_send_request_frame(recfg_ctx, req);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
 		/* Handle tx failure		*/
@@ -6421,22 +3551,6 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 					0, NULL);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_RX_RSP:
-		status = mlo_link_invoke_defer_rsp_handler(
-			recfg_ctx, (struct link_recfg_rx_rsp *)event_data,
-			event_data_len);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			if (status == QDF_STATUS_E_ALREADY)
-				break;
-			mlo_err("error to defer resp status %d", status);
-			mlo_link_recfg_sm_transition_to(
-					ctx, WLAN_LINK_RECFG_S_ABORT);
-			mlo_link_recfg_sm_deliver_event_sync(
-					recfg_ctx->ml_dev,
-					WLAN_LINK_RECFG_SM_EV_COMPLETED,
-					0, NULL);
-			break;
-		}
-
 		status = mlo_link_recfg_response_received(
 			recfg_ctx, (struct link_recfg_rx_rsp *)event_data,
 			event_data_len);
@@ -6451,8 +3565,6 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
-		recfg_ctx->internal_reason_code =
-			link_recfg_nb_sb_disconnect;
 		mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
 		mlo_link_recfg_sm_deliver_event_sync(
 					recfg_ctx->ml_dev,
@@ -6461,9 +3573,6 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT:
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
-		break;
-	case WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT:
-		mlo_link_recfg_rx_rsp_timeout_sm_handler(recfg_ctx);
 		break;
 	default:
 		event_handled = false;
@@ -6497,10 +3606,7 @@ mlo_link_recfg_state_abort_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_COMPLETED:
-		if (smd_roam_in_progress(recfg_ctx))
-			smd_link_recfg_complete(recfg_ctx, false);
-		else
-			mlo_link_recfg_complete(recfg_ctx, false);
+		mlo_link_recfg_complete(recfg_ctx, false);
 		break;
 	default:
 		event_handled = false;
@@ -6534,10 +3640,7 @@ mlo_link_recfg_state_completed_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_COMPLETED:
-		if (smd_roam_in_progress(recfg_ctx))
-			smd_link_recfg_complete(recfg_ctx, true);
-		else
-			mlo_link_recfg_complete(recfg_ctx, true);
+		mlo_link_recfg_complete(recfg_ctx, true);
 		break;
 	default:
 		event_handled = false;
@@ -6622,26 +3725,6 @@ static struct wlan_sm_state_info mlo_link_recfg_sm_info[] = {
 		mlo_link_recfg_state_abort_entry,
 		mlo_link_recfg_state_abort_exit,
 		mlo_link_recfg_state_abort_event,
-	},
-	{
-		(uint8_t)WLAN_LINK_RECFG_S_TTLM,
-		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
-		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
-		false,
-		"UPDATE_TTLM",
-		mlo_link_recfg_state_update_ttlm_entry,
-		mlo_link_recfg_state_update_ttlm_exit,
-		mlo_link_recfg_state_update_ttlm_event,
-	},
-	{
-		(uint8_t)WLAN_LINK_RECFG_S_WAIT,
-		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
-		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
-		true,
-		"SMD_WAIT",
-		mlo_link_recfg_state_wait_entry,
-		mlo_link_recfg_state_wait_exit,
-		mlo_link_recfg_state_wait_event,
 	},
 	{
 		(uint8_t)WLAN_LINK_RECFG_S_MAX,
@@ -6764,16 +3847,6 @@ static struct wlan_sm_state_info mlo_link_recfg_sm_info[] = {
 		mlo_link_recfg_subst_add_link_abort_wait_link_sw_event,
 	},
 	{
-		(uint8_t)WLAN_LINK_RECFG_SS_WAIT_SMD_EXEC,
-		(uint8_t)WLAN_LINK_RECFG_S_WAIT,
-		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
-		false,
-		"WAIT_SMD_EXEC",
-		mlo_link_recfg_subst_wait_smd_exec_entry,
-		mlo_link_recfg_subst_wait_smd_exec_exit,
-		mlo_link_recfg_subst_wait_smd_exec_event,
-	},
-	{
 		(uint8_t)WLAN_LINK_RECFG_SS_MAX,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
@@ -6803,12 +3876,6 @@ static const char *mlo_link_recfg_sm_event_names[] = {
 	"EV_ROAM_START_IND",
 	"EV_COMPLETED",
 	"EV_SER_TIMEOUT",
-	"EV_SM_TIMEOUT",
-	"EV_RX_RSP_TIMEOUT",
-	"EV_UPDATE_TTLM",
-	"EV_SMD_ROAM_START",
-	"EV_WAIT_SMD_EXEC",
-	"EV_SMD_ADD_LINK"
 };
 
 static QDF_STATUS mlo_link_recfg_sm_create(struct mlo_link_recfg_context *ctx)
@@ -6817,13 +3884,11 @@ static QDF_STATUS mlo_link_recfg_sm_create(struct mlo_link_recfg_context *ctx)
 	uint8_t name[WLAN_SM_ENGINE_MAX_NAME];
 	struct wlan_mlo_dev_context *ml_dev = ctx->ml_dev;
 	uint8_t vdev_id;
-	QDF_STATUS status;
 
 	if (!ml_dev->wlan_vdev_list[0]) {
 		mlo_err("no vdev in ml dev");
 		return QDF_STATUS_E_INVAL;
 	}
-
 	vdev_id = wlan_vdev_get_id(ml_dev->wlan_vdev_list[0]);
 	qdf_scnprintf(name, sizeof(name), "LNK_RCFG_%d", vdev_id);
 	sm = wlan_sm_create(name, ctx,
@@ -6835,16 +3900,6 @@ static QDF_STATUS mlo_link_recfg_sm_create(struct mlo_link_recfg_context *ctx)
 	if (!sm)
 		return QDF_STATUS_E_NOMEM;
 
-	status = qdf_mc_timer_init(&ctx->sm.sm_timer,
-				   QDF_TIMER_TYPE_WAKE_APPS,
-				   mlo_link_recfg_timeout,
-				   ml_dev);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_err("cannot create sm timer");
-		wlan_sm_delete(sm);
-		return status;
-	}
-
 	ctx->sm.sm_hdl = sm;
 
 	return QDF_STATUS_SUCCESS;
@@ -6852,37 +3907,9 @@ static QDF_STATUS mlo_link_recfg_sm_create(struct mlo_link_recfg_context *ctx)
 
 static QDF_STATUS mlo_link_recfg_sm_destroy(struct mlo_link_recfg_context *ctx)
 {
-	qdf_mc_timer_stop(&ctx->sm.sm_timer);
-	qdf_mc_timer_destroy(&ctx->sm.sm_timer);
 	wlan_sm_delete(ctx->sm.sm_hdl);
 
 	return QDF_STATUS_SUCCESS;
-}
-
-void mlo_link_recfg_timer_init(struct mlo_link_recfg_context *recfg_ctx)
-{
-	qdf_mc_timer_init(&recfg_ctx->link_recfg_rsp_timer, QDF_TIMER_TYPE_SW,
-			  mlo_link_recfg_rx_rsp_timeout_cb, recfg_ctx);
-}
-
-void mlo_link_recfg_timer_deinit(struct mlo_link_recfg_context *recfg_ctx)
-{
-	if (QDF_TIMER_STATE_RUNNING ==
-	    qdf_mc_timer_get_current_state(&recfg_ctx->link_recfg_rsp_timer))
-		qdf_mc_timer_stop(&recfg_ctx->link_recfg_rsp_timer);
-
-	qdf_mc_timer_destroy(&recfg_ctx->link_recfg_rsp_timer);
-}
-
-void mlo_link_recfg_rx_rsp_timeout_cb(void *user_data)
-{
-	struct mlo_link_recfg_context *recfg_ctx = user_data;
-
-	mlo_err("Failed to get the Link Reconfig RX response");
-	mlo_link_recfg_sm_deliver_event(recfg_ctx->ml_dev,
-					WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT,
-					0,
-					NULL);
 }
 
 QDF_STATUS mlo_link_recfg_init(struct wlan_objmgr_psoc *psoc,
@@ -6900,27 +3927,17 @@ QDF_STATUS mlo_link_recfg_init(struct wlan_objmgr_psoc *psoc,
 	if (!recfg_ctx)
 		return QDF_STATUS_E_NOMEM;
 
-	qdf_create_work(
-		0, &recfg_ctx->recfg_indication_work,
-		mlo_link_refg_done_work_handler,
-		recfg_ctx);
-	qdf_list_create(&recfg_ctx->recfg_done_list, 0);
 	recfg_ctx->psoc = psoc;
 	recfg_ctx->ml_dev = ml_dev;
 	status = mlo_link_recfg_sm_create(recfg_ctx);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		qdf_list_destroy(&recfg_ctx->recfg_done_list);
-		qdf_destroy_work(0, &recfg_ctx->recfg_indication_work);
 		qdf_mem_free(recfg_ctx);
 		return status;
 	}
 	ml_dev->link_recfg_ctx = recfg_ctx;
 	ml_link_recfg_sm_lock_create(ml_dev);
 	recfg_ctx->sm.curr_state_idx = -1;
-	recfg_ctx->macaddr_updating_vdev_id = WLAN_INVALID_VDEV_ID;
-	qdf_zero_macaddr(&recfg_ctx->old_macaddr_updating_vdev);
 
-	mlo_link_recfg_timer_init(recfg_ctx);
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -6929,13 +3946,8 @@ QDF_STATUS mlo_link_recfg_deinit(struct wlan_mlo_dev_context *ml_dev)
 	if (!ml_dev->link_recfg_ctx)
 		return QDF_STATUS_SUCCESS;
 
-	qdf_flush_work(&ml_dev->link_recfg_ctx->recfg_indication_work);
-	mlo_link_refg_flush_recfg_done_data(ml_dev->link_recfg_ctx);
-	qdf_list_destroy(&ml_dev->link_recfg_ctx->recfg_done_list);
-	mlo_link_recfg_timer_deinit(ml_dev->link_recfg_ctx);
 	ml_link_recfg_sm_lock_destroy(ml_dev);
 	mlo_link_recfg_sm_destroy(ml_dev->link_recfg_ctx);
-	qdf_destroy_work(0, &ml_dev->link_recfg_ctx->recfg_indication_work);
 	qdf_mem_free(ml_dev->link_recfg_ctx);
 	ml_dev->link_recfg_ctx = NULL;
 
@@ -7021,15 +4033,14 @@ static QDF_STATUS
 mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 				  struct mlo_link_recfg_context *ctx,
 				  struct wlan_mlo_link_recfg_req *link_recfg_req,
-				  uint8_t *rx_pkt_info,
 				  struct wlan_action_frame_args *action_frm,
+				  uint16_t frm_len,
 				  uint16_t *ie_offset)
 {
 	uint8_t i;
 	uint8_t link_id;
 	struct wlan_mlo_link_recfg_info *add_link_info;
 	struct element_info org_assoc_rsp;
-	uint32_t frm_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
 	QDF_STATUS status;
 
 	if (!ctx || !link_recfg_req)
@@ -7039,7 +4050,6 @@ mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 	if (!add_link_info->num_links)
 		return QDF_STATUS_SUCCESS;
 
-	qdf_mem_zero(&org_assoc_rsp, sizeof(org_assoc_rsp));
 	mlo_get_assoc_rsp(vdev, &org_assoc_rsp);
 	if (!org_assoc_rsp.len) {
 		mlo_err("Org Assoc response frame len is 0");
@@ -7070,9 +4080,7 @@ mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 								(qdf_size_t *)&link_assoc_rsp.len);
 			add_link_info->link[i].link_assoc_rsp.len = link_assoc_rsp.len;
 			if (QDF_IS_STATUS_SUCCESS(status)) {
-				mlo_debug("MLO vdev %d: link %d recfg assoc rsp",
-					  add_link_info->link[i].vdev_id,
-					  link_id);
+				mlo_debug("MLO: link recfg assoc rsp for link vdev");
 				mlo_update_cache_link_assoc_rsp(vdev, link_id,
 								&link_assoc_rsp);
 				mgmt_txrx_frame_hex_dump(link_assoc_rsp.ptr,
@@ -7082,9 +4090,7 @@ mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 				add_link_info->link[i].link_assoc_rsp.ptr = NULL;
 				add_link_info->link[i].link_assoc_rsp.len = 0;
 			} else {
-				mlo_err("MLO vdev %d: link %d recfg assoc resp generation failed",
-					 add_link_info->link[i].vdev_id,
-					  link_id);
+				mlo_err("Link recfg assoc resp generation failed");
 				add_link_info->link[i].link_assoc_rsp.len = 0;
 				qdf_mem_free(add_link_info->link[i].link_assoc_rsp.ptr);
 				add_link_info->link[i].link_assoc_rsp.ptr = NULL;
@@ -7099,8 +4105,8 @@ mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 static QDF_STATUS
 mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 				struct wlan_mlo_link_recfg_rsp *link_recfg_rsp,
-				uint8_t *rx_pkt_info,
 				struct wlan_action_frame *action_frm,
+				uint32_t frame_len,
 				uint16_t *ie_offset)
 {
 	uint8_t *link_recfg_action_frm = NULL, *frame = NULL;
@@ -7110,15 +4116,13 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 	uint8_t i;
 	struct element_info oci_ie = {0};
 	uint8_t *mlieseq;
-	uint32_t total_frame_len = WMA_GET_RX_MPDU_LEN(rx_pkt_info);
-	uint32_t frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
 	qdf_size_t mlieseqlen;
 	struct wlan_mlo_link_recfg_req *link_recfg_req;
 
 	if (!ctx)
 		return QDF_STATUS_E_NULL_VALUE;
 
-	if (!action_frm || !frame_len || !total_frame_len)
+	if (!action_frm || !frame_len)
 		return QDF_STATUS_E_NULL_VALUE;
 
 	link_recfg_req = &ctx->curr_recfg_req;
@@ -7138,9 +4142,6 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 			sizeof(uint8_t);
 
 	mlo_debug("Link Recfg rsp frame len %d ", frame_len);
-	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO,QDF_TRACE_LEVEL_DEBUG,
-			   WMA_GET_RX_MAC_HEADER(rx_pkt_info),
-			   total_frame_len);
 
 	if (frame_len < ie_len_parsed) {
 		mlo_err("Action frame length %d too short", frame_len);
@@ -7157,11 +4158,6 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 	link_recfg_rsp->count = *(link_recfg_action_frm + sizeof(uint8_t));
 	mlo_debug("Link Recfg rsp count %d ",
 		  link_recfg_rsp->count);
-	if (link_recfg_rsp->count > WLAN_MAX_ML_RECFG_LINK_COUNT) {
-		mlo_err("Recfg rsp count %d exceeds max %d",
-			link_recfg_rsp->count, WLAN_MAX_ML_RECFG_LINK_COUNT);
-		return QDF_STATUS_E_INVAL;
-	}
 
 	link_recfg_action_frm += sizeof(uint8_t) + sizeof(uint8_t);
 	for (i = 0; i < link_recfg_rsp->count; i++) {
@@ -7178,7 +4174,7 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 	link_status = mlo_link_recfg_if_add_link_accepted(link_recfg_req);
 	if (QDF_IS_STATUS_SUCCESS(link_status) &&
 	    link_recfg_req->add_link_info.num_links) {
-		/* Group key data */
+		// Group key data
 		link_recfg_rsp->grp_key_data.len = *link_recfg_action_frm;
 		link_recfg_rsp->grp_key_data.ptr = qdf_mem_malloc(link_recfg_rsp->grp_key_data.len);
 
@@ -7192,7 +4188,7 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 			     link_recfg_rsp->grp_key_data.len);
 		link_recfg_action_frm += sizeof(uint8_t) * link_recfg_rsp->grp_key_data.len;
 
-		/* OCI IE */
+		// OCI IE
 		if (*(link_recfg_action_frm) == WLAN_ELEMID_EXTN_ELEM &&
 		    *(link_recfg_action_frm + sizeof(uint16_t)) == WLAN_EXTN_ELEMID_OCI) {
 			oci_ie.len = *(link_recfg_action_frm + sizeof(uint8_t));
@@ -7212,7 +4208,7 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 		}
 		link_recfg_action_frm += oci_ie.len;
 
-		/* Basic ML IE */
+		// Basic MLIE
 		status = util_find_mlie(link_recfg_action_frm,
 					(frame_len - (uint16_t)(link_recfg_action_frm - frame)),
 					&mlieseq,
@@ -7228,8 +4224,8 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 				*ie_offset);
 		} else {
 			*ie_offset = (uint16_t)(link_recfg_action_frm - frame);
-			mlo_debug("ML IE found %zu, ie_offset %d", mlieseqlen,
-				  *ie_offset);
+			mlo_err("ML IE found %zu, ie_offset %d", mlieseqlen,
+				*ie_offset);
 		}
 
 		if (mlieseqlen) {
@@ -7254,26 +4250,11 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 			goto end;
 		}
 
-		ctx->rsp_rx_frame.ptr = qdf_mem_malloc(total_frame_len);
-		if (!ctx->rsp_rx_frame.ptr) {
-			qdf_mem_free(ctx->rsp_frame.ptr);
-			mlo_err("rsp frame malloc failed");
-			status = QDF_STATUS_E_NOMEM;
-			goto end;
-		}
-		/* copy the Link Reconfiguration response frame */
+		// copy the Link Reconfiguration response frame
 		qdf_mem_copy(ctx->rsp_frame.ptr,
 			     frame,
 			     frame_len);
 		ctx->rsp_frame.len = frame_len;
-		/*
-		 * Copy frame with starting address of mac header
-		 * till provided length which is total length of frame.
-		 */
-		qdf_mem_copy(ctx->rsp_rx_frame.ptr,
-			     WMA_GET_RX_MAC_HEADER(rx_pkt_info),
-			     total_frame_len);
-		ctx->rsp_rx_frame.len = total_frame_len;
 		mlo_err("Link Reconfig rsp rx dump:");
 		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO,
 				   QDF_TRACE_LEVEL_DEBUG,
@@ -7287,13 +4268,12 @@ end:
 QDF_STATUS
 mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 		      enum wlan_link_recfg_sm_evt event,
-		      uint8_t *rx_pkt_info)
+		      void *event_data,
+		      uint32_t frame_len)
 {
 	struct mlo_link_recfg_context *ctx;
 	struct wlan_action_frame_args *action_frm;
 	struct link_recfg_rx_rsp rx_rsp = {0};
-	void *event_data = WMA_GET_RX_MPDU_DATA(rx_pkt_info);
-	uint32_t frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
 	QDF_STATUS status;
 	uint16_t ie_offset = 0;
 
@@ -7308,17 +4288,12 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_NULL_VALUE;
 	}
 
-	if (!mlo_is_link_recfg_in_progress(vdev)) {
-		mlo_err("Link Recfg response received in invalid state, drop it");
-		return QDF_STATUS_E_FAILURE;
-	}
-
 	action_frm = (struct wlan_action_frame_args *)event_data;
 	ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
 	status = mlo_link_recfg_parse_action_rsp(ctx,
 						 &ctx->curr_recfg_rsp,
-						 rx_pkt_info,
 						 event_data,
+						 frame_len,
 						 &ie_offset);
 
 	if (QDF_IS_STATUS_ERROR(status))
@@ -7326,8 +4301,8 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 	else
 		mlo_link_recfg_gen_link_assoc_rsp(vdev, ctx,
 						  &ctx->curr_recfg_req,
-						  rx_pkt_info,
 						  action_frm,
+						  frame_len,
 						  &ie_offset);
 
 	rx_rsp.status = status;
@@ -7338,80 +4313,8 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 	if (QDF_IS_STATUS_ERROR(status))
 		mlo_err("Posting Link Recfg Response event failed");
 
-	/* In case of common link case, no-op in below API.
-	 * In no-common link case, it will continue link assoc rsp process
-	 * and peer assoc for the pending vdev.
-	 */
-	mlo_link_recfg_link_add_join_continue(vdev, status);
-
 	return status;
 }
-
-#ifdef WLAN_FEATURE_11BN_SMD
-QDF_STATUS
-mlo_uhr_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
-		      enum wlan_link_recfg_sm_evt event,
-		      uint8_t *rx_pkt_info)
-{
-	struct mlo_link_recfg_context *ctx;
-	struct wlan_action_frame_args *action_frm;
-	struct link_recfg_rx_rsp rx_rsp = {0};
-	void *event_data = WMA_GET_RX_MPDU_DATA(rx_pkt_info);
-	uint32_t frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
-	QDF_STATUS status;
-	uint16_t ie_offset = 0;
-
-	if (!vdev || !vdev->mlo_dev_ctx)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	if (!vdev->mlo_dev_ctx->link_recfg_ctx)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	if (!event_data || !frame_len) {
-		mlo_err("event data or frame_len is null");
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-
-	if (!mlo_is_link_recfg_in_progress(vdev)) {
-		mlo_err("UHR Link Recfg response received in invalid state, drop it");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	action_frm = (struct wlan_action_frame_args *)event_data;
-	ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
-	/* Parse UHR ST Preparation Response */
-	status = mlo_uhr_link_recfg_parse_st_prep_rsp(ctx,
-						      &ctx->curr_recfg_rsp,
-						      rx_pkt_info,
-						      event_data,
-						      &ie_offset);
-
-	if (QDF_IS_STATUS_ERROR(status))
-		mlo_err("UHR Link Recfg Response Parsing failed");
-	else
-		mlo_link_recfg_gen_link_assoc_rsp(vdev, ctx,
-						  &ctx->curr_recfg_req,
-						  rx_pkt_info,
-						  action_frm,
-						  &ie_offset);
-
-	rx_rsp.status = status;
-	status = mlo_link_recfg_sm_deliver_event(vdev->mlo_dev_ctx, event,
-						 sizeof(struct link_recfg_rx_rsp),
-						 &rx_rsp);
-
-	if (QDF_IS_STATUS_ERROR(status))
-		mlo_err("Posting UHR Link Recfg Response event failed");
-
-	/* In case of common link case, no-op in below API.
-	 * In no-common link case, it will continue link assoc rsp process
-	 * and peer assoc for the pending vdev.
-	 */
-	mlo_link_recfg_link_add_join_continue(vdev, status);
-
-	return status;
-}
-#endif /* WLAN_FEATURE_11BN_SMD */
 
 static void
 mlo_link_recfg_zero_and_free_memory(uint8_t *ptr, uint32_t len)
@@ -7439,11 +4342,6 @@ mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
 	ctx->rsp_frame.len = 0;
 	ctx->rsp_frame.ptr = NULL;
 
-	mlo_link_recfg_zero_and_free_memory(ctx->rsp_rx_frame.ptr,
-					    ctx->rsp_rx_frame.len);
-	ctx->rsp_rx_frame.len = 0;
-	ctx->rsp_rx_frame.ptr = NULL;
-
 	mlo_link_recfg_zero_and_free_memory(ctx->curr_recfg_rsp.grp_key_data.ptr,
 					    ctx->curr_recfg_rsp.grp_key_data.len);
 	ctx->curr_recfg_rsp.grp_key_data.len = 0;
@@ -7458,11 +4356,6 @@ mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
 					    ctx->curr_recfg_rsp.mlo_ie.len);
 	ctx->curr_recfg_rsp.mlo_ie.len = 0;
 	ctx->curr_recfg_rsp.mlo_ie.ptr = NULL;
-
-	smd_link_recfg_free_bss_trans_params_ie(&ctx->curr_recfg_rsp);
-	smd_link_recfg_free_perptk_ies(&ctx->curr_recfg_rsp);
-
-	ctx->curr_recfg_rsp.count = 0;
 }
 
 QDF_STATUS
@@ -7506,12 +4399,6 @@ mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
 
 	for (i = 0; i < req->add_link_info.num_links; i++) {
 		add_link = &req->add_link_info.link[i];
-		if (add_link->status_code != STATUS_SUCCESS) {
-			mlo_debug("link id %d add with failure status code %d",
-				  add_link->link_id,
-				  add_link->status_code);
-			continue;
-		}
 
 		link_info = mlo_mgr_get_ap_link_info(vdev,
 						     &add_link->ap_link_addr);
@@ -7697,992 +4584,3 @@ err:
 			       REASON_KEY_FAIL_TO_INSTALL, NULL);
 	}
 }
-
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
-static void
-mlo_mgr_update_recfg_req(struct mlo_link_recfg_user_req_params *params,
-			 struct wlan_mlo_link_recfg_req *recfg_req)
-{
-	uint8_t i;
-
-	recfg_req->vdev_id = params->vdev_id;
-	recfg_req->is_user_req = true;
-
-	qdf_mem_copy(&recfg_req->mld_addr,
-		     &params->mld_addr, QDF_MAC_ADDR_SIZE);
-
-	if (params->num_link_add_param) {
-		recfg_req->add_link_info.num_links = params->num_link_add_param;
-		for (i = 0; i < params->num_link_add_param; i++) {
-			recfg_req->add_link_info.link[i].link_id =
-						params->add_link[i].link_id;
-			recfg_req->add_link_info.link[i].vdev_id =
-						params->add_link[i].vdev_id;
-			qdf_mem_copy(&recfg_req->add_link_info.link[i].ap_link_addr,
-				     &params->add_link[i].link_addr,
-				     QDF_MAC_ADDR_SIZE);
-		}
-	}
-	if (params->num_link_del_param) {
-		recfg_req->del_link_info.num_links = params->num_link_del_param;
-		for (i = 0; i < params->num_link_del_param; i++) {
-			recfg_req->del_link_info.link[i].link_id =
-				params->del_link[i].link_id;
-			qdf_mem_copy(&recfg_req->del_link_info.link[i].ap_link_addr,
-				     &params->del_link[i].link_addr,
-				     QDF_MAC_ADDR_SIZE);
-		}
-	}
-}
-
-QDF_STATUS
-mlo_mgr_link_recfg_req_cmd_handler(
-		struct wlan_objmgr_psoc *psoc,
-		struct mlo_link_recfg_user_req_params *params)
-{
-	struct wlan_objmgr_vdev *vdev;
-	struct wlan_mlo_link_recfg_req recfg_req = {0};
-	QDF_STATUS status;
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-
-	if (!params) {
-		mlo_err("Invalid params");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, params->vdev_id,
-						    WLAN_MLO_MGR_ID);
-	if (!vdev) {
-		mlo_err("Invalid link recfg VDEV %d", params->vdev_id);
-		return QDF_STATUS_E_INVAL;
-	}
-	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	if (!mlo_dev_ctx) {
-		mlo_err("mlo_ctx null");
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	qdf_mem_zero(&recfg_req, sizeof(struct wlan_mlo_link_recfg_req));
-	mlo_mgr_update_recfg_req(params, &recfg_req);
-
-	status = mlo_link_recfg_sm_deliver_event(
-				mlo_dev_ctx,
-				WLAN_LINK_RECFG_SM_EV_USER_REQ,
-				sizeof(recfg_req), &recfg_req);
-
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-#ifdef WLAN_FEATURE_11BN_SMD
-/**
- * mlo_uhr_link_recfg_parse_st_prep_rsp() - Parse UHR Link Reconfig ST prep response
- * @ctx: Link reconfiguration context
- * @link_recfg_rsp: Response structure to populate
- * @rx_pkt_info: RX packet information
- * @action_frm: Action frame pointer
- * @ie_offset: IE offset output
- *
- * Parse UHR Link Reconfiguration Response frame with Type=0 (ST preparation)
- * received from the target AP MLD during SMD roaming.
- *
- * Frame Format (UHR Link Reconfiguration Response frame Action field format):
- *
- * Order | Field Name                              | Size      | Notes
- * ------+-----------------------------------------+-----------+---------------------------
- *   1   | Category                                | 1 byte    | Protected UHR (43)
- *   2   | Protected UHR Action                    | 1 byte    | UHR Link Reconfig Rsp
- *   3   | Dialog Token                            | 1 byte    | Matches request
- *   4   | Type                                    | 1 byte    | 0=ST prep, 1=ST exec
- *   5   | Status Code                             | 2 bytes   | Overall status (#5998)
- *   6   | Count                                   | 1 byte    | Number of status entries
- *   7   | Reconfiguration Status List             | variable  | 3*Count bytes
- *   8   | Key Delivery element                    | variable  | Optional (#6363)
- *   9   | OCI element                             | variable  | Optional (9.4.2.235)
- *  10   | Basic Multi-Link element                | variable  | Optional (9.4.2.322.2)
- *  11   | SMD BSS Transition Parameters element   | variable  | Optional (9.4.2.359)
- *  12   | MSCS Descriptor element                 | variable  | Optional (9.4.2.242)
- *  13   | Diffie-Hellman Parameter element        | variable  | Optional (#7195, #6372)
- *  14   | Nonce element                           | variable  | Optional (9.4.2.188)
- *  15   | MIC element                             | variable  | Optional (#10409)
- *
- * Reconfiguration Status List format (per entry):
- * +----------+-------------+
- * | Link ID  | Status Code |
- * | (1 byte) | (2 bytes)   |
- * +----------+-------------+
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-mlo_uhr_link_recfg_parse_st_prep_rsp(
-	struct mlo_link_recfg_context *ctx,
-	struct wlan_mlo_link_recfg_rsp *link_recfg_rsp,
-	uint8_t *rx_pkt_info,
-	struct wlan_action_frame *action_frm,
-	uint16_t *ie_offset)
-{
-	uint8_t *link_recfg_action_frm = NULL, *frame = NULL;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	QDF_STATUS link_status;
-	uint16_t ie_len_parsed;
-	uint8_t i, type_field;
-	struct element_info oci_ie = {0};
-	struct element_info smd_bss_trans_params = {0};
-	uint8_t *mlieseq;
-	uint32_t total_frame_len = WMA_GET_RX_MPDU_LEN(rx_pkt_info);
-	uint32_t frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
-	qdf_size_t mlieseqlen;
-	struct wlan_mlo_link_recfg_req *link_recfg_req;
-
-	if (!ctx || !link_recfg_rsp || !action_frm || !frame_len ||
-	    !total_frame_len) {
-		mlo_err("Invalid parameters: ctx=%pK rsp=%pK action_frm=%pK frame_len=%u total_len=%u",
-			ctx, link_recfg_rsp, action_frm, frame_len,
-			total_frame_len);
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-
-	link_recfg_req = &ctx->curr_recfg_req;
-
-	ie_len_parsed = sizeof(*action_frm) + sizeof(uint8_t) +
-			sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint8_t);
-
-	mlo_debug("UHR Link Recfg ST Prep rsp frame len %d", frame_len);
-	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO, QDF_TRACE_LEVEL_DEBUG,
-			   WMA_GET_RX_MAC_HEADER(rx_pkt_info), total_frame_len);
-
-	if (frame_len < ie_len_parsed) {
-		mlo_err("Action frame length %d too short (min %d)",
-			frame_len, ie_len_parsed);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	frame = (uint8_t *)action_frm;
-	link_recfg_action_frm = (uint8_t *)action_frm + sizeof(*action_frm);
-
-	/* Extract Dialog Token */
-	link_recfg_rsp->dialog_token = *link_recfg_action_frm;
-	mlo_debug("Dialog token %d", link_recfg_rsp->dialog_token);
-	link_recfg_action_frm++;
-
-	/* Extract Type field — must be 0 (ST prep) */
-	type_field = *link_recfg_action_frm;
-	link_recfg_rsp->type = type_field;
-	mlo_debug("Type field %d (0=ST prep, 1=ST exec)", type_field);
-	if (type_field != UHR_LINK_RECONFIG_TYPE_ST_PREP) {
-		mlo_err("Unexpected type field %d, expected ST prep (0)",
-			type_field);
-		return QDF_STATUS_E_FAILURE;
-	}
-	link_recfg_action_frm++;
-
-	/* Extract Status Code */
-	link_recfg_rsp->status_code =
-		(enum wlan_status_code)qdf_le16_to_cpu(*(uint16_t *)link_recfg_action_frm);
-	mlo_debug("Overall Status Code %d", link_recfg_rsp->status_code);
-	link_recfg_action_frm += 2;
-
-	/* Extract Count */
-	link_recfg_rsp->count = *link_recfg_action_frm;
-	mlo_debug("Count %d", link_recfg_rsp->count);
-	if (link_recfg_rsp->count > WLAN_MAX_ML_BSS_LINKS) {
-		mlo_err("Count %d exceeds max %d",
-			link_recfg_rsp->count, WLAN_MAX_ML_BSS_LINKS);
-		return QDF_STATUS_E_FAILURE;
-	}
-	link_recfg_action_frm++;
-
-	/* Verify buffer has complete status list */
-	if ((link_recfg_action_frm - frame) +
-	    (link_recfg_rsp->count * 3) > frame_len) {
-		mlo_err("Buffer overflow parsing status list");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	for (i = 0; i < link_recfg_rsp->count; i++) {
-		link_recfg_rsp->recfg_status_list[i].link_id =
-			*link_recfg_action_frm;
-		link_recfg_rsp->recfg_status_list[i].status_code =
-			qdf_le16_to_cpu(*(uint16_t *)(link_recfg_action_frm + 1));
-		mlo_info("Link %d: link_id=%d status_code=%d (%s)",
-			 i,
-			 link_recfg_rsp->recfg_status_list[i].link_id,
-			 link_recfg_rsp->recfg_status_list[i].status_code,
-			 (link_recfg_rsp->recfg_status_list[i].status_code ==
-			  STATUS_SUCCESS) ? "ACCEPTED" : "REJECTED");
-		link_recfg_action_frm += 3;
-	}
-
-	mlo_link_recfg_update_result(ctx, link_recfg_rsp);
-
-	link_status = mlo_link_recfg_if_add_link_accepted(link_recfg_req);
-	if (QDF_IS_STATUS_SUCCESS(link_status) &&
-	    link_recfg_req->add_link_info.num_links) {
-		mlo_info("At least one link accepted, parsing IEs");
-
-		/*
-		 * Key Delivery element (EID=255 ExtID=7) MUST NOT be present
-		 * in a Type=0 (ST prep) response — only ST exec carries it.
-		 */
-		if ((link_recfg_action_frm - frame) + MIN_IE_LEN + 1 <=
-		    frame_len &&
-		    *link_recfg_action_frm == WLAN_ELEMID_EXTN_ELEM &&
-		    *(link_recfg_action_frm + 2) ==
-		    WLAN_EXTN_ELEMID_KEY_DELIVERY) {
-			mlo_err("Key Delivery IE unexpectedly present in ST prep");
-			status = QDF_STATUS_E_FAILURE;
-			goto end;
-		}
-
-		/* Parse OCI IE (optional) */
-		if ((link_recfg_action_frm - frame) + MIN_IE_LEN + 1 <=
-		    frame_len &&
-		    *link_recfg_action_frm == WLAN_ELEMID_EXTN_ELEM &&
-		    *(link_recfg_action_frm + 2) == WLAN_EXTN_ELEMID_OCI) {
-			oci_ie.len = *(link_recfg_action_frm + 1);
-			mlo_debug("OCI IE len %d", oci_ie.len);
-			if ((link_recfg_action_frm - frame) + 2 +
-			    oci_ie.len > frame_len) {
-				mlo_err("Buffer overflow parsing OCI IE");
-				status = QDF_STATUS_E_FAILURE;
-				goto end;
-			}
-			oci_ie.ptr = link_recfg_action_frm + MIN_IE_LEN + 1;
-			if (link_recfg_rsp->oci_ie.ptr) {
-				qdf_mem_free(link_recfg_rsp->oci_ie.ptr);
-				link_recfg_rsp->oci_ie.ptr = NULL;
-				link_recfg_rsp->oci_ie.len = 0;
-			}
-			link_recfg_rsp->oci_ie.ptr =
-				qdf_mem_malloc(oci_ie.len);
-			if (!link_recfg_rsp->oci_ie.ptr) {
-				mlo_err("Malloc failed for OCI IE");
-				status = QDF_STATUS_E_NOMEM;
-				goto end;
-			}
-			link_recfg_rsp->oci_ie.len = oci_ie.len - 1;
-			qdf_mem_copy(link_recfg_rsp->oci_ie.ptr, oci_ie.ptr,
-				     link_recfg_rsp->oci_ie.len);
-			oci_ie.len += MIN_IE_LEN;
-			link_recfg_action_frm += oci_ie.len;
-		}
-
-		/* Parse Basic ML IE */
-		status = util_find_mlie(link_recfg_action_frm,
-					(frame_len - (uint16_t)(link_recfg_action_frm - frame)),
-					&mlieseq, &mlieseqlen);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("ML IE parsing failed %d", status);
-			goto end;
-		}
-
-		if (!mlieseq) {
-			*ie_offset = 0;
-			mlo_err("ML IE not found, ie_offset %d", *ie_offset);
-		} else {
-			*ie_offset = (uint16_t)(link_recfg_action_frm - frame);
-			mlo_debug("ML IE found len=%zu, ie_offset=%d",
-				  mlieseqlen, *ie_offset);
-			if (mlieseqlen > 0) {
-				link_recfg_rsp->mlo_ie.len = mlieseqlen;
-				if (link_recfg_rsp->mlo_ie.ptr) {
-					qdf_mem_free(link_recfg_rsp->mlo_ie.ptr);
-					link_recfg_rsp->mlo_ie.ptr = NULL;
-				}
-				link_recfg_rsp->mlo_ie.ptr =
-					qdf_mem_malloc(mlieseqlen);
-				if (!link_recfg_rsp->mlo_ie.ptr) {
-					mlo_err("Malloc failed for ML IE");
-					status = QDF_STATUS_E_NOMEM;
-					goto end;
-				}
-				qdf_mem_copy(link_recfg_rsp->mlo_ie.ptr,
-					     mlieseq, mlieseqlen);
-				mlo_debug("ML IE stored, len %d",
-					  link_recfg_rsp->mlo_ie.len);
-			}
-			link_recfg_action_frm += mlieseqlen;
-
-			/* Parse SMD BSS Transition Parameters element */
-			status = parse_smd_bss_transition_params(
-				link_recfg_action_frm,
-				(frame_len - (uint16_t)(link_recfg_action_frm - frame)),
-				&smd_bss_trans_params,
-				&link_recfg_rsp->assigned_aid);
-			if (QDF_IS_STATUS_SUCCESS(status) &&
-			    smd_bss_trans_params.len > 0) {
-				mlo_info("SMD BSS Transition Params found, len %d AID %d",
-					 smd_bss_trans_params.len,
-					 link_recfg_rsp->assigned_aid);
-				link_recfg_rsp->smd_bss_trans_params.ptr =
-					qdf_mem_malloc(smd_bss_trans_params.len);
-				if (!link_recfg_rsp->smd_bss_trans_params.ptr) {
-					mlo_err("Malloc failed for SMD BSS Trans Params");
-					status = QDF_STATUS_E_NOMEM;
-					goto end;
-				}
-				qdf_mem_copy(link_recfg_rsp->smd_bss_trans_params.ptr,
-					     smd_bss_trans_params.ptr,
-					     smd_bss_trans_params.len);
-				link_recfg_rsp->smd_bss_trans_params.len =
-					smd_bss_trans_params.len;
-			} else if (QDF_IS_STATUS_ERROR(status)) {
-				mlo_warn("SMD BSS Transition Params not present");
-				status = QDF_STATUS_SUCCESS;
-			}
-		} /* end if (mlieseq) */
-	} else {
-		mlo_info("No links accepted or all links rejected");
-	}
-
-	if (frame_len > 0) {
-		if (ctx->rsp_frame.ptr) {
-			qdf_mem_free(ctx->rsp_frame.ptr);
-			ctx->rsp_frame.ptr = NULL;
-			ctx->rsp_frame.len = 0;
-		}
-		if (ctx->rsp_rx_frame.ptr) {
-			qdf_mem_free(ctx->rsp_rx_frame.ptr);
-			ctx->rsp_rx_frame.ptr = NULL;
-			ctx->rsp_rx_frame.len = 0;
-		}
-		ctx->rsp_frame.ptr = qdf_mem_malloc(frame_len);
-		if (!ctx->rsp_frame.ptr) {
-			mlo_err("rsp frame malloc failed");
-			status = QDF_STATUS_E_NOMEM;
-			goto end;
-		}
-		ctx->rsp_rx_frame.ptr = qdf_mem_malloc(total_frame_len);
-		if (!ctx->rsp_rx_frame.ptr) {
-			qdf_mem_free(ctx->rsp_frame.ptr);
-			ctx->rsp_frame.ptr = NULL;
-			mlo_err("rsp rx frame malloc failed");
-			status = QDF_STATUS_E_NOMEM;
-			goto end;
-		}
-		qdf_mem_copy(ctx->rsp_frame.ptr, frame, frame_len);
-		ctx->rsp_frame.len = frame_len;
-		qdf_mem_copy(ctx->rsp_rx_frame.ptr,
-			     WMA_GET_RX_MAC_HEADER(rx_pkt_info),
-			     total_frame_len);
-		ctx->rsp_rx_frame.len = total_frame_len;
-		mlo_debug("UHR Link Reconfig ST Prep rsp stored");
-		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO, QDF_TRACE_LEVEL_DEBUG,
-				   frame, frame_len);
-	}
-
-	mlo_info("UHR ST Prep rsp parsed: dialog=%d type=%d count=%d aid=%d",
-		 link_recfg_rsp->dialog_token, link_recfg_rsp->type,
-		 link_recfg_rsp->count, link_recfg_rsp->assigned_aid);
-
-end:
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_err("ST prep rsp parsing failed, cleaning up");
-		smd_link_recfg_cleanup_rsp(ctx, link_recfg_rsp);
-	}
-	return status;
-}
-
-/**
- * extract_target_ap_capabilities() - Extract target AP capabilities
- * @mlo_ie: Pointer to the ST Prep response ML IE data
- * @mlo_ie_len: Length of the ST Prep response ML IE
- * @target_caps: Output structure to store extracted capabilities
- * @ctx: Link reconfiguration context (to access scan cache)
- *
- * All Capability/Operation IEs (HT, VHT, HE, EHT, UHR) are preferentially
- * taken from the ST Prep response's per-STA profile in @mlo_ie, since it is
- * the freshest and most authoritative source for the target link. If a
- * given IE is not present in the per-STA profile (e.g. not a Complete
- * Profile, or that element was omitted), the scan cache entry for the
- * target AP link is used as a fallback.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-extract_target_ap_capabilities(uint8_t *mlo_ie,
-                               qdf_size_t mlo_ie_len,
-                               struct smd_target_ap_caps *target_caps,
-                               struct mlo_link_recfg_context *ctx)
-{
-	struct wlan_objmgr_psoc *psoc;
-	struct wlan_objmgr_pdev *pdev;
-	struct wlan_mlo_link_recfg_req *recfg_req;
-	struct wlan_mlo_link_recfg_info *add_link_info;
-	struct scan_cache_entry *scan_entry;
-	uint8_t i;
-	const uint8_t *ie_ptr;
-	uint8_t ie_len;
-
-	/* Validate inputs */
-	if (!target_caps || !ctx) {
-		mlo_err("Invalid parameters: caps=%pK ctx=%pK", target_caps, ctx);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	psoc = mlo_link_recfg_get_psoc(ctx);
-	if (!psoc) {
-		mlo_err("psoc is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	pdev = wlan_objmgr_get_pdev_by_id(psoc, 0, WLAN_LINK_RECFG_ID);
-	if (!pdev) {
-		mlo_err("pdev is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	/* Initialize output structure */
-	qdf_mem_zero(target_caps, sizeof(*target_caps));
-
-	recfg_req = &ctx->curr_recfg_req;
-	add_link_info = &recfg_req->add_link_info;
-
-	if (!add_link_info->num_links) {
-		mlo_debug("No links to add");
-		wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
-		return QDF_STATUS_SUCCESS;
-	}
-
-	target_caps->num_links = add_link_info->num_links;
-
-	mlo_info("Extracting capabilities for %d links from target AP",
-		 target_caps->num_links);
-
-	/* Extract capabilities for each link from scan cache */
-	for (i = 0; i < add_link_info->num_links && i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		struct smd_target_ap_link_caps *link_cap = &target_caps->link_caps[i];
-		struct qdf_mac_addr *ap_link_addr = &add_link_info->link[i].ap_link_addr;
-		uint8_t *frame_body;
-		qdf_size_t frame_len;
-		uint8_t *payload_copy = NULL;
-		uint8_t *sta_prof = NULL;
-		qdf_size_t sta_prof_len = 0;
-
-		/* Store link ID */
-		link_cap->link_id = add_link_info->link[i].link_id;
-
-		/* Get scan entry for this link */
-		scan_entry = wlan_scan_get_entry_by_bssid(pdev, ap_link_addr);
-		if (!scan_entry) {
-			mlo_err("Scan entry not found for link %d " QDF_MAC_ADDR_FMT,
-				link_cap->link_id, QDF_MAC_ADDR_REF(ap_link_addr->bytes));
-			/* pdev ref held until after the loop; safe to continue */
-			continue;
-		}
-
-		/* Get frame body (IEs start after beacon header) */
-		frame_body = util_scan_entry_ie_data(scan_entry);
-		frame_len = util_scan_entry_ie_len(scan_entry);
-
-		if (!frame_body || !frame_len) {
-			mlo_err("No IE data in scan entry for link %d", link_cap->link_id);
-			util_scan_free_cache_entry(scan_entry);
-			/* pdev ref held until after the loop; safe to continue */
-			continue;
-		}
-
-		/* Extract Capability Info from fixed fields (before IEs) */
-		link_cap->capability_info = scan_entry->cap_info.value;
-		link_cap->capability_info_present = true;
-
-		/*
-		 * Locate this link's per-STA profile in the ST Prep response's
-		 * ML IE, if present. It is the freshest and most authoritative
-		 * source for this link's Capability/Operation IEs; scan cache
-		 * (frame_body/frame_len) is used below as a fallback whenever
-		 * a given IE is absent from it.
-		 */
-		if (mlo_ie && mlo_ie_len) {
-			QDF_STATUS sta_prof_status;
-
-			sta_prof_status = util_get_bvmlie_persta_profile_buf(
-				mlo_ie, mlo_ie_len, link_cap->link_id,
-				&payload_copy, &sta_prof, &sta_prof_len);
-			if (QDF_IS_STATUS_ERROR(sta_prof_status)) {
-				mlo_debug("No per-STA profile for link_id=%d in ST Prep response, using scan cache only",
-					  link_cap->link_id);
-			} else if (sta_prof_len <= (WLAN_CAPABILITYINFO_LEN +
-						 WLAN_STATUSCODE_LEN)) {
-				mlo_debug("No IE section in per-STA profile for link_id=%d, using scan cache only",
-					  link_cap->link_id);
-				sta_prof = NULL;
-				sta_prof_len = 0;
-			} else {
-				/*
-				 * An association-response STA Profile starts with the
-				 * link-specific Capability Information and Status Code.
-				 * Skip these fixed fields before searching the IE section.
-				 */
-				sta_prof += WLAN_CAPABILITYINFO_LEN +
-					    WLAN_STATUSCODE_LEN;
-				sta_prof_len -= WLAN_CAPABILITYINFO_LEN +
-						WLAN_STATUSCODE_LEN;
-			}
-		}
-
-		/* Extract Supported Rates IE (Element ID 1) */
-		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RATES,
-							     sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RATES, frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1];
-			link_cap->supported_rates.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->supported_rates.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->supported_rates.ptr, ie_ptr + 2, ie_len);
-			link_cap->supported_rates.len = ie_len;
-		}
-
-		/* Extract Extended Supported Rates IE (Element ID 50) */
-		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XRATES,
-							     sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XRATES, frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1];
-			link_cap->ext_supported_rates.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->ext_supported_rates.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->ext_supported_rates.ptr, ie_ptr + 2, ie_len);
-			link_cap->ext_supported_rates.len = ie_len;
-		}
-
-		/* Extract HT Capabilities IE (Element ID 45) */
-		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTCAP_ANA,
-							     sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTCAP_ANA, frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1];
-			link_cap->ht_cap.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->ht_cap.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->ht_cap.ptr, ie_ptr + 2, ie_len);
-			link_cap->ht_cap.len = ie_len;
-			link_cap->ht_cap_present = true;
-		}
-
-		/* Extract HT Information IE (Element ID 61) */
-		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTINFO_ANA,
-							     sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTINFO_ANA, frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1];
-			link_cap->ht_info.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->ht_info.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->ht_info.ptr, ie_ptr + 2, ie_len);
-			link_cap->ht_info.len = ie_len;
-			link_cap->ht_info_present = true;
-		}
-
-		/* Extract VHT Capabilities IE (Element ID 191) */
-		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTCAP,
-							     sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTCAP, frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1];
-			link_cap->vht_cap.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->vht_cap.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->vht_cap.ptr, ie_ptr + 2, ie_len);
-			link_cap->vht_cap.len = ie_len;
-			link_cap->vht_cap_present = true;
-		}
-
-		/* Extract VHT Operation IE (Element ID 192) */
-		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTOP,
-							     sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTOP, frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1];
-			link_cap->vht_op.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->vht_op.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->vht_op.ptr, ie_ptr + 2, ie_len);
-			link_cap->vht_op.len = ie_len;
-			link_cap->vht_op_present = true;
-		}
-
-		/* Extract HE Capabilities IE (Extension Element ID 35) */
-		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
-					(uint8_t[]){WLAN_EXTN_ELEMID_HECAP}, 1,
-					sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_HECAP}, 1,
-								 frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
-			link_cap->he_cap.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->he_cap.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->he_cap.ptr, ie_ptr + 3, ie_len);
-			link_cap->he_cap.len = ie_len;
-			link_cap->he_cap_present = true;
-		}
-
-		/* Extract HE Operation IE (Extension Element ID 36) */
-		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
-					(uint8_t[]){WLAN_EXTN_ELEMID_HEOP}, 1,
-					sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_HEOP}, 1,
-								 frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
-			link_cap->he_op.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->he_op.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->he_op.ptr, ie_ptr + 3, ie_len);
-			link_cap->he_op.len = ie_len;
-			link_cap->he_op_present = true;
-		}
-
-		/* Extract EHT Capabilities IE (Extension Element ID 108) */
-		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
-					(uint8_t[]){WLAN_EXTN_ELEMID_EHTCAP}, 1,
-					sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_EHTCAP}, 1,
-								 frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
-			link_cap->eht_cap.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->eht_cap.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->eht_cap.ptr, ie_ptr + 3, ie_len);
-			link_cap->eht_cap.len = ie_len;
-			link_cap->eht_cap_present = true;
-		}
-
-		/* Extract EHT Operation IE (Extension Element ID 106) */
-		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
-					(uint8_t[]){WLAN_EXTN_ELEMID_EHTOP}, 1,
-					sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_EHTOP}, 1,
-								 frame_body, frame_len);
-		if (ie_ptr && ie_ptr[1] >= 1) {
-			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
-			link_cap->eht_op.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->eht_op.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->eht_op.ptr, ie_ptr + 3, ie_len);
-			link_cap->eht_op.len = ie_len;
-			link_cap->eht_op_present = true;
-		}
-
-		/* Extract UHR Capabilities IE (Extension Element ID 152) */
-		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
-					(uint8_t[]){WLAN_EXTN_ELEMID_UHRCAP}, 1,
-					sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_UHRCAP}, 1,
-								 frame_body, frame_len);
-		if (ie_ptr && ie_ptr[1] >= 1) {
-			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
-			link_cap->uhr_cap.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->uhr_cap.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->uhr_cap.ptr, ie_ptr + 3, ie_len);
-			link_cap->uhr_cap.len = ie_len;
-			link_cap->uhr_cap_present = true;
-		}
-
-		/* Extract UHR Operation IE (Extension Element ID 151) */
-		ie_ptr = sta_prof ? wlan_get_ext_ie_ptr_from_ext_id(
-					(uint8_t[]){WLAN_EXTN_ELEMID_UHROP}, 1,
-					sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_UHROP}, 1,
-								 frame_body, frame_len);
-		if (ie_ptr && ie_ptr[1] >= 1) {
-			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
-			link_cap->uhr_op.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->uhr_op.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->uhr_op.ptr, ie_ptr + 3, ie_len);
-			link_cap->uhr_op.len = ie_len;
-			link_cap->uhr_op_present = true;
-		}
-
-		/* Extract Extended Capabilities IE (Element ID 127) */
-		ie_ptr = sta_prof ? wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XCAPS,
-							     sta_prof, sta_prof_len) : NULL;
-		if (!ie_ptr)
-			ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XCAPS, frame_body, frame_len);
-		if (ie_ptr) {
-			ie_len = ie_ptr[1];
-			link_cap->ext_cap.ptr = qdf_mem_malloc(ie_len);
-			if (!link_cap->ext_cap.ptr) {
-				qdf_mem_free(payload_copy);
-				util_scan_free_cache_entry(scan_entry);
-				goto err_release_pdev;
-			}
-			qdf_mem_copy(link_cap->ext_cap.ptr, ie_ptr + 2, ie_len);
-			link_cap->ext_cap.len = ie_len;
-			link_cap->ext_cap_present = true;
-		}
-
-		qdf_mem_free(payload_copy);
-		util_scan_free_cache_entry(scan_entry);
-
-		mlo_info("Extracted capabilities for link_id=%d: cap=0x%x rates=%d/%d ht=%d/%d vht=%d/%d he=%d/%d eht=%d/%d uhr=%d/%d ext=%d",
-			 link_cap->link_id,
-			 link_cap->capability_info,
-			 link_cap->supported_rates.len,
-			 link_cap->ext_supported_rates.len,
-			 link_cap->ht_cap_present,
-			 link_cap->ht_info_present,
-			 link_cap->vht_cap_present,
-			 link_cap->vht_op_present,
-			 link_cap->he_cap_present,
-			 link_cap->he_op_present,
-			 link_cap->eht_cap_present,
-			 link_cap->eht_op_present,
-			 link_cap->uhr_cap_present,
-			 link_cap->uhr_op_present,
-			 link_cap->ext_cap_present);
-	}
-
-	wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
-
-	mlo_info("Successfully extracted capabilities for %d links from target AP",
-		 target_caps->num_links);
-
-	return QDF_STATUS_SUCCESS;
-
-err_release_pdev:
-	mlo_err("Memory allocation failed; cleaning up partial capabilities");
-	wlan_mlo_cleanup_smd_target_ap_caps(target_caps);
-	wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
-	return QDF_STATUS_E_NOMEM;
-}
-
-/**
- * mlo_uhr_link_recfg_gen_link_assoc_rsp() - Generate link assoc responses
- * @vdev: VDEV object
- * @ctx: Link reconfiguration context
- * @link_recfg_req: Link reconfiguration request
- *
- * Generate link-specific association response frames for links accepted
- * by the target AP MLD during UHR ST preparation phase.
- *
- * This function:
- * 1. Extracts target AP capabilities from Basic ML IE
- * 2. For each accepted link:
- *    - Finds corresponding capability info
- *    - Generates complete association response frame
- *    - Caches response for firmware use
- *
- * Return: QDF_STATUS
- */
-static QDF_STATUS
-mlo_uhr_link_recfg_gen_link_assoc_rsp(
-	struct wlan_objmgr_vdev *vdev,
-	struct mlo_link_recfg_context *ctx,
-	struct wlan_mlo_link_recfg_req *link_recfg_req)
-{
-	struct wlan_mlo_link_recfg_rsp *rsp;
-	struct wlan_mlo_link_recfg_info *add_link_info;
-	struct smd_target_ap_caps *target_caps;
-	QDF_STATUS status;
-	uint8_t i, j;
-	uint16_t assigned_aid;
-	uint8_t num_responses_generated = 0;
-	uint8_t *assoc_rsp_buf;
-
-	/* Validate input parameters */
-	if (!vdev || !ctx || !link_recfg_req) {
-		mlo_err("Invalid parameters: vdev=%pK ctx=%pK req=%pK",
-			vdev, ctx, link_recfg_req);
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-
-	rsp = &ctx->curr_recfg_rsp;
-	add_link_info = &link_recfg_req->add_link_info;
-
-	/* Verify we have links to add */
-	if (!add_link_info->num_links) {
-		mlo_debug("No links to add");
-		return QDF_STATUS_SUCCESS;
-	}
-
-	/* Get AID assigned by target AP MLD */
-	assigned_aid = rsp->assigned_aid;
-	if (assigned_aid == 0) {
-		mlo_err("No AID assigned by target AP MLD");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	mlo_info("Generating link assoc responses for %d links, AID %d",
-		 add_link_info->num_links, assigned_aid);
-
-	if (!rsp->mlo_ie.ptr || !rsp->mlo_ie.len) {
-		mlo_err("ML IE not present in response");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	target_caps = qdf_mem_malloc(sizeof(*target_caps));
-	if (!target_caps)
-		return QDF_STATUS_E_NOMEM;
-
-	status = extract_target_ap_capabilities(rsp->mlo_ie.ptr,
-						rsp->mlo_ie.len,
-						target_caps, ctx);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_err("Failed to extract target AP capabilities, status=%d",
-			status);
-		qdf_mem_free(target_caps);
-		return status;
-	}
-
-	mlo_info("Extracted capabilities for %d links from target AP",
-		 target_caps->num_links);
-
-	assoc_rsp_buf = qdf_mem_malloc(2048); /* MAX_ASSOC_RSP_SIZE */
-	if (!assoc_rsp_buf) {
-		wlan_mlo_cleanup_smd_target_ap_caps(target_caps);
-		qdf_mem_free(target_caps);
-		return QDF_STATUS_E_NOMEM;
-	}
-
-	for (i = 0; i < add_link_info->num_links; i++) {
-		uint8_t link_id;
-		struct smd_target_ap_link_caps *link_cap = NULL;
-		qdf_size_t assoc_rsp_len = 0;
-		enum wlan_status_code link_status;
-		struct element_info assoc_rsp_elem;
-
-		link_id = add_link_info->link[i].link_id;
-
-		/* Get link status from response */
-		link_status = STATUS_UNSPECIFIED_FAILURE;
-		for (j = 0; j < rsp->count; j++) {
-			if (rsp->recfg_status_list[j].link_id == link_id) {
-				link_status =
-					rsp->recfg_status_list[j].status_code;
-				break;
-			}
-		}
-
-		/* Check if link was accepted */
-		if (link_status != STATUS_SUCCESS) {
-			mlo_debug("Link %d rejected (status %d), skip assoc rsp",
-				  link_id, link_status);
-			continue;
-		}
-
-		mlo_debug("Generating assoc response for link %d", link_id);
-
-		/* Find capability info for this link */
-		for (j = 0; j < target_caps->num_links; j++) {
-			if (target_caps->link_caps[j].link_id == link_id) {
-				link_cap = &target_caps->link_caps[j];
-				break;
-			}
-		}
-
-		if (!link_cap) {
-			mlo_err("No capability info found for link %d", link_id);
-			continue;
-		}
-
-		mlo_debug("Found capability info for link %d", link_id);
-
-		/* Generate association response frame */
-		status = smd_construct_link_assoc_rsp(
-				link_cap,
-				add_link_info->link[i].self_link_addr,
-				add_link_info->link[i].ap_link_addr,
-				assigned_aid,
-				assoc_rsp_buf,
-				2048,
-				&assoc_rsp_len);
-
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("Failed to gen assoc rsp for link %d, status=%d",
-				link_id, status);
-			continue;
-		}
-
-		mlo_info("Generated assoc response for link %d: %zu bytes",
-			 link_id, assoc_rsp_len);
-
-		/* Cache the generated response for firmware use */
-		assoc_rsp_elem.ptr = assoc_rsp_buf;
-		assoc_rsp_elem.len = assoc_rsp_len;
-		status = mlo_update_cache_link_assoc_rsp(
-			vdev, link_id, &assoc_rsp_elem);
-
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("Failed to cache assoc rsp for link %d, st=%d",
-				link_id, status);
-			continue;
-		}
-
-		num_responses_generated++;
-		mlo_debug("Cached assoc response for link %d", link_id);
-	}
-
-	/* Cleanup target AP capabilities */
-	wlan_mlo_cleanup_smd_target_ap_caps(target_caps);
-	qdf_mem_free(target_caps);
-	qdf_mem_free(assoc_rsp_buf);
-
-	if (num_responses_generated == 0) {
-		mlo_err("No association responses generated for any link");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	mlo_info("Successfully generated and cached %d association responses",
-		 num_responses_generated);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-#endif /* WLAN_FEATURE_11BN_SMD */

@@ -74,7 +74,7 @@ QDF_STATUS
 qal_vbus_allocate_iorsc(unsigned int pinnum, const char *label);
 
 /**
- * qal_vbus_iorsc_dir_output() - set pin direction to output
+ * qal_vbus_iorsc_dir_output() - set pin dirction to output
  * @pin: pin Number
  * @val: value
  *

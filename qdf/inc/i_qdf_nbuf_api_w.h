@@ -240,15 +240,6 @@ static inline uint8_t qdf_nbuf_is_rx_ipa_smmu_map(qdf_nbuf_t buf)
 	return QDF_NBUF_CB_RX_PACKET_IPA_SMMU_MAP(buf);
 }
 
-static inline int qdf_nbuf_dal_owned_get(qdf_nbuf_t buf)
-{
-	return 0;
-}
-
-static inline void qdf_nbuf_dal_owned_set(qdf_nbuf_t buf)
-{
-}
-
 static inline int qdf_nbuf_ipa_owned_get(qdf_nbuf_t buf)
 {
 	return 0;

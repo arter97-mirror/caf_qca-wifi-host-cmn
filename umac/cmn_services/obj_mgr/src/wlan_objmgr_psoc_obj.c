@@ -792,7 +792,7 @@ QDF_STATUS wlan_objmgr_psoc_pdev_attach(struct wlan_objmgr_psoc *psoc,
 		/* save pdev id */
 		pdev->pdev_objmgr.wlan_pdev_id = id;
 		status = QDF_STATUS_SUCCESS;
-		/* Increment psoc ref count to block its free before pdev */
+		/* Inrement psoc ref count to block its free before pdev */
 		wlan_objmgr_psoc_get_ref(psoc, WLAN_OBJMGR_ID);
 	}
 	wlan_psoc_obj_unlock(psoc);
@@ -905,8 +905,6 @@ QDF_STATUS wlan_objmgr_psoc_vdev_attach(struct wlan_objmgr_psoc *psoc,
 	if (id < objmgr->max_vdev_count) {
 		/* set free vdev id index */
 		qdf_set_bit(id, objmgr->wlan_vdev_id_map);
-		/* default to clearing the id immediately on detach */
-		qdf_clear_bit(id, objmgr->wlan_vdev_id_defer_clear);
 		/* store vdev pointer in vdev list */
 		objmgr->wlan_vdev_list[id] = vdev;
 		/* increment vdev counter */
@@ -935,48 +933,16 @@ QDF_STATUS wlan_objmgr_psoc_vdev_detach(struct wlan_objmgr_psoc *psoc,
 
 	wlan_psoc_obj_lock(psoc);
 	objmgr = &psoc->soc_objmgr;
+	/* unset bit, to free the slot */
+	qdf_clear_bit(id, objmgr->wlan_vdev_id_map);
 	/* reset VDEV pointer to NULL in VDEV list array */
 	objmgr->wlan_vdev_list[id] = NULL;
-	/* clear the id map here unless the caller asked to defer it */
-	if (!qdf_test_bit(id, objmgr->wlan_vdev_id_defer_clear))
-		qdf_clear_bit(id, objmgr->wlan_vdev_id_map);
 	/* decrement vdev count */
 	objmgr->wlan_vdev_count--;
 	vdev->vdev_objmgr.vdev_id = 0xff;
 	wlan_psoc_obj_unlock(psoc);
 
 	return QDF_STATUS_SUCCESS;
-}
-
-void wlan_objmgr_psoc_vdev_id_clear_map(struct wlan_objmgr_psoc *psoc,
-					uint8_t vdev_id)
-{
-	struct wlan_objmgr_psoc_objmgr *objmgr;
-
-	if (vdev_id >= wlan_psoc_get_max_vdev_count(psoc))
-		return;
-
-	wlan_psoc_obj_lock(psoc);
-	objmgr = &psoc->soc_objmgr;
-	qdf_clear_bit(vdev_id, objmgr->wlan_vdev_id_map);
-	wlan_psoc_obj_unlock(psoc);
-}
-
-void wlan_objmgr_psoc_vdev_id_set_defer_clear(struct wlan_objmgr_psoc *psoc,
-					      uint8_t vdev_id, bool defer)
-{
-	struct wlan_objmgr_psoc_objmgr *objmgr;
-
-	if (vdev_id >= wlan_psoc_get_max_vdev_count(psoc))
-		return;
-
-	wlan_psoc_obj_lock(psoc);
-	objmgr = &psoc->soc_objmgr;
-	if (defer)
-		qdf_set_bit(vdev_id, objmgr->wlan_vdev_id_defer_clear);
-	else
-		qdf_clear_bit(vdev_id, objmgr->wlan_vdev_id_defer_clear);
-	wlan_psoc_obj_unlock(psoc);
 }
 
 #ifdef WLAN_OBJMGR_REF_ID_TRACE
@@ -3103,10 +3069,10 @@ uint32_t wlan_objmgr_psoc_check_for_peer_leaks(struct wlan_objmgr_psoc *psoc)
 	obj_mgr_alert("----------------------------------------------------");
 
 	wlan_objmgr_for_each_psoc_vdev(psoc, vdev_id, vdev) {
-		struct wlan_objmgr_peer *peer, *next;
+		struct wlan_objmgr_peer *peer;
 
 		wlan_vdev_obj_lock(vdev);
-		wlan_objmgr_for_each_vdev_peer(vdev, peer, next) {
+		wlan_objmgr_for_each_vdev_peer(vdev, peer) {
 			wlan_peer_obj_lock(peer);
 			leaks += qdf_atomic_read(&peer->peer_objmgr.ref_cnt);
 			wlan_objmgr_print_peer_ref_leaks(peer, vdev_id);

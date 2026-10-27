@@ -123,11 +123,11 @@ typedef uint32_t wlan_scan_id;
 #define ELEM_ID_LIST_LEN_POS 3
 #define ELEM_ID_LIST_POS 4
 
-/* Active dwell time and repeat probe time in msec for a single channel
- * p2p scan with bssid or SSID
+/* Active dwell time and repeat probe time for p2p scan with bssid
+ * in msec
  */
-#define P2P_ACTIVE_DWELL_TIME_SINGLE_CHAN 100
-#define P2P_REPEAT_PROBE_TIME_SINGLE_CHAN 10
+#define P2P_ACTIVE_DWELL_TIME_WITH_BSSID 100
+#define P2P_REPEAT_PROBE_TIME_WITH_BSSID 10
 
 /* Active dwell time in low span scan mode(NL80211_SCAN_FLAG_LOW_SPAN)
  * in msec
@@ -229,10 +229,6 @@ struct channel_info {
  * @wifi6_rsno: pointer to Wifi-6 vendor RSNO IE
  * @rsnxo: pointer to vendor RSNX override IE
  * @wifi7_rsno: pointer to Wifi-7 vendor RSNO IE
- * @uhrcap: pointer to UHR capability IE
- * @uhrop: pointer to UHR operation IE
- * @smd_info: pointer to SMD information IE
- * @security_profile: pointer to Security Profile IE
  */
 struct ie_list {
 	uint8_t *tim;
@@ -301,16 +297,6 @@ struct ie_list {
 	uint8_t *wifi6_rsno;
 	uint8_t *rsnxo;
 	uint8_t *wifi7_rsno;
-#ifdef WLAN_FEATURE_11BN
-	uint8_t *uhrcap;
-	uint8_t *uhrop;
-#endif
-#ifdef WLAN_FEATURE_11BN_SMD
-	uint8_t *smd_info;
-#endif
-#ifdef WLAN_FEATURE_SECURITY_PROFILE
-	uint8_t *security_profile;
-#endif
 
 /*
  * For any new IEs in this structure, add handling in
@@ -380,8 +366,6 @@ struct scan_cache_node {
  * @mgmtcipherset: mgmt cipher set
  * @rsn_caps: rsn caps of scan entry
  * @rsn_gen_selected: rsn gen for the security match
- * @sec_profile_num: selected security profile number (-1 if not used)
- * @sec_profile_valid: true if sec_profile_num holds a valid selected profile
  */
 struct security_info {
 	uint32_t authmodeset;
@@ -391,8 +375,6 @@ struct security_info {
 	uint32_t mgmtcipherset;
 	uint16_t rsn_caps;
 	uint8_t rsn_gen_selected;
-	int8_t sec_profile_num;
-	bool sec_profile_valid;
 };
 
 /**
@@ -464,7 +446,7 @@ struct non_inheritance_ie {
  * struct rnr_bss_info - Reduced Neighbor Report BSS information
  * @neighbor_ap_tbtt_offset: Neighbor AP TBTT offset
  * @channel_number: channel number
- * @operating_class: operating class
+ * @operating_class: operting class
  * @bssid: BSS MAC address
  * @short_ssid: short ssid
  * @bss_params: BSS parameters
@@ -515,8 +497,6 @@ struct neighbor_ap_info_field {
  * short ssid, bss params and 20MHz PSD
  * bssid, short ssid, bss params, 20MHz PSD and MLD param
  * @TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM:
- * @TBTT_NEIGHBOR_AP_WIFI7_MAX: Max bytes for WiFi7 generation TBTT info.
- * @TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM_ECU: ECU params
  * @TBTT_NEIGHBOR_AP_PARAM_AFTER_LAST: This is to calculate the max supported
  * param length and maintain it in TBTT_NEIGHBOR_AP_PARAM_MAX
  * @TBTT_NEIGHBOR_AP_PARAM_MAX: This is to track the max supported param length
@@ -533,11 +513,6 @@ enum tbtt_information_field {
 	TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM = 12,
 	TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD = 13,
 	TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM = 16,
-	TBTT_NEIGHBOR_AP_WIFI7_MAX =
-		TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM,
-#ifdef WLAN_FEATURE_11BN_ECU
-	TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM_ECU = 17,
-#endif
 
 	/* keep last */
 	TBTT_NEIGHBOR_AP_PARAM_AFTER_LAST,
@@ -594,12 +569,16 @@ struct partner_link_info {
  * @num_links: Number of links supported by ML AP
  * @self_link_id: Link id of the scan entry
  * @link_info: Array containing partner links information
+ * @ml_bss_score: Multi link BSS score
+ * @link_score: MLO link score
  */
 struct ml_info {
 	struct qdf_mac_addr mld_mac_addr;
 	uint8_t num_links;
 	uint8_t self_link_id;
 	struct partner_link_info link_info[MLD_MAX_LINKS - 1];
+	uint16_t ml_bss_score;
+	uint16_t link_score;
 };
 
 /**
@@ -618,32 +597,6 @@ enum number_of_partner_link {
 #endif
 
 /**
- * struct scan_bss_scores: scoring calculation results for a BSS
- * @bss_score: BSS score calculated on basis of RSSI/caps etc.
- * @ml_bss_score: Multi link BSS score
- * @link_score: MLO link score
- */
-struct scan_bss_scores {
-	uint32_t bss_score;
-#ifdef WLAN_FEATURE_11BE_MLO
-	uint16_t ml_bss_score;
-	uint16_t link_score;
-#endif
-};
-
-#define WLAN_BSS_SCORE_ARBITRATOR_NSS_BITPOS 0
-
-/**
- * struct bss_score_arbitrators: arbitrator inputs used for scoring
- * @valid_flag: bitmask to indicate which arbitrator values are valid
- * @nss: supported NSS information
- */
-struct bss_score_arbitrators {
-	uint32_t valid_flag;
-	uint8_t nss;
-};
-
-/**
  * struct scan_cache_entry: structure containing scan entry
  * @frm_subtype: updated from beacon/probe
  * @bssid: bssid
@@ -652,6 +605,7 @@ struct bss_score_arbitrators {
  * @is_hidden_ssid: is AP having hidden ssid.
  * @security_type: security supported
  * @seq_num: sequence number
+ * @is_non_tx_mbssid_gen: is locally generated non tx mbssid scan entry
  * @is_gen_entry: is locally generated scan entry
  * @reserved: reserved
  * @phy_mode: Phy mode of the AP
@@ -673,8 +627,6 @@ struct bss_score_arbitrators {
  * @rssi_timestamp: boottime in microsec when RSSI was updated
  * @hidden_ssid_timestamp: boottime in microsec when hidden
  *                         ssid was received
- * @uhr_cap_timestamp: boottime in ms when UHR CAP IE was last seen in a
- *                     probe response; used to age out cached UHR CAP IE
  * @mbssid_info: Multi bssid information
  * @rnr: Reduced neighbor report information
  * @channel: channel info on which AP is present
@@ -682,6 +634,7 @@ struct bss_score_arbitrators {
  *                    doesn't match the one in beacon
  * @mlme_info: Mlme info, this will be updated by MLME for the scan entry
  * @tsf_delta: TSF delta
+ * @bss_score: bss score calculated on basis of RSSI/caps etc.
  * @neg_sec_info: negotiated security info
  * @per_chain_rssi: per chain RSSI value received.
  * @boottime_ns: boottime in ns.
@@ -694,9 +647,6 @@ struct bss_score_arbitrators {
  * @mlo_max_recom_simult_links: Max recommended simultaneous link
  * @non_intersected_phymode: Non intersected phy mode of the AP
  * @recv_freq: Frequency on which the frame is received
- * @ap_pwr_type_6g: 6GHz AP power type
- * @entry_scores: scoring related calculation results
- * @score_arbitrators: arbitrator inputs used for scoring
  */
 struct scan_cache_entry {
 	uint8_t frm_subtype;
@@ -706,8 +656,9 @@ struct scan_cache_entry {
 	bool is_hidden_ssid;
 	uint8_t security_type;
 	uint16_t seq_num;
-	uint8_t is_gen_entry:1,
-		reserved:7;
+	uint8_t is_non_tx_mbssid_gen:1,
+		is_gen_entry:1,
+		reserved:6;
 	enum wlan_phymode phy_mode;
 	int32_t avg_rssi;
 	int8_t rssi_raw;
@@ -729,15 +680,13 @@ struct scan_cache_entry {
 	qdf_time_t scan_entry_time;
 	qdf_time_t rssi_timestamp;
 	qdf_time_t hidden_ssid_timestamp;
-#ifdef WLAN_FEATURE_11BN
-	qdf_time_t uhr_cap_timestamp;
-#endif
 	struct scan_mbssid_info mbssid_info;
 	struct reduced_neighbor_report rnr;
 	struct channel_info channel;
 	bool channel_mismatch;
 	struct mlme_info mlme_info;
 	uint32_t tsf_delta;
+	uint32_t bss_score;
 	struct security_info neg_sec_info;
 	uint8_t per_chain_rssi[WLAN_MGMT_TXRX_HOST_MAX_ANTENNA];
 	uint64_t boottime_ns;
@@ -757,9 +706,6 @@ struct scan_cache_entry {
 #endif
 	enum wlan_phymode non_intersected_phymode;
 	uint32_t recv_freq;
-	uint8_t ap_pwr_type_6g;
-	struct scan_bss_scores entry_scores;
-	struct bss_score_arbitrators score_arbitrators;
 };
 
 #define MAX_FAVORED_BSSID 16
@@ -822,7 +768,6 @@ enum dot11_mode_filter {
  * @match_link_id: Flag to match self IEEE link id of scan entry
  * @flush_all_except_conn_entry: FLag to flush all the scan entry except entry
  *                               which are connected
- * @flush_local_gen: Flag to match and flush locally generated entries
  * @reserved: Reserved
  * @age_threshold: If set return entry which are newer than the age_threshold
  * @num_of_bssid: number of bssid passed
@@ -852,8 +797,6 @@ enum dot11_mode_filter {
  * @link_id: IEEE link ID to match if @match_link_id is set to %true
  * @mld_addr: MLD addr to match if @match_mld_addr is set to true.
  * @mrsno_gen: MRSNO generation supported
- * @security_profile: Security Profile element handling enabled
- * @eppke_allowed: whether EPPKE is allowed or not
  */
 struct scan_filter {
 	uint16_t enable_adaptive_11r:1,
@@ -865,8 +808,7 @@ struct scan_filter {
 		match_mld_addr:1,
 		match_link_id:1,
 		flush_all_except_conn_entry:1,
-		flush_local_gen:1,
-		reserved:6;
+		reserved:7;
 	qdf_time_t age_threshold;
 	uint8_t num_of_bssid;
 	uint8_t num_of_ssid;
@@ -899,8 +841,6 @@ struct scan_filter {
 	struct qdf_mac_addr mld_addr;
 #endif
 	uint8_t mrsno_gen;
-	bool security_profile;
-	bool eppke_allowed;
 };
 
 /**
@@ -1100,9 +1040,6 @@ struct chan_list {
 	struct chan_info chan[NUM_CHANNELS];
 };
 
-#define WLAN_SCM_GET_FREQ_FROM_FREQ_FLAG(freq_flags) ((freq_flags >> 16) & 0xffff)
-#define WLAN_SCM_GET_FLAG_FROM_FREQ_FLAG(freq_flags) (freq_flags & 0xffff)
-
 /**
  * struct hint_short_ssid - short SSID hint
  *  and their phymode
@@ -1209,7 +1146,6 @@ enum scan_request_type {
  * @scan_f_pause_home_channel: To pause home channel in FW when scan channel is
  * same as home channel
  * @scan_f_report_cca_busy_for_each_20mhz: Allow FW to report CCA busy for each
- * @scan_f_skip_6ghz: indicates whether 6GHz channels can be skipped in scan
  * possible 20Mhz subbands of the wideband scan channel
  * @scan_flags: variable to read and set scan_f_* flags in one shot
  *              can be used to dump all scan_f_* flags for debug
@@ -1305,8 +1241,7 @@ struct scan_req_params {
 				 scan_f_5ghz:1,
 				 scan_f_wide_band:1,
 				 scan_f_pause_home_channel:1,
-				 scan_f_report_cca_busy_for_each_20mhz:1,
-				 scan_f_skip_6ghz:1;
+				 scan_f_report_cca_busy_for_each_20mhz:1;
 		};
 		uint32_t scan_flags;
 	};
@@ -1383,23 +1318,10 @@ struct scan_cancel_param {
 };
 
 /**
- * struct suppress_scan_param - suppress scan cmd parameter
- * @scan_req_id: module id for which scan has to be suppressed
- * @suppress_scan: flag to disable scan
- */
-struct suppress_scan_param {
-	uint8_t scan_req_id;
-	uint8_t suppress_scan;
-};
-
-/**
  * struct scan_cancel_request - stop scan cmd
  * @vdev: vdev object
  * @wait_tgt_cancel: wait for target to cancel scan
  * @cancel_req: stop scan cmd parameter
- * @max_wait_time_ms: max time to block in scan cancel sync waiting for the
- *                    scan to be confirmed cancelled, 0 to use the default
- * @wait_poll_interval_ms: poll interval used while waiting, 0 to use default
  */
 struct scan_cancel_request {
 	/* Extra parameters consumed by scan module or serialization */
@@ -1407,8 +1329,6 @@ struct scan_cancel_request {
 	bool wait_tgt_cancel;
 	/* Actual scan cancel request parameters */
 	struct scan_cancel_param cancel_req;
-	uint32_t max_wait_time_ms;
-	uint32_t wait_poll_interval_ms;
 };
 
 /**

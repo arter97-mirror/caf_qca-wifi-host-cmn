@@ -25,13 +25,6 @@
 #include "dp_internal.h"
 #include <qdf_tracepoint.h>
 #include "dp_ipa.h"
-#ifdef FEATURE_WDS
-#include "dp_txrx_wds.h"
-#endif
-#ifdef FEATURE_DAL_DP_SUPPORT
-#include "dp_dal.h"
-#endif
-#include <qdf_pkt_add_timestamp.h>
 
 #ifdef RXDMA_OPTIMIZATION
 #ifndef RX_DATA_BUFFER_ALIGNMENT
@@ -55,10 +48,6 @@
 #ifdef WLAN_FEATURE_LATENCY_SENSITIVE_REO
 #define LSR_DEST_RING_IDX	7	//reo_dest_ring[7] -> REO_REMAP_SW8
 #define LSR_DEST_RING		REO_REMAP_SW8
-#define DP_REO_DST_REMAP_REMOVE_LSR(_reo_config) \
-	((_reo_config) &= ~(1 << (LSR_DEST_RING_IDX)))
-#else
-#define DP_REO_DST_REMAP_REMOVE_LSR(_reo_config) /* no operation */
 #endif
 
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
@@ -191,19 +180,6 @@ struct dp_rx_desc {
 		is_ctrl_pkt:1;
 };
 
-/**
- * enum dp_rx_link_desc_validation: link desc validation failure code
- * @DP_RX_LINK_DESC_HW_WRITE_FAILURE: HW write failed for ring desc
- * @DP_RX_LINK_DESC_COOKIE_INVALID_MAGIC_NUM: invalid magic no in sw cookie
- * @DP_RX_LINK_DESC_COOKIE_INVALID_PAGE_IDX: invalid page inx found from sw
- * cookie
- */
-enum dp_rx_link_desc_validation {
-	DP_RX_LINK_DESC_HW_WRITE_FAILURE,
-	DP_RX_LINK_DESC_COOKIE_INVALID_MAGIC_NUM,
-	DP_RX_LINK_DESC_COOKIE_INVALID_PAGE_IDX
-};
-
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 #ifdef ATH_RX_PRI_SAVE
 #define DP_RX_TID_SAVE(_nbuf, _tid) \
@@ -260,21 +236,12 @@ enum dp_rx_link_desc_validation {
 #define dp_rx_add_to_free_desc_list_reuse(head, tail, new) \
 	__dp_rx_add_to_free_desc_list_reuse(head, tail, new, __func__)
 
-/* Max allowable replenish retries for DMA map failures */
-#define DP_RX_MAX_MAP_FAIL_CNT 10
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-#define dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
-				num_buffers, desc_list, tail, req_only) \
-	dp_dal_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
-				    num_buffers, desc_list, tail, req_only)
-#else
 #define dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
 				num_buffers, desc_list, tail, req_only) \
 	__dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
 				  num_buffers, desc_list, tail, req_only, \
 				  false, __func__)
-#endif
+
 #ifdef WLAN_SUPPORT_RX_FISA
 /**
  * dp_rx_set_hdr_pad() - set l3 padding in nbuf cb
@@ -631,13 +598,6 @@ struct dp_rx_desc *dp_get_rx_desc_from_cookie(struct dp_soc *soc,
 		return NULL;
 
 	rx_desc_pool = &pool[pool_id];
-
-	if (qdf_unlikely(!rx_desc_pool->desc_pages.cacheable_pages ||
-			 page_id >= rx_desc_pool->desc_pages.num_pages ||
-			 offset >= rx_desc_pool->desc_pages
-				   .num_element_per_page))
-		return NULL;
-
 	rx_desc_elem = (union dp_rx_desc_list_elem_t *)
 		(rx_desc_pool->desc_pages.cacheable_pages[page_id] +
 		rx_desc_pool->elem_size * offset);
@@ -660,13 +620,6 @@ struct dp_rx_desc *dp_get_rx_mon_status_desc_from_cookie(struct dp_soc *soc,
 		return NULL;
 
 	rx_desc_pool = &pool[pool_id];
-
-	if (qdf_unlikely(!rx_desc_pool->desc_pages.cacheable_pages ||
-			 page_id >= rx_desc_pool->desc_pages.num_pages ||
-			 offset >= rx_desc_pool->desc_pages
-				   .num_element_per_page))
-		return NULL;
-
 	rx_desc_elem = (union dp_rx_desc_list_elem_t *)
 		(rx_desc_pool->desc_pages.cacheable_pages[page_id] +
 		rx_desc_pool->elem_size * offset);
@@ -689,6 +642,20 @@ struct dp_rx_desc *dp_rx_cookie_2_va_rxdma_buf(struct dp_soc *soc,
 	return dp_get_rx_desc_from_cookie(soc, &soc->rx_desc_buf[0], cookie);
 }
 
+/**
+ * dp_rx_cookie_2_va_mon_buf() - Converts cookie to a virtual address of
+ *			 the Rx descriptor on monitor ring buffer
+ * @soc: core txrx main context
+ * @cookie: cookie used to lookup virtual address
+ *
+ * Return: Pointer to the Rx descriptor
+ */
+static inline
+struct dp_rx_desc *dp_rx_cookie_2_va_mon_buf(struct dp_soc *soc,
+					     uint32_t cookie)
+{
+	return dp_get_rx_desc_from_cookie(soc, &soc->rx_desc_mon[0], cookie);
+}
 
 /**
  * dp_rx_cookie_2_va_mon_status() - Converts cookie to a virtual address of
@@ -736,6 +703,24 @@ void *dp_rx_cookie_2_va_rxdma_buf(struct dp_soc *soc, uint32_t cookie)
 		return NULL;
 
 	return &rx_desc_pool->array[index].rx_desc;
+}
+
+/**
+ * dp_rx_cookie_2_va_mon_buf() - Converts cookie to a virtual address of
+ *			 the Rx descriptor on monitor ring buffer
+ * @soc: core txrx main context
+ * @cookie: cookie used to lookup virtual address
+ *
+ * Return: void *: Virtual Address of the Rx descriptor
+ */
+static inline
+void *dp_rx_cookie_2_va_mon_buf(struct dp_soc *soc, uint32_t cookie)
+{
+	uint8_t pool_id = DP_RX_DESC_COOKIE_POOL_ID_GET(cookie);
+	uint16_t index = DP_RX_DESC_COOKIE_INDEX_GET(cookie);
+	/* TODO */
+	/* Add sanity for pool_id & index */
+	return &(soc->rx_desc_mon[pool_id].array[index].rx_desc);
 }
 
 /**
@@ -903,16 +888,17 @@ dp_rx_desc_inc_in_use_count(struct rx_desc_pool *rx_desc_pool, uint32_t count)
  * dp_rx_desc_dec_in_use_count() - Decrement in use count descriptors
  *					from pool
  * @rx_desc_pool: rx descriptor pool pointer
- * @num_desc_freed: Number of rx_desc released back to the pool
+ * @num_req: Requested buffers to allocate
+ * @num_alloc: number of buffers allocated
  *
  * Return: None
  */
 static inline void
 dp_rx_desc_dec_in_use_count(struct rx_desc_pool *rx_desc_pool,
-			    uint32_t num_desc_freed)
+			    uint32_t num_req, uint32_t num_alloc)
 {
 	if (qdf_atomic_read(&rx_desc_pool->required_count))
-		qdf_atomic_sub(num_desc_freed,
+		qdf_atomic_sub((num_req - num_alloc),
 			       &rx_desc_pool->in_use_count);
 }
 
@@ -1014,7 +1000,7 @@ dp_rx_desc_inc_in_use_count(struct rx_desc_pool *rx_desc_pool, uint32_t count)
 
 static inline void
 dp_rx_desc_dec_in_use_count(struct rx_desc_pool *rx_desc_pool,
-			    uint32_t num_desc_freed)
+			    uint32_t num_req, uint32_t num_alloc)
 {
 }
 
@@ -1183,15 +1169,13 @@ dp_rx_process(struct dp_intr *int_ctx, hal_ring_handle_t hal_ring_hdl,
  *		     multiple nbufs.
  * @soc: core txrx main context
  * @nbuf: pointer to the first msdu of an amsdu.
- * @skip_tlvs: Flag indicating if the rx_pkt_tlvs are to be stripped from the
- *	       head nbuf
  *
  * This function implements the creation of RX frag_list for cases
  * where an MSDU is spread across multiple nbufs.
  *
  * Return: returns the head nbuf which contains complete frag_list.
  */
-qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs);
+qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf);
 
 /**
  * dp_rx_is_sg_supported() - SG packets processing supported or not.
@@ -1268,13 +1252,11 @@ void dp_rx_desc_pool_free(struct dp_soc *soc,
  * @nbuf_list: list of RAW pkts to process
  * @peer: peer object from which the pkt is rx
  * @link_id: link Id on which the packet is received
- * @rx_pkt_tlvs: rx packet tlvs
  *
  * Return: void
  */
 void dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
-		       struct dp_txrx_peer *peer, uint8_t link_id,
-		       uint8_t *rx_pkt_tlvs);
+		       struct dp_txrx_peer *peer, uint8_t link_id);
 
 #ifdef RX_DESC_LOGGING
 /**
@@ -1579,16 +1561,10 @@ void *dp_rx_cookie_2_link_desc_va(struct dp_soc *soc,
 	uint16_t page_id = LINK_DESC_COOKIE_PAGE_ID(buf_info->sw_cookie);
 
 	pages = &soc->link_desc_pages;
-	if (!pages) {
-		dp_err("invalid link desc page");
+	if (!pages)
 		return NULL;
-	}
-
-	if (qdf_unlikely(page_id >= pages->num_pages)) {
-		dp_err("invalid page index, page_id - %u", page_id);
+	if (qdf_unlikely(page_id >= pages->num_pages))
 		return NULL;
-	}
-
 	link_desc_va = pages->dma_pages[page_id].page_v_addr_start +
 		(buf_info->paddr - pages->dma_pages[page_id].page_p_addr);
 	return link_desc_va;
@@ -1681,7 +1657,6 @@ bool dp_rx_intrabss_mcbc_fwd(struct dp_soc *soc,
  * dp_rx_intrabss_ucast_fwd() - Does intrabss forward for unicast packets
  * @soc: core txrx main context
  * @ta_peer: source peer entry
- * @da_peer: destination peer entry
  * @tx_vdev_id: VDEV ID for Intra-BSS TX
  * @rx_tlv_hdr: start address of rx tlvs
  * @nbuf: nbuf that has to be intrabss forwarded
@@ -1692,7 +1667,6 @@ bool dp_rx_intrabss_mcbc_fwd(struct dp_soc *soc,
  */
 bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc,
 			      struct dp_txrx_peer *ta_peer,
-			      struct dp_peer *da_peer,
 			      uint8_t tx_vdev_id,
 			      uint8_t *rx_tlv_hdr, qdf_nbuf_t nbuf,
 			      struct cdp_tid_rx_stats *tid_stats,
@@ -1909,16 +1883,17 @@ dp_rx_update_flow_tag(struct dp_soc *soc, struct dp_vdev *vdev,
  *                   is NULL and req_only is false
  * @func_name: name of the caller function
  *
- * Return: Num of buffers replenished
+ * Return: return success or failure
  */
-uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
-				   struct dp_srng *dp_rxdma_srng,
-				   struct rx_desc_pool *rx_desc_pool,
-				   uint32_t num_req_buffers,
-				   union dp_rx_desc_list_elem_t **desc_list,
-				   union dp_rx_desc_list_elem_t **tail,
-				   bool req_only, bool force_replenish,
-				   const char *func_name);
+QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
+				 struct dp_srng *dp_rxdma_srng,
+				 struct rx_desc_pool *rx_desc_pool,
+				 uint32_t num_req_buffers,
+				 union dp_rx_desc_list_elem_t **desc_list,
+				 union dp_rx_desc_list_elem_t **tail,
+				 bool req_only,
+				 bool force_replenish,
+				 const char *func_name);
 
 /**
  * __dp_rx_buffers_no_map_replenish() - replenish rxdma ring with rx nbufs
@@ -2144,20 +2119,6 @@ void __dp_rx_add_to_free_desc_list_reuse(union dp_rx_desc_list_elem_t **head,
 }
 #endif
 
-/**
- * dp_rx_desc_paddr_sanity_check() - paddr sanity for ring desc vs rx_desc
- * @rx_desc: rx descriptor
- * @ring_paddr: paddr obatined from the ring
- *
- * Return: QDF_STATUS
- */
-static inline
-bool dp_rx_desc_paddr_sanity_check(struct dp_rx_desc *rx_desc,
-				   uint64_t ring_paddr)
-{
-	return (ring_paddr == qdf_nbuf_get_frag_paddr(rx_desc->nbuf, 0));
-}
-
 #ifdef RX_DESC_DEBUG_CHECK
 /**
  * dp_rx_desc_check_magic() - check the magic value in dp_rx_desc
@@ -2223,6 +2184,20 @@ void dp_rx_desc_frag_prep(struct dp_rx_desc *rx_desc,
 {
 }
 #endif /* DP_RX_MON_MEM_FRAG */
+
+/**
+ * dp_rx_desc_paddr_sanity_check() - paddr sanity for ring desc vs rx_desc
+ * @rx_desc: rx descriptor
+ * @ring_paddr: paddr obatined from the ring
+ *
+ * Return: QDF_STATUS
+ */
+static inline
+bool dp_rx_desc_paddr_sanity_check(struct dp_rx_desc *rx_desc,
+				   uint64_t ring_paddr)
+{
+	return (ring_paddr == qdf_nbuf_get_frag_paddr(rx_desc->nbuf, 0));
+}
 #else
 
 static inline bool dp_rx_desc_check_magic(struct dp_rx_desc *rx_desc)
@@ -2257,6 +2232,13 @@ void dp_rx_desc_frag_prep(struct dp_rx_desc *rx_desc,
 {
 }
 #endif /* DP_RX_MON_MEM_FRAG */
+
+static inline
+bool dp_rx_desc_paddr_sanity_check(struct dp_rx_desc *rx_desc,
+				   uint64_t ring_paddr)
+{
+	return true;
+}
 #endif /* RX_DESC_DEBUG_CHECK */
 
 /**
@@ -2278,12 +2260,30 @@ void dp_rx_enable_mon_dest_frag(struct rx_desc_pool *rx_desc_pool,
 
 #ifndef QCA_MULTIPASS_SUPPORT
 static inline
+bool dp_rx_multipass_add_vlan(struct dp_txrx_peer *peer, qdf_nbuf_t nbuf,
+			      uint8_t tid)
+{
+	return true;
+}
+
+static inline
 bool dp_rx_multipass_process(struct dp_txrx_peer *peer, qdf_nbuf_t nbuf,
 			     uint8_t tid)
 {
 	return false;
 }
 #else
+/**
+ * dp_rx_multipass_add_vlan - insert vlan tag in case of multpass feature in DS.
+ * @peer: DP txrx peer handle
+ * @nbuf: skb
+ * @tid: traffic priority
+ *
+ * Return: bool: True in case of success else false
+ */
+bool dp_rx_multipass_add_vlan(struct dp_txrx_peer *peer, qdf_nbuf_t nbuf,
+			      uint8_t tid);
+
 /**
  * dp_rx_multipass_process - insert vlan tag on frames for traffic separation
  * @txrx_peer: DP txrx peer handle
@@ -2496,16 +2496,15 @@ void dp_rx_deliver_to_stack_no_peer(struct dp_soc *soc, qdf_nbuf_t nbuf);
 #ifdef DP_RX_DROP_RAW_FRM
 /**
  * dp_rx_is_raw_frame_dropped() - if raw frame nbuf, free and drop
- * @vdev: vdev handle of the rx packet
  * @nbuf: pkt skb pointer
  *
  * Return: true - raw frame, dropped
  *	   false - not raw frame, do nothing
  */
-bool dp_rx_is_raw_frame_dropped(struct dp_vdev *vdev, qdf_nbuf_t nbuf);
+bool dp_rx_is_raw_frame_dropped(qdf_nbuf_t nbuf);
 #else
 static inline
-bool dp_rx_is_raw_frame_dropped(struct dp_vdev *vdev, qdf_nbuf_t nbuf)
+bool dp_rx_is_raw_frame_dropped(qdf_nbuf_t nbuf)
 {
 	return false;
 }
@@ -2553,17 +2552,11 @@ void dp_rx_cksum_offload(struct dp_pdev *pdev,
 	hal_rx_tlv_csum_err_get(pdev->soc->hal_soc, rx_tlv_hdr, &ip_csum_err,
 				&tcp_udp_csum_er, &ip_frag);
 
-	if (qdf_unlikely(ip_frag)) {
-		if (qdf_unlikely(qdf_is_dp_pkt_timestamp_enabled()))
-			cksum.l4_result = QDF_NBUF_RX_CKSUM_TCP_UDP_UNNECESSARY;
+	if (qdf_unlikely(ip_frag))
 		goto bypass_tcp_udp;
-	}
 
 	if (qdf_unlikely(ip_csum_err)) {
 		DP_STATS_INC(pdev, err.ip_csum_err, 1);
-		dp_info_rl("IP checksum error: ip_csum_err %u tcp_udp_csum_err %u "
-			   "ip_csum_err_counter %u", ip_csum_err,
-			   tcp_udp_csum_er, pdev->stats.err.ip_csum_err);
 		goto bypass_tcp_udp;
 	}
 
@@ -2573,23 +2566,14 @@ void dp_rx_cksum_offload(struct dp_pdev *pdev,
 			cksum.l4_result = QDF_NBUF_RX_CKSUM_TCP_UDP_UNNECESSARY;
 			cksum.csum_level = 1;
 		} else {
-			DP_STATS_INC(pdev, err.tcp_udp_csum_err, 1);
-			dp_info_rl("TCP/UDP checksum error: ip_csum_err %u "
-				   "tcp_udp_csum_err %u tcp_udp_csum_err_counter %u",
-				   ip_csum_err, tcp_udp_csum_er,
-				   pdev->stats.err.tcp_udp_csum_err);
+		    DP_STATS_INC(pdev, err.tcp_udp_csum_err, 1);
 		}
 	} else if (qdf_nbuf_is_ipv6_udp_pkt(nbuf) ||
 		   qdf_nbuf_is_ipv6_tcp_pkt(nbuf)) {
 		if (qdf_likely(!tcp_udp_csum_er))
 			cksum.l4_result = QDF_NBUF_RX_CKSUM_TCP_UDP_UNNECESSARY;
-		else {
+		else
 			DP_STATS_INC(pdev, err.tcp_udp_csum_err, 1);
-			dp_info_rl("TCP/UDP checksum error: ip_csum_err %u "
-				   "tcp_udp_csum_err %u tcp_udp_csum_err_counter %u",
-				   ip_csum_err, tcp_udp_csum_er,
-				   pdev->stats.err.tcp_udp_csum_err);
-		}
 	}
 
 bypass_tcp_udp:
@@ -2616,7 +2600,7 @@ bool dp_rx_reap_loop_pkt_limit_hit(struct dp_soc *soc, int num_reaped,
 		(num_reaped >= max_reap_limit) ? true : false;
 
 	if (limit_hit)
-		DP_STATS_INC(soc, rx.reap_loop_pkt_limit_hit, 1);
+		DP_STATS_INC(soc, rx.reap_loop_pkt_limit_hit, 1)
 
 	return limit_hit;
 }
@@ -2662,18 +2646,6 @@ dp_rx_peer_metadata_peer_id_get(struct dp_soc *soc, uint32_t peer_metadata)
 							     peer_metadata);
 }
 
-#define HTT_RX_PEER_META_DATA_FIELD_GET(_var, _field_s, _field_m) \
-	(((_var) & (_field_m)) >> (_field_s))
-
-static inline uint8_t
-dp_rx_peer_metadata_passthru_pkt_get(struct dp_soc *soc,
-				     uint32_t peer_metadata)
-{
-	return HTT_RX_PEER_META_DATA_FIELD_GET(peer_metadata,
-					       soc->htt_passthru_pkt_s,
-					       soc->htt_passthru_pkt_m);
-}
-
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(DP_MLO_LINK_STATS_SUPPORT)
 /**
  * dp_rx_nbuf_set_link_id_from_tlv() - Set link id in nbuf cb
@@ -2691,7 +2663,7 @@ dp_rx_nbuf_set_link_id_from_tlv(struct dp_soc *soc, uint8_t *tlv_hdr,
 								tlv_hdr);
 
 	if (soc->arch_ops.dp_rx_peer_set_link_id)
-		soc->arch_ops.dp_rx_peer_set_link_id(soc, nbuf, peer_metadata);
+		soc->arch_ops.dp_rx_peer_set_link_id(nbuf, peer_metadata);
 }
 
 /**
@@ -2706,8 +2678,6 @@ static inline void
 dp_rx_set_nbuf_band(qdf_nbuf_t nbuf, struct dp_txrx_peer *txrx_peer,
 		    uint8_t link_id)
 {
-	if (qdf_unlikely(qdf_trace_dp_band_link_id_enabled()))
-		qdf_trace_dp_band_link_id(txrx_peer->band[link_id], link_id);
 	qdf_nbuf_rx_set_band(nbuf, txrx_peer->band[link_id]);
 }
 #else
@@ -3104,30 +3074,15 @@ static inline
 void dp_rx_per_core_stats_update(struct dp_soc *soc, uint8_t ring_id,
 				 uint32_t bufs_reaped)
 {
-	int cpu_id __maybe_unused = qdf_get_cpu();
-
-	DP_STATS_INC(soc, rx.ring_packets[cpu_id][ring_id], bufs_reaped);
 }
 
 static inline
 qdf_nbuf_t dp_rx_nbuf_alloc(struct dp_soc *soc,
 			    struct rx_desc_pool *rx_desc_pool)
 {
-	/*
-	 * Call __qdf_nbuf_alloc_simple() directly (the function, not the
-	 * qdf_nbuf_alloc_simple macro).  In non-NBUF_MEMORY_DEBUG builds the
-	 * macro expands to qdf_nbuf_alloc_fl -> __qdf_nbuf_alloc ->
-	 * __qdf_nbuf_frag_alloc -> __netdev_alloc_skb, which never sets
-	 * skb->fast_recycled.  The function routes through
-	 * __qdf_nbuf_netdev_alloc which maps to __netdev_alloc_skb_fast when
-	 * QCA_DP_NBUF_FAST_RECYCLE_CHECK is defined, correctly setting
-	 * fast_recycled and enabling the DMA cache-invalidate skip in
-	 * dp_rx_nbuf_sync_no_dsb().  RX_BUFFER_RESERVATION and buf_alignment
-	 * are both 0 under DP_RX_BUFFER_OPTIMIZATION so no reserve/align is
-	 * lost by bypassing the macro wrapper.
-	 */
-	return __qdf_nbuf_alloc_simple(soc->osdev, rx_desc_pool->buf_size,
-				       __func__, __LINE__);
+	return qdf_nbuf_alloc_simple(soc->osdev, rx_desc_pool->buf_size,
+				     RX_BUFFER_RESERVATION,
+				     rx_desc_pool->buf_alignment, FALSE);
 }
 
 static inline
@@ -3200,6 +3155,8 @@ void dp_rx_nbuf_unmap(struct dp_soc *soc,
 	rx_desc_pool = &soc->rx_desc_buf[rx_desc->pool_id];
 	dp_reo_ctx_buf_mapping_lock(soc, reo_ring_num);
 
+	dp_audio_smmu_unmap(soc, rx_desc->nbuf, rx_desc_pool->buf_size);
+
 	dp_ipa_handle_rx_buf_smmu_mapping(soc, rx_desc->nbuf,
 					  rx_desc_pool->buf_size,
 					  false, __func__,
@@ -3220,6 +3177,7 @@ void dp_rx_nbuf_unmap_pool(struct dp_soc *soc,
 			   struct rx_desc_pool *rx_desc_pool,
 			   qdf_nbuf_t nbuf)
 {
+	dp_audio_smmu_unmap(soc, nbuf, rx_desc_pool->buf_size);
 	dp_ipa_handle_rx_buf_smmu_mapping(soc, nbuf,
 					  rx_desc_pool->buf_size,
 					  false, __func__, __LINE__, 0);
@@ -3231,7 +3189,7 @@ static inline
 void dp_rx_per_core_stats_update(struct dp_soc *soc, uint8_t ring_id,
 				 uint32_t bufs_reaped)
 {
-	int cpu_id __maybe_unused = qdf_get_cpu();
+	int cpu_id = qdf_get_cpu();
 
 	DP_STATS_INC(soc, rx.ring_packets[cpu_id][ring_id], bufs_reaped);
 }
@@ -3466,7 +3424,6 @@ bool dp_rx_is_sg_formation_required(struct hal_wbm_err_desc_info *info);
 void dp_rx_err_tlv_invalidate(struct dp_soc *soc,
 			      qdf_nbuf_t nbuf);
 
-#ifndef CONFIG_BORON
 /**
  * dp_rx_wbm_sg_list_last_msdu_war() - war for HW issue
  * @soc: DP SOC handle
@@ -3476,7 +3433,6 @@ void dp_rx_err_tlv_invalidate(struct dp_soc *soc,
  * Return: NONE
  */
 void dp_rx_wbm_sg_list_last_msdu_war(struct dp_soc *soc);
-#endif /* CONFIG_BORON */
 
 /**
  * dp_rx_check_pkt_len() - Check for pktlen validity
@@ -3705,10 +3661,8 @@ void dp_2k_jump_handle(struct dp_soc *soc, qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr,
  *
  * Return: uint32_t: No. of elements processed
  */
-#ifndef CONFIG_BORON
 uint32_t dp_rx_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 			   hal_ring_handle_t hal_ring_hdl, uint32_t quota);
-#endif /* CONFIG_BORON */
 
 /**
  * dp_rx_wbm_err_process() - Processes error frames routed to WBM release ring
@@ -3789,6 +3743,7 @@ QDF_STATUS dp_rx_desc_sanity(struct dp_soc *soc, hal_soc_handle_t hal_soc,
 }
 #endif
 
+#ifdef RX_DESC_DEBUG_CHECK
 /**
  * dp_rx_desc_nbuf_sanity_check - Add sanity check to catch REO rx_desc paddr
  *				  corruption
@@ -3801,6 +3756,15 @@ QDF_STATUS dp_rx_desc_sanity(struct dp_soc *soc, hal_soc_handle_t hal_soc,
 QDF_STATUS dp_rx_desc_nbuf_sanity_check(struct dp_soc *soc,
 					hal_ring_desc_t ring_desc,
 					struct dp_rx_desc *rx_desc);
+#else
+static inline
+QDF_STATUS dp_rx_desc_nbuf_sanity_check(struct dp_soc *soc,
+					hal_ring_desc_t ring_desc,
+					struct dp_rx_desc *rx_desc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 #endif /* QCA_HOST_MODE_WIFI_DISABLED */
 
 /**
@@ -4014,139 +3978,6 @@ dp_rx_get_stats_arr_idx_from_link_id(qdf_nbuf_t nbuf,
 }
 #endif /* CONFIG_NBUF_AP_PLATFORM */
 
-int dp_rx_err_exception(struct dp_soc *soc, hal_ring_desc_t ring_desc);
-
-#ifdef WLAN_FEATURE_DP_RX_RING_HISTORY
-/**
- * dp_rx_err_ring_record_entry() - Record rx err ring history
- * @soc: Datapath soc structure
- * @paddr: paddr of the buffer in RX err ring
- * @sw_cookie: SW cookie of the buffer in RX err ring
- * @rbm: Return buffer manager of the buffer in RX err ring
- *
- * Return: None
- */
-static inline void
-dp_rx_err_ring_record_entry(struct dp_soc *soc, uint64_t paddr,
-			    uint32_t sw_cookie, uint8_t rbm)
-{
-	struct dp_buf_info_record *record;
-	uint32_t idx;
-
-	if (qdf_unlikely(!soc->rx_err_ring_history))
-		return;
-
-	idx = dp_history_get_next_index(&soc->rx_err_ring_history->index,
-					DP_RX_ERR_HIST_MAX);
-
-	/* No NULL check needed for record since its an array */
-	record = &soc->rx_err_ring_history->entry[idx];
-
-	record->timestamp = qdf_get_log_timestamp();
-	record->hbi.paddr = paddr;
-	record->hbi.sw_cookie = sw_cookie;
-	record->hbi.rbm = rbm;
-}
-#else
-static inline void
-dp_rx_err_ring_record_entry(struct dp_soc *soc, uint64_t paddr,
-			    uint32_t sw_cookie, uint8_t rbm)
-{
-}
-#endif
-
-/**
- * dp_rx_bar_frame_handle() - Function to handle err BAR frames
- * @soc: core DP main context
- * @ring_desc: Hal ring desc
- * @rx_desc: dp rx desc
- * @mpdu_desc_info: mpdu desc info
- * @err_status: error status
- * @err_code: error code
- *
- * Handle the error BAR frames received. Ensure the SOC level
- * stats are updated based on the REO error code. The BAR frames
- * are further processed by updating the Rx tids with the start
- * sequence number (SSN) and BA window size. Desc is returned
- * to the free desc list
- *
- * Return: none
- */
-void
-dp_rx_bar_frame_handle(struct dp_soc *soc,
-		       hal_ring_desc_t ring_desc,
-		       struct dp_rx_desc *rx_desc,
-		       struct hal_rx_mpdu_desc_info *mpdu_desc_info,
-		       uint8_t err_status,
-		       uint32_t err_code);
-
-/**
- * dp_rx_msdus_drop() - Drops all MSDU's per MPDU
- *
- * @soc: core txrx main context
- * @ring_desc: opaque pointer to the REO error ring descriptor
- * @mpdu_desc_info: MPDU descriptor information from ring descriptor
- * @mac_id: mac ID
- * @pn_err: PN Check failed
- *
- * This function is used to drop all MSDU in an MPDU
- *
- * Return: uint32_t: No. of elements processed
- */
-uint32_t
-dp_rx_msdus_drop(struct dp_soc *soc, hal_ring_desc_t ring_desc,
-		 struct hal_rx_mpdu_desc_info *mpdu_desc_info,
-		 uint8_t *mac_id, bool pn_err);
-
-/**
- * dp_rx_reo_err_entry_process() - Handles for REO error entry processing
- *
- * @soc: core txrx main context
- * @ring_desc: opaque pointer to the REO error ring descriptor
- * @mpdu_desc_info: pointer to mpdu level description info
- * @link_desc_va: pointer to msdu_link_desc virtual address
- * @err_code: reo error code fetched from ring entry
- *
- * Function to handle msdus fetched from msdu link desc, currently
- * support REO error NULL queue, 2K jump, OOR.
- *
- * Return: msdu count processed
- */
-uint32_t
-dp_rx_reo_err_entry_process(struct dp_soc *soc,
-			    void *ring_desc,
-			    struct hal_rx_mpdu_desc_info *mpdu_desc_info,
-			    void *link_desc_va,
-			    enum hal_reo_error_code err_code);
-
-/**
- * dp_rx_err_dup_frame() - record duplicate frame stats if
- *                         txrx_peer is valid
- * @soc: core txrx main context
- * @mpdu_desc_info: pointer to mpdu level description info
- *
- * Return: None
- */
-static inline void
-dp_rx_err_dup_frame(struct dp_soc *soc,
-		    struct hal_rx_mpdu_desc_info *mpdu_desc_info)
-{
-	struct dp_txrx_peer *txrx_peer = NULL;
-	dp_txrx_ref_handle txrx_ref_handle = NULL;
-	uint16_t peer_id;
-
-	peer_id =
-		dp_rx_peer_metadata_peer_id_get(soc,
-						mpdu_desc_info->peer_meta_data);
-	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(soc, peer_id,
-						   &txrx_ref_handle,
-						   DP_MOD_ID_RX_ERR);
-	if (txrx_peer) {
-		DP_STATS_INC(txrx_peer->vdev, rx.duplicate_count, 1);
-		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
-	}
-}
-
 #ifdef WLAN_DP_LOAD_BALANCE_SUPPORT
 void dp_rx_calculate_per_ring_pkt_avg(struct cdp_soc_t *cdp_soc);
 void dp_rx_get_per_ring_pkt_avg(struct cdp_soc_t *cdp_soc,
@@ -4212,466 +4043,6 @@ dp_rx_buffers_replenish_on_demand(struct cdp_soc_t *cdp_soc,
 				  uint32_t num_buffers, uint32_t pdev_id)
 {
 	return 0;
-}
-#endif
-
-/**
- * DP_RX_ERR_HANDLE_DESC_DUP - Handle duplicate RX descriptor error
- * @soc: DP soc handle
- * @hal_ring_hdl: HAL ring handle
- * @ring_desc: ring descriptor
- * @rx_desc: RX descriptor
- *
- * This macro handles the case when a RX descriptor is found to be duplicated
- * or not in use during REO processing. It updates error statistics and
- * performs debug dump and assertion.
- */
-#define DP_RX_ERR_HANDLE_DESC_DUP(soc, hal_ring_hdl, ring_desc, rx_desc) \
-do { \
-	DP_STATS_INC(soc, rx.err.hal_reo_dest_dup, 1); \
-	dp_info_rl("Reaping rx_desc not in use!"); \
-	dp_rx_dump_info_and_assert(soc, hal_ring_hdl, \
-				   ring_desc, rx_desc); \
-} while (0)
-
-#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
-#if defined(IPA_OFFLOAD) && !defined(DP_RX_BUFFER_OPTIMIZATION)
-static inline void
-dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
-{
-	*buf_size = PAGE_SIZE;
-	*align = 0;
-}
-#else
-/* This is the final size of the RX buffer after adding metadata sizes */
-#define RX_DATA_BUFFER_SIZE_MAX	2048
-
-static inline void
-dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
-{
-	if (RX_DATA_BUFFER_OPT_ALIGNMENT)
-		*buf_size += RX_DATA_BUFFER_OPT_ALIGNMENT - 1;
-	*buf_size += QDF_SHINFO_SIZE;
-	*buf_size = QDF_NBUF_ALIGN(*buf_size);
-
-	*align = RX_DATA_BUFFER_OPT_ALIGNMENT;
-
-	/* Size of SKB shared info when added to the buffer size
-	 * is not matching to RX_DATA_BUFFER_SIZE_MAX (2048) on
-	 * certain host machines, this will result in the buffer
-	 * address not matching with the alignment requirement
-	 * of the hardware resulting in degraded performance.
-	 * Therefore do the below math to match the alignment
-	 * requirement of the hardware.
-	 */
-	if (*buf_size < RX_DATA_BUFFER_SIZE_MAX &&
-	    *buf_size % RX_DATA_BUFFER_ALIGNMENT) {
-		*buf_size += (RX_DATA_BUFFER_SIZE_MAX - *buf_size);
-	}
-}
-#endif
-#endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
-
-#ifdef DP_FEATURE_DIRECT_REFILL
-static inline struct dp_srng *dp_get_pri_replenish_srng(struct dp_soc *soc,
-							uint8_t mac_id)
-{
-	/* This is the index of the direct refill ring facing HW */
-	if (qdf_likely(soc->features.direct_refill_support))
-		return soc->replenish_rings[mac_id][DP_NUM_SW_REFILL_RINGS];
-
-	/* This is the index of the refill ring facing FW */
-	return soc->replenish_rings[mac_id][0];
-}
-
-static inline uint32_t
-__dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
-				  uint32_t rx_bufs_reaped,
-				  union dp_rx_desc_list_elem_t **desc_list,
-				  union dp_rx_desc_list_elem_t **tail,
-				  bool req_only)
-{
-	int i;
-	uint32_t rx_bufs_used = 0, rx_bufs_refilled = 0;
-	struct rx_desc_pool *rx_desc_pool;
-	struct dp_srng *dp_rxdma_srng;
-
-	rx_desc_pool = &soc->rx_desc_buf[mac_id];
-	dp_rxdma_srng = soc->replenish_rings[mac_id][0];
-
-	/* dal module will replenish both the ring replenish, skip
-	 * two ring replenish logic
-	 */
-	if (wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx))
-		return dp_rx_buffers_replenish(soc, mac_id,
-					       dp_rxdma_srng,
-					       rx_desc_pool,
-					       rx_bufs_reaped,
-					       desc_list, tail,
-					       req_only);
-
-	for (i = 0; i < soc->num_replenish_rings[mac_id]; i++) {
-		dp_rxdma_srng = soc->replenish_rings[mac_id][i];
-		rx_bufs_refilled = dp_rx_buffers_replenish(soc, mac_id,
-							   dp_rxdma_srng,
-							   rx_desc_pool,
-							   rx_bufs_reaped,
-							   desc_list, tail,
-							   req_only);
-		rx_bufs_used += rx_bufs_refilled;
-		rx_bufs_reaped -= rx_bufs_refilled;
-		if (rx_bufs_reaped == 0)
-			break;
-	}
-
-	return rx_bufs_used;
-}
-#else
-static inline struct dp_srng *dp_get_pri_replenish_srng(struct dp_soc *soc,
-							uint8_t mac_id)
-{
-	return &soc->rx_refill_buf_ring[mac_id];
-}
-
-static inline uint32_t
-__dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
-				  uint32_t rx_bufs_reaped,
-				  union dp_rx_desc_list_elem_t **desc_list,
-				  union dp_rx_desc_list_elem_t **tail,
-				  bool req_only)
-{
-	uint32_t rx_bufs_used = 0;
-	struct rx_desc_pool *rx_desc_pool;
-	struct dp_srng *dp_rxdma_srng = &soc->rx_refill_buf_ring[mac_id];
-
-	rx_desc_pool = &soc->rx_desc_buf[mac_id];
-	dp_rx_buffers_replenish(soc, mac_id, dp_rxdma_srng,
-				rx_desc_pool, rx_bufs_reaped,
-				desc_list, tail, req_only);
-	rx_bufs_used += rx_bufs_reaped;
-
-	return rx_bufs_used;
-}
-#endif
-
-static inline uint32_t
-dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
-				uint32_t rx_bufs_reaped,
-				union dp_rx_desc_list_elem_t **desc_list,
-				union dp_rx_desc_list_elem_t **tail,
-				bool req_only)
-{
-	if (!rx_bufs_reaped)
-		return 0;
-
-	return __dp_rx_buffers_replenish_wrapper(soc, mac_id, rx_bufs_reaped,
-						 desc_list, tail, req_only);
-}
-
-QDF_STATUS
-dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
-				     uint32_t mac_id,
-				     uint32_t num_entries_avail,
-				     struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
-				     struct dp_pdev *dp_pdev,
-				     struct rx_desc_pool *rx_desc_pool);
-
-#ifdef DP_RX_MON_MEM_FRAG
-QDF_STATUS
-dp_pdev_frag_alloc_and_map(struct dp_soc *dp_soc,
-			   struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
-			   struct dp_pdev *dp_pdev,
-			   struct rx_desc_pool *rx_desc_pool);
-#else
-static inline QDF_STATUS
-dp_pdev_frag_alloc_and_map(struct dp_soc *dp_soc,
-			   struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
-			   struct dp_pdev *dp_pdev,
-			   struct rx_desc_pool *rx_desc_pool)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
-#ifdef DP_RX_PEEK_MSDU_DONE_WAR
-static inline int dp_rx_war_peek_msdu_done(struct dp_soc *soc,
-					   struct dp_rx_desc *rx_desc)
-{
-	uint8_t *rx_tlv_hdr;
-
-	qdf_nbuf_sync_for_cpu(soc->osdev, rx_desc->nbuf, QDF_DMA_FROM_DEVICE);
-	rx_tlv_hdr = qdf_nbuf_data(rx_desc->nbuf);
-
-	return hal_rx_attn_msdu_done_get(soc->hal_soc, rx_tlv_hdr);
-}
-
-/**
- * dp_rx_delink_n_rel_rx_desc() - unmap & free the nbuf in the rx_desc
- * @soc: DP SoC handle
- * @rx_desc: rx_desc handle of the nbuf to be unmapped & freed
- * @reo_ring_num: REO_RING_NUM corresponding to the REO for which the
- *		  bottom half is being serviced.
- *
- * Return: None
- */
-static inline void
-dp_rx_delink_n_rel_rx_desc(struct dp_soc *soc, struct dp_rx_desc *rx_desc,
-			   uint8_t reo_ring_num)
-{
-	if (!rx_desc)
-		return;
-
-	dp_rx_nbuf_unmap(soc, rx_desc, reo_ring_num);
-	dp_rx_nbuf_free(rx_desc->nbuf);
-	/*
-	 * RX_DESC flags:
-	 * in_use = 0 will be set when this rx_desc is added to local freelist
-	 * unmapped = 1 will be set by dp_rx_nbuf_unmap
-	 * in_err_state = 0 will be set during replenish
-	 * has_reuse_nbuf need not be touched.
-	 * msdu_done_fail = 0 should be set here ..!!
-	 */
-	rx_desc->msdu_done_fail = 0;
-}
-
-static inline struct dp_rx_desc *
-dp_rx_war_store_msdu_done_fail_desc(struct dp_soc *soc,
-				    struct dp_rx_desc *rx_desc,
-				    uint8_t reo_ring_num)
-{
-	struct dp_rx_msdu_done_fail_desc_list *msdu_done_fail_desc_list =
-						&soc->msdu_done_fail_desc_list;
-	struct dp_rx_desc *old_rx_desc;
-	uint32_t idx;
-
-	idx = dp_get_next_index(&msdu_done_fail_desc_list->index,
-				DP_MSDU_DONE_FAIL_DESCS_MAX);
-
-	old_rx_desc = msdu_done_fail_desc_list->msdu_done_fail_descs[idx];
-	dp_rx_delink_n_rel_rx_desc(soc, old_rx_desc, reo_ring_num);
-
-	msdu_done_fail_desc_list->msdu_done_fail_descs[idx] = rx_desc;
-
-	return old_rx_desc;
-}
-
-#else
-static inline int dp_rx_war_peek_msdu_done(struct dp_soc *soc,
-					   struct dp_rx_desc *rx_desc)
-{
-	return 1;
-}
-
-static inline struct dp_rx_desc *
-dp_rx_war_store_msdu_done_fail_desc(struct dp_soc *soc,
-				    struct dp_rx_desc *rx_desc,
-				    uint8_t reo_ring_num)
-{
-	return NULL;
-}
-#endif
-
-#ifdef DP_RX_MSDU_DONE_FAIL_HISTORY
-static inline void
-dp_rx_msdu_done_fail_event_record(struct dp_soc *soc,
-				  struct dp_rx_desc *rx_desc,
-				  qdf_nbuf_t nbuf)
-{
-	struct dp_msdu_done_fail_entry *entry;
-	uint32_t idx;
-
-	if (qdf_unlikely(!soc->msdu_done_fail_hist))
-		return;
-
-	idx = dp_history_get_next_index(&soc->msdu_done_fail_hist->index,
-					DP_MSDU_DONE_FAIL_HIST_MAX);
-	entry = &soc->msdu_done_fail_hist->entry[idx];
-	entry->paddr = qdf_nbuf_get_frag_paddr(nbuf, 0);
-
-	if (rx_desc)
-		entry->sw_cookie = rx_desc->cookie;
-	else
-		entry->sw_cookie = 0xDEAD;
-}
-#else
-static inline void
-dp_rx_msdu_done_fail_event_record(struct dp_soc *soc,
-				  struct dp_rx_desc *rx_desc,
-				  qdf_nbuf_t nbuf)
-{
-}
-#endif
-
-#ifdef DRIVER_PASSTHRU_MODE
-/**
- * dp_rx_err_process_passthru_msdu() - Process passthru msdu buffers received
- * on rx err ring
- * @soc: DP SoC handle
- * @hal_ring_hdl: rx err ring handle, used to reap additional ring entries
- *                belonging to the same scattered MSDU
- * @ring_desc: error ring descriptor
- * @mpdu_desc_info: mpdu descriptor information
- * @num_bufs_reaped: output param, number of ring buffers reaped by this call
- *
- * This function checks whether the MSDU buffer is from a passthru peer, and
- * if so, processes it. If the MSDU is spread across multiple ring entries
- * (scatter/gather), it reaps all of them before reassembling and delivering
- * the MSDU. This is the BE (non-BN) ring-traversal driver -- it owns
- * advancing ring_desc via hal_srng_dst_get_next()/hal_srng_dst_peek(), while
- * the per-buffer reap/deliver logic it calls is common across BE and BN.
- *
- * Return: lmac id if the buffer was a passthru MSDU, MAX_PDEV_CNT otherwise
- */
-int
-dp_rx_err_process_passthru_msdu(struct dp_soc *soc,
-				hal_ring_handle_t hal_ring_hdl,
-			       hal_ring_desc_t ring_desc,
-			       struct hal_rx_mpdu_desc_info *mpdu_desc_info,
-			       uint32_t *num_bufs_reaped);
-
-/**
- * dp_rx_err_reap_one_passthru_buf() - reap a single ring buffer belonging to
- *  a (possibly scattered) passthru MSDU
- * @soc: DP SoC handle
- * @cur_desc: ring descriptor for the buffer to reap
- * @is_cont: output param, set to whether this buffer continues into the
- *           next ring entry
- * @head_nbuf: in/out param, head of the scatter/gather nbuf chain
- * @tail_nbuf: in/out param, tail of the scatter/gather nbuf chain
- * @lmac_id: output param, lmac id of the reaped buffer
- * @num_bufs_reaped: in/out param, incremented on a successful reap
- *
- * This function does not touch the ring position -- callers own advancing
- * to the next ring entry (via hal_srng_dst_get_next()/hal_srng_dst_peek())
- * when is_cont is true. Common across BE and BN.
- *
- * Return: QDF_STATUS_SUCCESS if a buffer was reaped, QDF_STATUS_E_INVAL if
- *         the ring/link-desc cookie did not resolve to a valid rx_desc.
- */
-QDF_STATUS
-dp_rx_err_reap_one_passthru_buf(struct dp_soc *soc, hal_ring_desc_t cur_desc,
-				bool *is_cont, qdf_nbuf_t *head_nbuf,
-				qdf_nbuf_t *tail_nbuf, uint8_t *lmac_id,
-				uint32_t *num_bufs_reaped);
-
-/**
- * dp_rx_err_passthru_sg_free() - free an incomplete passthru scatter/gather
- *  nbuf chain
- * @head_nbuf: head of the scatter/gather nbuf chain to free
- *
- * Common across BE and BN.
- */
-void dp_rx_err_passthru_sg_free(qdf_nbuf_t head_nbuf);
-
-/**
- * dp_rx_err_deliver_passthru_sg_buf() - reassemble and deliver a reaped
- *  passthru MSDU
- * @pdev: pdev the reaped buffers belong to, used to derive the DP SoC handle
- *        and to search for a passthru vdev when txrx_peer is NULL
- * @head_nbuf: head of the scatter/gather nbuf chain
- * @tail_nbuf: tail of the scatter/gather nbuf chain
- * @txrx_peer: passthru peer to deliver the reassembled MSDU to, may be NULL
- *             if the peer could not be resolved (e.g. torn down) even
- *             though the passthru bit was set on the MSDU
- *
- * This function does not touch the ring position. Common across BE and BN.
- * Callers are expected to free the scatter/gather chain themselves (e.g. via
- * dp_rx_err_passthru_sg_free()) instead of calling this function when the
- * chain was left incomplete.
- */
-void
-dp_rx_err_deliver_passthru_sg_buf(struct dp_pdev *pdev,
-				  qdf_nbuf_t head_nbuf, qdf_nbuf_t tail_nbuf,
-				  struct dp_txrx_peer *txrx_peer);
-
-/**
- * dp_rx_deliver_raw_passthru() - Deliver raw passthru packets to stack
- * @soc: DP SoC handle
- * @vdev: dp vdev handle
- * @txrx_peer: txrx peer handle
- * @nbuf: network buffer
- * @rx_pkt_tlvs: rx packet tlvs containing valid msdu end tlvs
- *
- * This function processes passthru msdu buffers and delivers them to stack
- *
- * Return: 0 on success else non-zero value on failure
- */
-int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf,
-			       uint8_t *rx_pkt_tlvs);
-
-/**
- * dp_rx_peer_mdata_get_passthru_peer_ref() - get a ref to the passthru peer
- *  for a received msdu buffer, if the msdu belongs to a passthru peer.
- * @soc: DP SoC handle
- * @txrx_ref_handle: output param, set to the ref handle for the returned
- *                   peer, to be released via dp_txrx_peer_unref_delete()
- * @peer_meta_data: peer metadata from the msdu/mpdu descriptor
- * @mod_id: module ID to be used for taking/releasing the peer reference
- *
- * This function resolves the txrx_peer for the given peer metadata and
- * returns it only if the peer's vdev is in passthru mode. The caller is
- * responsible for releasing the returned reference via
- * dp_txrx_peer_unref_delete() when non-NULL.
- *
- * Return: txrx_peer handle if the buffer belongs to a passthru peer,
- *         NULL otherwise.
- */
-struct dp_txrx_peer *
-dp_rx_peer_mdata_get_passthru_peer_ref(struct dp_soc *soc,
-				       dp_txrx_ref_handle *txrx_ref_handle,
-				       uint32_t peer_meta_data,
-				       enum dp_mod_id mod_id);
-
-static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,
-					    uint32_t peer_metadata)
-{
-	uint16_t peer_id = dp_rx_peer_metadata_peer_id_get(soc, peer_metadata);
-	enum wlan_op_mode opmode;
-	struct dp_peer *peer;
-
-	peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_RX_ERR);
-	if (!peer)
-		return false;
-
-	opmode = peer->vdev->opmode;
-	dp_peer_unref_delete(peer, DP_MOD_ID_RX_ERR);
-	return (opmode == wlan_op_mode_passthru) ? true : false;
-}
-#else
-static inline
-int
-dp_rx_err_process_passthru_msdu(struct dp_soc *soc,
-				hal_ring_handle_t hal_ring_hdl,
-			       hal_ring_desc_t ring_desc,
-			       struct hal_rx_mpdu_desc_info *mpdu_desc_info,
-			       uint32_t *num_bufs_reaped)
-{
-	*num_bufs_reaped = 0;
-	return MAX_PDEV_CNT;
-}
-
-static inline
-int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf,
-			       uint8_t *rx_pkt_tlvs)
-{
-	return -EINVAL;
-}
-
-static inline struct dp_txrx_peer *
-dp_rx_peer_mdata_get_passthru_peer_ref(struct dp_soc *soc,
-				       dp_txrx_ref_handle *txrx_ref_handle,
-				       uint32_t peer_meta_data,
-				       enum dp_mod_id mod_id)
-{
-	return NULL;
-}
-
-static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,
-					    uint32_t peer_metadata)
-{
-	return false;
 }
 #endif
 #endif /* _DP_RX_H */

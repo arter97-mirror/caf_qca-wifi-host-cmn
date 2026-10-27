@@ -84,53 +84,6 @@ dp_tx_comp_get_params_from_hal_desc_rh(struct dp_soc *soc,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
-
-/**
- * dp_tx_comp_desc_sanity_check_rh() - Check sanity for tx desc
- *
- * @msg_word: Msdu info msg word
- * @tx_desc: TX desc
- *
- * Compare paddr for completion desc and tx desc found through sw cookie.
- *
- * Return: QDF_STATUS_SUCCESS if paddr is same for tx desc and completion desc
- *		   QDF_STATUS_E_FAILURE incase paddr in descriptors don't match.
- *
- */
-static inline
-QDF_STATUS dp_tx_comp_desc_sanity_check_rh(uint32_t *msg_word,
-					   struct dp_tx_desc_s *tx_desc)
-{
-	qdf_dma_addr_t desc_dma_addr;
-	uint32_t paddr_lo;
-	uint32_t paddr_hi;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-
-	paddr_lo = HTT_TX_BUFFER_ADDR_INFO_ADDR_31_0_GET(*msg_word);
-	paddr_hi = HTT_TX_BUFFER_ADDR_INFO_ADDR_39_32_GET(*(msg_word + 1));
-	desc_dma_addr = (qdf_dma_addr_t)(paddr_lo |
-					(((uint64_t)paddr_hi) << 32));
-
-	if (desc_dma_addr != tx_desc->dma_addr) {
-		dp_err("Mismatched paddr. tx desc %pK sw cookie %u",
-		       tx_desc,
-		       HTT_TX_BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_GET(*(msg_word + 1)));
-		dp_err("dma addr in tx desc 0x%llx,dma addr in msdu info 0x%llx",
-		       (uint64_t)tx_desc->dma_addr,
-		       (uint64_t)desc_dma_addr);
-		status = QDF_STATUS_E_FAILURE;
-	}
-	return status;
-}
-#else
-static inline
-QDF_STATUS dp_tx_comp_desc_sanity_check_rh(uint32_t *msg_word,
-					   struct dp_tx_desc_s *tx_desc)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 /**
  * dp_tx_comp_find_tx_desc_rh() - Find software TX descriptor using sw_cookie
  *
@@ -143,37 +96,23 @@ static struct dp_tx_desc_s *
 dp_tx_comp_find_tx_desc_rh(struct dp_soc *soc, uint32_t sw_cookie)
 {
 	uint8_t pool_id;
-	uint16_t page_id, offset;
 	struct dp_tx_desc_s *tx_desc;
-	struct dp_tx_desc_pool_s *pool;
 
 	pool_id = (sw_cookie & DP_TX_DESC_ID_POOL_MASK) >>
 			DP_TX_DESC_ID_POOL_OS;
-	page_id = (sw_cookie & DP_TX_DESC_ID_PAGE_MASK) >>
-			DP_TX_DESC_ID_PAGE_OS;
-	offset = (sw_cookie & DP_TX_DESC_ID_OFFSET_MASK) >>
-			DP_TX_DESC_ID_OFFSET_OS;
-
-	pool = dp_get_tx_desc_pool(soc, pool_id);
-
-	/* FW-echoed cookie: bounds-check page_id/offset before dereferencing */
-	if (qdf_unlikely(!pool || !pool->desc_pages.cacheable_pages ||
-			 page_id >= pool->desc_pages.num_pages ||
-			 offset >= pool->desc_pages.num_element_per_page)) {
-		dp_tx_comp_alert(
-			"Invalid tx comp cookie 0x%x: pool %u page %u off %u",
-			sw_cookie, pool_id, page_id, offset);
-		return NULL;
-	}
 
 	/* Find Tx descriptor */
-	tx_desc = dp_tx_desc_find(soc, pool_id, page_id, offset, false);
+	tx_desc = dp_tx_desc_find(soc, pool_id,
+				  (sw_cookie & DP_TX_DESC_ID_PAGE_MASK) >>
+						DP_TX_DESC_ID_PAGE_OS,
+				  (sw_cookie & DP_TX_DESC_ID_OFFSET_MASK) >>
+						DP_TX_DESC_ID_OFFSET_OS, false);
 	/* pool id is not matching. Error */
 	if (tx_desc && tx_desc->pool_id != pool_id) {
 		dp_tx_comp_alert("Tx Comp pool id %d not matched %d",
 				 pool_id, tx_desc->pool_id);
 
-		return NULL;
+		qdf_assert_always(0);
 	}
 
 	return tx_desc;
@@ -448,27 +387,26 @@ dp_tx_hw_enqueue_rh(struct dp_soc *soc, struct dp_vdev *vdev,
 		goto enqueue_fail;
 	}
 
-	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
 	coalesce = dp_tx_attempt_coalescing(soc, vdev, tx_desc, tid,
 					    msdu_info, 0);
-
-	DP_STATS_INC_PKT(vdev, tx_i[DP_XMIT_LINK].processed, 1,
-			 tx_desc->length);
-	dp_tx_update_stats(soc, tx_desc, 0);
 
 	dp_tx_update_write_index(soc, tx_ep_info, coalesce);
 	ce_ring_release_lock(tx_ep_info->ce_tx_hdl);
 
+	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
 	dp_vdev_peer_stats_update_protocol_cnt_tx(vdev, nbuf);
+	DP_STATS_INC_PKT(vdev, tx_i[DP_XMIT_LINK].processed, 1,
+			 tx_desc->length);
 	DP_STATS_INC(soc, tx.tcl_enq[0], 1);
 
+	dp_tx_update_stats(soc, tx_desc, 0);
 	status = QDF_STATUS_SUCCESS;
 
 	dp_tx_record_hw_desc_rh((uint8_t *)hal_tx_desc_cached, soc);
 
 enqueue_fail:
 	dp_pkt_add_timestamp(vdev, QDF_PKT_TX_DRIVER_EXIT,
-			     qdf_get_log_timestamp_usecs(), tx_desc->nbuf);
+			     qdf_get_log_timestamp(), tx_desc->nbuf);
 
 	return status;
 }
@@ -772,7 +710,6 @@ void dp_tx_compl_handler_rh(struct dp_soc *soc, qdf_nbuf_t htt_msg)
 	uint32_t *msg_word;
 	uint8_t ring_id;
 	uint8_t tx_status;
-	QDF_STATUS status;
 	int i;
 
 	DP_HIST_INIT();
@@ -786,20 +723,10 @@ void dp_tx_compl_handler_rh(struct dp_soc *soc, qdf_nbuf_t htt_msg)
 
 		tx_desc = dp_tx_comp_find_tx_desc_rh(soc, sw_cookie);
 		if (!tx_desc) {
-			dp_err_rl("invalid tx comp cookie, dropping entry");
-			DP_STATS_INC(soc, tx.invalid_tx_comp_desc, 1);
-			goto next_msdu;
+			dp_err("failed to find tx desc");
+			qdf_assert_always(0);
 		}
 
-		status = dp_tx_comp_desc_sanity_check_rh(msg_word, tx_desc);
-		if (qdf_unlikely(QDF_IS_STATUS_ERROR(status))) {
-			dp_err("Sanity check for tx desc failed. TX completion desc:");
-			QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_TXRX,
-					   QDF_TRACE_LEVEL_FATAL,
-					   msg_word, HTT_TX_MSDU_INFO_SIZE);
-			qdf_assert_always(0);
-			goto next_msdu;
-		}
 		/*
 		 * If the descriptor is already freed in vdev_detach,
 		 * continue to next descriptor
@@ -828,15 +755,6 @@ void dp_tx_compl_handler_rh(struct dp_soc *soc, qdf_nbuf_t htt_msg)
 					 tx_desc->flags, tx_desc->id);
 			qdf_assert_always(0);
 		}
-
-		if (qdf_unlikely(tx_desc->flags &
-			DP_TX_DESC_FLAG_REAPED)) {
-			dp_tx_comp_alert("Txdesc duplicate entry, flags = %x,id = %d",
-					 tx_desc->flags, tx_desc->id);
-			qdf_assert_always(0);
-		}
-
-		tx_desc->flags |= DP_TX_DESC_FLAG_REAPED;
 
 		if (HTT_TX_BUFFER_ADDR_INFO_RELEASE_SOURCE_GET(*(msg_word + 1)) ==
 		    HTT_TX_MSDU_RELEASE_SOURCE_FW)
@@ -900,79 +818,3 @@ dp_tx_override_flow_pool_id_rh(struct dp_vdev *vdev,
 			       struct dp_tx_queue *queue)
 {
 }
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * dp_tx_gen_hw_desc_rh() - Generate hardware descriptor for RH architecture
- * @soc: DP soc handle
- * @vdev: DP vdev handle
- * @tx_desc: TX descriptor
- * @fw_metadata: Firmware metadata
- * @tx_exc_metadata: TX exception metadata
- * @msdu_info: MSDU information
- * @tcl_desc: TCL descriptor
- *
- * This function is a stub implementation for generating hardware descriptors
- * in the Rhine (RH) architecture. Currently returns failure status as the
- * functionality is not implemented.
- *
- * Return: QDF_STATUS_E_FAILURE - Always returns failure
- */
-QDF_STATUS
-dp_tx_gen_hw_desc_rh(struct dp_soc *soc, struct dp_vdev *vdev,
-		     struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
-		     struct cdp_tx_exception_metadata *tx_exc_metadata,
-		     struct dp_tx_msdu_info_s *msdu_info, void *tcl_desc)
-{
-	return QDF_STATUS_E_FAILURE;
-}
-
-/**
- * dp_tx_hw_desc_sync_rh() - RH specific hw desc sync function
- * @hal_tx_desc_cached: cached descriptor in host memory
- * @hw_desc: descriptor in hardware memory
- * @num_bytes: number of bytes to sync
- *
- * Return: None
- */
-void dp_tx_hw_desc_sync_rh(void *hal_tx_desc_cached, void *hw_desc,
-			   uint8_t num_bytes)
-{
-	hal_tx_desc_sync(hal_tx_desc_cached, hw_desc);
-}
-
-/**
- * dp_tx_desc_update_buffer_info_rh() - Dummy function for RH architecture
- * @soc: DP soc handle
- * @hal_tx_desc_cached: cached descriptor in host memory
- * @tx_desc: tx descriptor
- * @ring_id: ring ID
- *
- * This is a dummy place holder function for RH architecture.
- *
- * Return: None
- */
-void dp_tx_desc_update_buffer_info_rh(struct dp_soc *soc,
-				      void *hal_tx_desc_cached,
-				      struct dp_tx_desc_s *tx_desc,
-				      uint8_t ring_id)
-{
-	/* Dummy implementation - no action needed for RH */
-}
-
-/**
- * dp_dal_tx_comp_check_reserved_cookie_rh() - Check if cookie is DAL reserved
- * @soc: DP soc handle
- * @tx_comp_hal_desc: TX completion HAL descriptor
- *
- * This is a dummy implementation for RH architecture that always returns false
- * since RH doesn't support DAL reserved cookie functionality.
- *
- * Return: false - Always returns false for RH architecture
- */
-bool dp_dal_tx_comp_check_reserved_cookie_rh(struct dp_soc *soc,
-					     void *tx_comp_hal_desc)
-{
-	return false;
-}
-#endif /* FEATURE_DAL_DP_SUPPORT */

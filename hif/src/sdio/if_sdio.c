@@ -250,6 +250,18 @@ void hif_sdio_mask_interrupt_call(struct hif_softc *scn)
 }
 
 /**
+ * hif_trigger_dump() - trigger various dump cmd
+ * @scn: struct hif_opaque_softc
+ * @cmd_id: dump command id
+ * @start: start/stop dump
+ *
+ * Return: None
+ */
+void hif_trigger_dump(struct hif_opaque_softc *scn, uint8_t cmd_id, bool start)
+{
+}
+
+/**
  * hif_check_fw_reg() - check fw selfrecovery indication
  * @hif_ctx: hif_opaque_softc
  *

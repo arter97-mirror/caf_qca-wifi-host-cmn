@@ -26,7 +26,6 @@
 
 #include "wlan_cm_main.h"
 #include "wlan_cm_sm.h"
-#include "wlan_cm_roam_public_struct.h"
 
 #ifdef WLAN_FEATURE_HOST_ROAM
 /**
@@ -119,6 +118,7 @@ QDF_STATUS cm_host_roam_start_req(struct cnx_mgr *cm_ctx,
  */
 QDF_STATUS cm_reassoc_start(struct cnx_mgr *cm_ctx, struct cm_roam_req *req);
 
+#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * cm_reassoc_hw_mode_change_resp() - HW mode change response
  * @pdev: pdev pointer
@@ -144,6 +144,14 @@ void cm_reassoc_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev,
 QDF_STATUS
 cm_handle_reassoc_hw_mode_change(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id,
 				 enum wlan_cm_sm_evt event);
+#else
+static inline QDF_STATUS
+cm_handle_reassoc_hw_mode_change(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id,
+				 enum wlan_cm_sm_evt event)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 /**
  * cm_reassoc_active() - This API would be called after the reassoc
@@ -205,6 +213,7 @@ cm_send_reassoc_start_fail(struct cnx_mgr *cm_ctx,
 			   enum wlan_cm_connect_fail_reason reason,
 			   bool sync);
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_update_advance_roam_scan_filter() - fill scan filter for roam
  * @vdev: vdev
@@ -214,6 +223,7 @@ cm_send_reassoc_start_fail(struct cnx_mgr *cm_ctx,
  */
 QDF_STATUS cm_update_advance_roam_scan_filter(
 		struct wlan_objmgr_vdev *vdev, struct scan_filter *filter);
+#endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 /**
@@ -306,10 +316,12 @@ static inline bool cm_is_host_roam_enabled(void)
 	return false;
 }
 
+#ifdef WLAN_POLICY_MGR_ENABLE
 static inline
 void cm_reassoc_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev,
 				    uint8_t vdev_id,
 				    wlan_cm_id cm_id, QDF_STATUS status) {}
+#endif
 
 static inline QDF_STATUS cm_reassoc_complete(struct cnx_mgr *cm_ctx,
 					     struct wlan_cm_connect_resp *resp)
@@ -467,7 +479,6 @@ struct cm_roam_req *cm_get_first_roam_command(struct wlan_objmgr_vdev *vdev);
  * @cm_ctx: connection mgr context
  * @roam_req: connection mgr req
  * @source: connection mgr req source
- * @roam_event: roam offload event ptr
  *
  * This function prepares roam request when roam start ind is received
  * when CM SM is in connected state.
@@ -476,27 +487,7 @@ struct cm_roam_req *cm_get_first_roam_command(struct wlan_objmgr_vdev *vdev);
  */
 QDF_STATUS cm_prepare_roam_cmd(struct cnx_mgr *cm_ctx,
 			       struct cm_req **roam_req,
-			       enum wlan_cm_source source,
-			       struct roam_offload_roam_event *roam_event);
-
-/**
- * cm_prepare_smd_roam() - Update SMD link recfg context from a roam event
- * @cm_ctx: connection mgr context
- * @roam_event: roam offload event ptr, may be NULL
- *
- * This function copies the VDEV repurpose request TLV(s) and SMD
- * transition IE carried in @roam_event into the vdev's MLO link
- * reconfiguration context, so the SMD link-recfg state machine can
- * consume them later. Must be called for every ROAM_START-carrying
- * event that reaches the CM SM, not just the initial CONNECTED->ROAMING
- * transition, since a manual EV_ROAM_INVOKE can advance the SM into
- * ROAM_STARTED before the FW's own ROAM_START event with the real
- * TLVs arrives.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS cm_prepare_smd_roam(struct cnx_mgr *cm_ctx,
-			       struct roam_offload_roam_event *roam_event);
+			       enum wlan_cm_source source);
 
 /**
  * cm_add_fw_roam_cmd_to_list_n_ser() - Add roam req to list and serialize req
@@ -553,20 +544,6 @@ QDF_STATUS cm_roam_abort_event(struct wlan_objmgr_vdev *vdev);
 static inline bool cm_roam_offload_enabled(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
-}
-
-static inline QDF_STATUS cm_prepare_roam_cmd(struct cnx_mgr *cm_ctx,
-			       struct cm_req **roam_req,
-			       enum wlan_cm_source source,
-			       struct roam_offload_roam_event *roam_event)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS cm_prepare_smd_roam(struct cnx_mgr *cm_ctx,
-			       struct roam_offload_roam_event *roam_event)
-{
-	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif
 

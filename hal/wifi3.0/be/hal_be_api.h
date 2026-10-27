@@ -43,7 +43,7 @@ void hal_reo_setup_generic_be(struct hal_soc *soc,
  *			descriptor pointer.
  * @msdu_details_ptr: msdu details
  *
- * Return: msdu extension descriptor pointer.
+ * Return: msdu exntension descriptor pointer.
  */
 void *hal_rx_msdu_ext_desc_info_get_ptr_be(void *msdu_details_ptr);
 
@@ -89,16 +89,6 @@ uint8_t hal_rx_ret_buf_manager_get_be(hal_ring_desc_t ring_desc);
  */
 void hal_rx_wbm_err_info_get_generic_be(void *wbm_desc, void *wbm_er_info1);
 
-#ifdef CONFIG_BORON
-static inline
-void hal_reo_qdesc_setup_be(hal_soc_handle_t hal_soc_hdl,
-			    int tid, uint32_t ba_window_size,
-			    uint32_t start_seq, void *hw_qdesc_vaddr,
-			    qdf_dma_addr_t hw_qdesc_paddr,
-			    int pn_type, uint8_t vdev_stats_id)
-{
-}
-#else
 /**
  * hal_reo_qdesc_setup_be() - Setup HW REO queue descriptor
  * @hal_soc_hdl: Opaque HAL SOC handle
@@ -115,7 +105,6 @@ void hal_reo_qdesc_setup_be(hal_soc_handle_t hal_soc_hdl,
 			    uint32_t start_seq, void *hw_qdesc_vaddr,
 			    qdf_dma_addr_t hw_qdesc_paddr,
 			    int pn_type, uint8_t vdev_stats_id);
-#endif
 
 /**
  * hal_cookie_conversion_reg_cfg_be() - set cookie conversion relevant register
@@ -141,40 +130,6 @@ void hal_cookie_conversion_reg_cfg_be(hal_soc_handle_t hal_soc_hdl,
 uint32_t
 hal_reo_ix_remap_value_get_be(hal_soc_handle_t hal_soc_hdl,
 			      uint8_t rx_ring_mask);
-
-/**
- * hal_reo_remap_ix2_ix3_value_get_be() - Calculate reo remap register value
- *                                        by rx_ring_mask for IX2 and IX3.
- * @hal_soc_hdl: Handle to HAL SoC structure
- * @rx_ring_mask: mask value indicating the rx rings 0th bit set indicate
- *		  REO2SW1 is included in hash distribution
- * @remap_ix2: REO destination ring control value for IX2
- * @remap_ix3: REO destination ring control value for IX3
- *
- * Return: None
- */
-void
-hal_reo_remap_ix2_ix3_value_get_be(hal_soc_handle_t hal_soc_hdl,
-				   uint32_t rx_ring_mask,
-				   uint32_t *remap_ix2,
-				   uint32_t *remap_ix3);
-
-#ifdef CONFIG_BORON
-/**
- * hal_reo_remap_ix1_value_get_be() - Calculate reo remap register value
- *                                    for IX1 (dest_ring_mapping_8..15)
- * @remap0: output pointer to store the REO remap value for IX1
- *
- * Return: None
- */
-void
-hal_reo_remap_ix1_value_get_be(uint32_t *remap0);
-#else
-static inline void
-hal_reo_remap_ix1_value_get_be(uint32_t *remap0)
-{
-}
-#endif /* CONFIG_BORON */
 
 /**
  * hal_reo_ring_remap_value_get_be() - return REO remap value

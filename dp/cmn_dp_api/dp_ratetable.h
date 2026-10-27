@@ -42,10 +42,6 @@ enum CMN_MODE_TYPES {
 	CMN_IEEE80211_MODE_BEA,
 	CMN_IEEE80211_MODE_BEG,
 #endif
-#ifdef WLAN_FEATURE_11BN
-	CMN_IEEE80211_MODE_BNA,
-	CMN_IEEE80211_MODE_BNG,
-#endif
 	CMN_IEEE80211_MODE_MAX
 };
 
@@ -55,57 +51,10 @@ enum CMN_MODE_TYPES {
 #define CONFIG_160MHZ_SUPPORT 1
 #define NUM_HT_MCS 8
 #define NUM_VHT_MCS 12
-#define RT_INVALID_INDEX (0xff)
 
 #define NUM_HE_MCS 14
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 #define NUM_EHT_MCS 16
-#ifdef WLAN_FEATURE_11BN
-#define NUM_UHR_MCS 20
-/*
- * Max wire MCS value for UHR (Intermediate MCS 23 is the highest).
- * Used to size the mcs-to-table-offset mapping array.
- */
-#define UHR_MCS_MAX 24
-/*
- * uhr_mcs_to_tbl_idx[] maps a wire MCS index to its offset within one
- * NSS block of the UHR rate table.  The table is laid out as:
- *   [0]=MCS14 [1]=MCS15 [2]=MCS0 [3]=MCS1 [4]=IMCS17 [5]=MCS2 [6]=MCS3
- *   [7]=IMCS19 [8]=MCS4 [9]=IMCS20 [10]=MCS5 [11]=MCS6 [12]=MCS7
- *   [13]=IMCS23 [14]=MCS8 [15]=MCS9 [16]=MCS10 [17]=MCS11 [18]=MCS12
- *   [19]=MCS13
- * RT_INVALID_INDEX (0xff) marks wire MCS values that have no table entry.
- */
-#define UHR_MCS_TBL_IDX_INVALID RT_INVALID_INDEX
-static const uint8_t uhr_mcs_to_tbl_idx[UHR_MCS_MAX] = {
-	2,  /* MCS  0 */
-	3,  /* MCS  1 */
-	5,  /* MCS  2 */
-	6,  /* MCS  3 */
-	8,  /* MCS  4 */
-	10, /* MCS  5 */
-	11, /* MCS  6 */
-	12, /* MCS  7 */
-	14, /* MCS  8 */
-	15, /* MCS  9 */
-	16, /* MCS 10 */
-	17, /* MCS 11 */
-	18, /* MCS 12 */
-	19, /* MCS 13 */
-	0,  /* MCS 14 */
-	1,  /* MCS 15 */
-	UHR_MCS_TBL_IDX_INVALID, /* MCS 16 - unused */
-	4,  /* MCS 17 (IMCS) */
-	UHR_MCS_TBL_IDX_INVALID, /* MCS 18 - unused */
-	7,  /* MCS 19 (IMCS) */
-	9,  /* MCS 20 (IMCS) */
-	UHR_MCS_TBL_IDX_INVALID, /* MCS 21 - unused */
-	UHR_MCS_TBL_IDX_INVALID, /* MCS 22 - unused */
-	13, /* MCS 23 (IMCS) */
-};
-#else
-#define NUM_UHR_MCS 16
-#endif
 #endif
 
 #define NUM_SPATIAL_STREAM 4
@@ -120,6 +69,7 @@ static const uint8_t uhr_mcs_to_tbl_idx[UHR_MCS_MAX] = {
 	(RT_GET_INFO(_rt, (_index)).ratekbpssgi)
 
 #define HW_RATECODE_CCK_SHORT_PREAM_MASK  0x4
+#define RT_INVALID_INDEX (0xff)
 /* pow2 to optimize out * and / */
 #define DP_ATH_RATE_EP_MULTIPLIER     BIT(7)
 #define DP_ATH_EP_MUL(a, b)	      ((a) * (b))
@@ -213,27 +163,7 @@ static inline int dp_ath_rate_out(uint64_t _i)
 #define EHT_LAST_RIX_PLUS_ONE (EHT_320_RATE_TABLE_INDEX + NUM_EHT_RIX_PER_BW)
 #endif
 
-#ifdef WLAN_FEATURE_11BN
-#define NUM_UHR_SPATIAL_STREAM 4
-#define NUM_UHR_RIX_PER_BW (NUM_UHR_MCS * NUM_UHR_SPATIAL_STREAM)
-
-#define UHR_20_RATE_TABLE_INDEX EHT_LAST_RIX_PLUS_ONE
-#define UHR_40_RATE_TABLE_INDEX (UHR_20_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_60_RATE_TABLE_INDEX (UHR_40_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_80_RATE_TABLE_INDEX (UHR_60_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_120_RATE_TABLE_INDEX (UHR_80_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_140_RATE_TABLE_INDEX (UHR_120_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_160_RATE_TABLE_INDEX (UHR_140_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_200_RATE_TABLE_INDEX (UHR_160_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_240_RATE_TABLE_INDEX (UHR_200_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_280_RATE_TABLE_INDEX (UHR_240_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_320_RATE_TABLE_INDEX (UHR_280_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#define UHR_LAST_RIX_PLUS_ONE (UHR_320_RATE_TABLE_INDEX + NUM_UHR_RIX_PER_BW)
-#endif
-
-#ifdef WLAN_FEATURE_11BN
-#define DP_RATE_TABLE_SIZE UHR_LAST_RIX_PLUS_ONE
-#elif defined(WLAN_FEATURE_11BE)
+#ifdef WLAN_FEATURE_11BE
 #define DP_RATE_TABLE_SIZE EHT_LAST_RIX_PLUS_ONE
 #else
 #define DP_RATE_TABLE_SIZE HE_LAST_RIX_PLUS_ONE
@@ -297,20 +227,6 @@ enum DP_CMN_MODULATION_TYPE {
 	   DP_CMN_MOD_IEEE80211_T_EHT_280,
 	   DP_CMN_MOD_IEEE80211_T_EHT_320,
 #endif
-
-#ifdef WLAN_FEATURE_11BN
-	DP_CMN_MOD_IEEE80211_T_UHR_20,
-	DP_CMN_MOD_IEEE80211_T_UHR_40,
-	DP_CMN_MOD_IEEE80211_T_UHR_60,
-	DP_CMN_MOD_IEEE80211_T_UHR_80,
-	DP_CMN_MOD_IEEE80211_T_UHR_120,
-	DP_CMN_MOD_IEEE80211_T_UHR_140,
-	DP_CMN_MOD_IEEE80211_T_UHR_160,
-	DP_CMN_MOD_IEEE80211_T_UHR_200,
-	DP_CMN_MOD_IEEE80211_T_UHR_240,
-	DP_CMN_MOD_IEEE80211_T_UHR_280,
-	DP_CMN_MOD_IEEE80211_T_UHR_320,
-#endif /* WLAN_FEATURE_11BN */
 	   DP_CMN_MOD_IEEE80211_T_MAX_PHY
 };
 
@@ -326,12 +242,9 @@ enum HW_RATECODE_PREAM_TYPE {
 #ifdef WLAN_FEATURE_11BE
 	HW_RATECODE_PREAM_EHT,
 #endif
-#ifdef WLAN_FEATURE_11BN
-	HW_RATECODE_PREAM_UHR,
-#endif
 };
 
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 enum BW_TYPES_FP {
 	BW_20MHZ_F = 0,
 	BW_40MHZ_F,

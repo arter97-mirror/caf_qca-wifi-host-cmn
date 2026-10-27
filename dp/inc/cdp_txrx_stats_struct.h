@@ -46,52 +46,7 @@
 #define CDP_MU_MAX_USERS 37
 #define CDP_MU_MAX_MIMO_USERS 8
 /* 1 additional MCS is for invalid values */
-#if defined(WLAN_FEATURE_11BN)
-#define MAX_MCS (23 + 1)
-#define MAX_MCS_11BE 16
-#define MAX_MCS_11BN 23
-#define MAX_PUNCTURED_MODE 5
-/*
- * Max wire MCS value for UHR (Intermediate MCS 23 is the highest).
- * Used to size uhr_stats_mcs_to_idx[] below. Value matches UHR_MCS_MAX
- * in dp_ratetable.h (kept as a separate macro since this header does
- * not depend on dp_ratetable.h).
- */
-#define UHR_STATS_MCS_MAX 24
-/*
- * uhr_stats_mcs_to_idx[] maps a wire MCS index to its offset in the
- * cdp_rate_string[DOT11_BN][] / mcs_count[] stats arrays, which are laid
- * out sequentially as: MCS0..MCS15, then IMCS17, IMCS19, IMCS20, IMCS23.
- * UHR_STATS_MCS_TBL_IDX_INVALID marks wire MCS values with no stats slot.
- */
-#define UHR_STATS_MCS_TBL_IDX_INVALID (MAX_MCS - 1)
-static const uint8_t uhr_stats_mcs_to_idx[UHR_STATS_MCS_MAX] = {
-	0,  /* MCS  0 */
-	1,  /* MCS  1 */
-	2,  /* MCS  2 */
-	3,  /* MCS  3 */
-	4,  /* MCS  4 */
-	5,  /* MCS  5 */
-	6,  /* MCS  6 */
-	7,  /* MCS  7 */
-	8,  /* MCS  8 */
-	9,  /* MCS  9 */
-	10, /* MCS 10 */
-	11, /* MCS 11 */
-	12, /* MCS 12 */
-	13, /* MCS 13 */
-	14, /* MCS 14 */
-	15, /* MCS 15 */
-	UHR_STATS_MCS_TBL_IDX_INVALID, /* MCS 16 - unused */
-	16, /* MCS 17 (IMCS) */
-	UHR_STATS_MCS_TBL_IDX_INVALID, /* MCS 18 - unused */
-	17, /* MCS 19 (IMCS) */
-	18, /* MCS 20 (IMCS) */
-	UHR_STATS_MCS_TBL_IDX_INVALID, /* MCS 21 - unused */
-	UHR_STATS_MCS_TBL_IDX_INVALID, /* MCS 22 - unused */
-	19, /* MCS 23 (IMCS) */
-};
-#elif defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 #define MAX_MCS (16 + 1)
 #define MAX_MCS_11BE 16
 #define MAX_PUNCTURED_MODE 5
@@ -119,12 +74,19 @@ static const uint8_t uhr_stats_mcs_to_idx[UHR_STATS_MCS_MAX] = {
 #define CDP_MAX_RX_DEST_RINGS 8
 #define CDP_MAX_TX_DATA_RINGS 5
 #define CDP_MAX_WIFI_INT_ERROR_REASONS 5
+/*
+ * This header file is being accessed in userspace applications.
+ * NR_CPUS is a linux kernel macro and cannot be accessible by user space apps.
+ * Defining maximum possible cpu count locally.
+ */
+#define CDP_NR_CPUS 8
+
 #define MAX_TRANSMIT_TYPES	9
 
 #define MAX_USER_POS		8
 #define MAX_MU_GROUP_ID		64
 
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 #define MAX_RU_LOCATIONS	16
 #else
 #define MAX_RU_LOCATIONS	6
@@ -135,7 +97,7 @@ static const uint8_t uhr_stats_mcs_to_idx[UHR_STATS_MCS_MAX] = {
 #define RU_242			9
 #define RU_484			18
 #define RU_996			37
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 #define RU_2X996		74
 #define RU_3X996		111
 #define RU_4X996		148
@@ -156,14 +118,8 @@ static const uint8_t uhr_stats_mcs_to_idx[UHR_STATS_MCS_MAX] = {
 #define WME_AC_VO    3    /* voice */
 #define WME_AC_MAX   4    /* MAX AC Value */
 
-#ifdef CONFIG_BORON
-#define CDP_MAX_RX_RINGS 9  /* max rx rings */
-#define CDP_MAX_TX_COMP_RINGS 7 /* max tx/completion rings */
-#else
 #define CDP_MAX_RX_RINGS 8  /* max rx rings */
 #define CDP_MAX_TX_COMP_RINGS 5 /* max tx/completion rings */
-#endif /* CONFIG_BORON */
-
 #define CDP_MAX_TX_COMP_PPE_RING (CDP_MAX_TX_COMP_RINGS - 1)
 #define CDP_MAX_RX_WBM_RINGS 1 /* max rx wbm rings */
 
@@ -267,7 +223,7 @@ static const uint8_t uhr_stats_mcs_to_idx[UHR_STATS_MCS_MAX] = {
 #define PKT_BW_GAIN_40MHZ 3
 #define PKT_BW_GAIN_80MHZ 6
 #define PKT_BW_GAIN_160MHZ 9
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 #define PKT_BW_GAIN_320MHZ 12
 #endif
 
@@ -484,7 +440,7 @@ enum cdp_ul_trigger_tids {
 		(((_tid) == CDP_UL_TRIG_VI_TID)) ? 5 : \
 		6)
 
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 /**
  * enum cdp_ru_index - Different RU index
  * @RU_26_INDEX : 26-tone Resource Unit index
@@ -540,7 +496,7 @@ struct cdp_ru_debug {
 	char *ru_type;
 };
 
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 static const struct cdp_ru_debug cdp_ru_string[RU_INDEX_MAX] = {
 	{ "RU_26" },
 	{ "RU_52" },
@@ -586,9 +542,8 @@ enum cdp_packet_type {
 	DOT11_N = 2,
 	DOT11_AC = 3,
 	DOT11_AX = 4,
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 	DOT11_BE = 5,
-	DOT11_BN = 6,
 #endif
 	DOT11_MAX,
 };
@@ -596,12 +551,7 @@ enum cdp_packet_type {
 #define MCS_VALID 1
 #define MCS_INVALID 0
 
-#ifdef WLAN_FEATURE_11BN
-#define CDP_IS_PKT_TYPE_SUPPORT_NSS(_pkt_type) \
-		(DOT11_N == (_pkt_type) || DOT11_AC == (_pkt_type) || \
-		 DOT11_AX == (_pkt_type) || DOT11_BE == (_pkt_type) || \
-		 DOT11_BN == (_pkt_type))
-#elif defined(WLAN_FEATURE_11BE)
+#ifdef WLAN_FEATURE_11BE
 #define CDP_IS_PKT_TYPE_SUPPORT_NSS(_pkt_type) \
 		(DOT11_N == (_pkt_type) || DOT11_AC == (_pkt_type) || \
 		 DOT11_AX == (_pkt_type) || DOT11_BE == (_pkt_type))
@@ -622,149 +572,7 @@ struct cdp_rate_debug {
 	uint8_t valid;
 };
 
-#if defined(WLAN_FEATURE_11BN)
-static const struct cdp_rate_debug cdp_rate_string[DOT11_MAX][MAX_MCS] = {
-	{
-		{"OFDM 48 Mbps", MCS_VALID},
-		{"OFDM 24 Mbps", MCS_VALID},
-		{"OFDM 12 Mbps", MCS_VALID},
-		{"OFDM 6 Mbps ", MCS_VALID},
-		{"OFDM 54 Mbps", MCS_VALID},
-		{"OFDM 36 Mbps", MCS_VALID},
-		{"OFDM 18 Mbps", MCS_VALID},
-		{"OFDM 9 Mbps ", MCS_VALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-	},
-	{
-		{"CCK 11 Mbps Long  ", MCS_VALID},
-		{"CCK 5.5 Mbps Long ", MCS_VALID},
-		{"CCK 2 Mbps Long   ", MCS_VALID},
-		{"CCK 1 Mbps Long   ", MCS_VALID},
-		{"CCK 11 Mbps Short ", MCS_VALID},
-		{"CCK 5.5 Mbps Short", MCS_VALID},
-		{"CCK 2 Mbps Short  ", MCS_VALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-	},
-	{
-		{"HT MCS 0 (BPSK 1/2)  ", MCS_VALID},
-		{"HT MCS 1 (QPSK 1/2)  ", MCS_VALID},
-		{"HT MCS 2 (QPSK 3/4)  ", MCS_VALID},
-		{"HT MCS 3 (16-QAM 1/2)", MCS_VALID},
-		{"HT MCS 4 (16-QAM 3/4)", MCS_VALID},
-		{"HT MCS 5 (64-QAM 2/3)", MCS_VALID},
-		{"HT MCS 6 (64-QAM 3/4)", MCS_VALID},
-		{"HT MCS 7 (64-QAM 5/6)", MCS_VALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-	},
-	{
-		{"VHT MCS 0 (BPSK 1/2)     ", MCS_VALID},
-		{"VHT MCS 1 (QPSK 1/2)     ", MCS_VALID},
-		{"VHT MCS 2 (QPSK 3/4)     ", MCS_VALID},
-		{"VHT MCS 3 (16-QAM 1/2)   ", MCS_VALID},
-		{"VHT MCS 4 (16-QAM 3/4)   ", MCS_VALID},
-		{"VHT MCS 5 (64-QAM 2/3)   ", MCS_VALID},
-		{"VHT MCS 6 (64-QAM 3/4)   ", MCS_VALID},
-		{"VHT MCS 7 (64-QAM 5/6)   ", MCS_VALID},
-		{"VHT MCS 8 (256-QAM 3/4)  ", MCS_VALID},
-		{"VHT MCS 9 (256-QAM 5/6)  ", MCS_VALID},
-		{"VHT MCS 10 (1024-QAM 3/4)", MCS_VALID},
-		{"VHT MCS 11 (1024-QAM 5/6)", MCS_VALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-	},
-	{
-		{"HE MCS 0 (BPSK 1/2)     ", MCS_VALID},
-		{"HE MCS 1 (QPSK 1/2)     ", MCS_VALID},
-		{"HE MCS 2 (QPSK 3/4)     ", MCS_VALID},
-		{"HE MCS 3 (16-QAM 1/2)   ", MCS_VALID},
-		{"HE MCS 4 (16-QAM 3/4)   ", MCS_VALID},
-		{"HE MCS 5 (64-QAM 2/3)   ", MCS_VALID},
-		{"HE MCS 6 (64-QAM 3/4)   ", MCS_VALID},
-		{"HE MCS 7 (64-QAM 5/6)   ", MCS_VALID},
-		{"HE MCS 8 (256-QAM 3/4)  ", MCS_VALID},
-		{"HE MCS 9 (256-QAM 5/6)  ", MCS_VALID},
-		{"HE MCS 10 (1024-QAM 3/4)", MCS_VALID},
-		{"HE MCS 11 (1024-QAM 5/6)", MCS_VALID},
-		{"HE MCS 12 (4096-QAM 3/4)", MCS_VALID},
-		{"HE MCS 13 (4096-QAM 5/6)", MCS_VALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-		{"INVALID ", MCS_INVALID},
-	},
-	{
-		{"EHT MCS 0 (BPSK 1/2)     ", MCS_VALID},
-		{"EHT MCS 1 (QPSK 1/2)     ", MCS_VALID},
-		{"EHT MCS 2 (QPSK 3/4)     ", MCS_VALID},
-		{"EHT MCS 3 (16-QAM 1/2)   ", MCS_VALID},
-		{"EHT MCS 4 (16-QAM 3/4)   ", MCS_VALID},
-		{"EHT MCS 5 (64-QAM 2/3)   ", MCS_VALID},
-		{"EHT MCS 6 (64-QAM 3/4)   ", MCS_VALID},
-		{"EHT MCS 7 (64-QAM 5/6)   ", MCS_VALID},
-		{"EHT MCS 8 (256-QAM 3/4)  ", MCS_VALID},
-		{"EHT MCS 9 (256-QAM 5/6)  ", MCS_VALID},
-		{"EHT MCS 10 (1024-QAM 3/4)", MCS_VALID},
-		{"EHT MCS 11 (1024-QAM 5/6)", MCS_VALID},
-		{"EHT MCS 12 (4096-QAM 3/4)", MCS_VALID},
-		{"EHT MCS 13 (4096-QAM 5/6)", MCS_VALID},
-		{"EHT MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
-		{"EHT MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
-		{"INVALID ", MCS_INVALID},
-	},
-	{
-		{"UHR MCS 0 (BPSK 1/2)     ", MCS_VALID},
-		{"UHR MCS 1 (QPSK 1/2)     ", MCS_VALID},
-		{"UHR MCS 2 (QPSK 3/4)     ", MCS_VALID},
-		{"UHR MCS 3 (16-QAM 1/2)   ", MCS_VALID},
-		{"UHR MCS 4 (16-QAM 3/4)   ", MCS_VALID},
-		{"UHR MCS 5 (64-QAM 2/3)   ", MCS_VALID},
-		{"UHR MCS 6 (64-QAM 3/4)   ", MCS_VALID},
-		{"UHR MCS 7 (64-QAM 5/6)   ", MCS_VALID},
-		{"UHR MCS 8 (256-QAM 3/4)  ", MCS_VALID},
-		{"UHR MCS 9 (256-QAM 5/6)  ", MCS_VALID},
-		{"UHR MCS 10 (1024-QAM 3/4)", MCS_VALID},
-		{"UHR MCS 11 (1024-QAM 5/6)", MCS_VALID},
-		{"UHR MCS 12 (4096-QAM 3/4)", MCS_VALID},
-		{"UHR MCS 13 (4096-QAM 5/6)", MCS_VALID},
-		{"UHR MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
-		{"UHR MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
-#ifdef WLAN_FEATURE_11BN
-		{"UHR MCS 17 (Intermediate) ", MCS_VALID},
-		{"UHR MCS 19 (Intermediate) ", MCS_VALID},
-		{"UHR MCS 20 (Intermediate) ", MCS_VALID},
-		{"UHR MCS 23 (Intermediate) ", MCS_VALID},
-#endif
-		{"INVALID ", MCS_INVALID},
-	}
-
-};
-#elif defined(WLAN_FEATURE_11BE)
+#ifdef WLAN_FEATURE_11BE
 static const struct cdp_rate_debug cdp_rate_string[DOT11_MAX][MAX_MCS] = {
 	{
 		{"OFDM 48 Mbps", MCS_VALID},
@@ -1031,6 +839,8 @@ enum WDI_EVENT {
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	WDI_EVENT_RX_PPDU_DESC_UNDECODED_METADATA,
 #endif
+	WDI_EVENT_LITE_MON_RX,
+	WDI_EVENT_LITE_MON_TX,
 	WDI_EVENT_TXRX_PEER_CREATE,
 	WDI_EVENT_PEER_UNMAP,
 	WDI_EVENT_PEER_DELETE,
@@ -1899,7 +1709,7 @@ struct cdp_rx_err_proto_stats {
  * @avg_ack_rssi: Averaged RSSI of acked packets
  * @tx_bytes_success_last: last Tx success bytes
  * @tx_data_success_last: last Tx success data
- * @tx_byte_rate: Bytes Transmitted in last one sec
+ * @tx_byte_rate: Bytes Trasmitted in last one sec
  * @tx_data_rate: Data Transmitted in last one sec
  * @tx_data_ucast_last:
  * @tx_data_ucast_rate:
@@ -1996,7 +1806,6 @@ struct cdp_rx_err_proto_stats {
  * @hwtx_ul_jitter_tsf:ul delay jitter stats when TSF report is enabled
  * @hwtx_ul_jitter_fw: ul delay jitter stats when UL report to FW is enabled
  * @tx_ppdu_duration: Tx PPDU Duration
- * @traffic_end_ind_pkt_count: Traffic end indication packet counter
  */
 struct cdp_tx_stats {
 	struct cdp_pkt_info comp_pkt;
@@ -2111,7 +1920,7 @@ struct cdp_tx_stats {
 		 preamble_info:4;
 	uint32_t mpdu_success_with_retries;
 	unsigned long last_tx_ts;
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 	struct cdp_pkt_type su_be_ppdu_cnt;
 	struct cdp_pkt_type mu_be_ppdu_cnt[TXRX_TYPE_MU_MAX];
 	uint32_t punc_bw[MAX_PUNCTURED_MODE];
@@ -2139,7 +1948,6 @@ struct cdp_tx_stats {
 	struct cdp_hist_stats hwtx_ul_jitter_fw;
 #endif
 	uint64_t tx_ppdu_duration;
-	uint64_t traffic_end_ind_pkt_count;
 };
 
 /**
@@ -2151,7 +1959,7 @@ struct cdp_tx_stats {
  * @unicast: Total unicast packets
  * @multicast: Total multicast packets
  * @bcast:  Broadcast Packet Count
- * @raw: Raw Packets received
+ * @raw: Raw Pakets received
  * @nawds_mcast_drop: Total multicast packets
  * @mec_drop: Total MEC packets dropped
  * @ppeds_drop: Total DS packets dropped
@@ -2187,7 +1995,6 @@ struct cdp_tx_stats {
  * @ampdu_cnt: Number of MSDUs part of AMSPU
  * @non_amsdu_cnt: Number of MSDUs with no MSDU level aggregation
  * @amsdu_cnt: Number of MSDUs part of AMSDU
- * @mpdu_cnt: Number of MPDUs
  * @bar_recv_cnt: Number of bar received
  * @avg_snr: Average snr
  * @rx_rate: Rx rate
@@ -2291,7 +2098,6 @@ struct cdp_rx_stats {
 	uint32_t ampdu_cnt;
 	uint32_t non_amsdu_cnt;
 	uint32_t amsdu_cnt;
-	uint32_t mpdu_cnt;
 	uint32_t bar_recv_cnt;
 	uint32_t avg_snr;
 	uint32_t rx_rate;
@@ -2328,7 +2134,7 @@ struct cdp_rx_stats {
 	         preamble_info:4;
 	struct cdp_pkt_info to_stack_twt;
 	uint32_t mpdu_retry_cnt;
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 	struct cdp_pkt_type su_be_ppdu_cnt;
 	struct cdp_pkt_type mu_be_ppdu_cnt[TXRX_TYPE_MU_MAX];
 	uint32_t punc_bw[MAX_PUNCTURED_MODE];
@@ -2530,7 +2336,7 @@ struct cdp_vdev_stats {
  * @last_per: Tx last packet error rate
  * @tx_bytes_success_last: last Tx success bytes
  * @tx_data_success_last: last Tx success data
- * @tx_byte_rate: Bytes Transmitted in last one sec
+ * @tx_byte_rate: Bytes Trasmitted in last one sec
  * @tx_data_rate: Data Transmitted in last one sec
  * @tx_data_ucast_last: last unicast Tx bytes
  * @tx_data_ucast_rate: last unicast Tx data
@@ -2816,7 +2622,7 @@ struct cdp_htt_tx_pdev_stats_cmn_tlv {
     uint32_t hw_filt;
     /* Num PPDUs cleaned up in TX abort */
     uint32_t tx_abort;
-    /* Num MPDUs requeued by SW */
+    /* Num MPDUs requed by SW */
     uint32_t mpdu_requed;
     /* excessive retries */
     uint32_t tx_xretry;
@@ -3182,7 +2988,7 @@ struct cdp_htt_rx_pdev_stats {
 #define RX_PROTOCOL_TAG_ALL 0xff
 #endif /* WLAN_SUPPORT_RX_PROTOCOL_TYPE_TAG */
 
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#ifdef WLAN_FEATURE_11BE
 #define OFDMA_NUM_RU_SIZE 16
 #else
 #define OFDMA_NUM_RU_SIZE 7
@@ -3276,7 +3082,7 @@ struct cdp_cfr_rcc_stats {
  */
 struct cdp_per_cpu_packets {
 	uint8_t num_cpus;
-	uint64_t pkts[QDF_MAX_AVAILABLE_CPU][CDP_MAX_RX_DEST_RINGS];
+	uint64_t pkts[CDP_NR_CPUS][CDP_MAX_RX_DEST_RINGS];
 };
 
 /**
@@ -3295,9 +3101,6 @@ struct cdp_per_cpu_packets {
  * @tx.tx_comp_loop_pkt_limit_hit: TX Comp loop packet limit hit
  * @tx.hp_oos2: Head pointer Out of sync at the end of dp_tx_comp_handler
  * @tx.tx_comp_exception: tx desc freed as part of vdev detach
- * @tx.tx_desc_duplicate: no of duplicate tx desc(already reaped)
- * @tx.tx_desc_unused: no of unused tx desc
- * @tx.tx_desc_pdev_down: no of tx desc when pdev is down
  * @rx:
  * @rx.ingress: Total rx packets count
  * @rx.err_ring_pkts: Total Packets in Rx Error ring
@@ -3385,9 +3188,6 @@ struct cdp_soc_stats {
 		uint32_t tx_comp_loop_pkt_limit_hit;
 		uint32_t hp_oos2;
 		uint32_t tx_comp_exception;
-		uint32_t tx_desc_duplicate;
-		uint32_t tx_desc_unused;
-		uint32_t tx_desc_pdev_down;
 	} tx;
 
 	struct {
@@ -3456,7 +3256,6 @@ struct cdp_soc_stats {
 			uint32_t pn_in_dest_check_fail;
 			uint32_t msdu_len_err;
 			uint32_t rx_flush_count;
-			uint32_t reo_error[CDP_REO_CODE_MAX];
 		} err;
 	} rx;
 
@@ -3732,9 +3531,6 @@ struct cdp_htt_stats_tx_vdev_nss_tlv {
  * @rx_refill_buff_pool:
  * @rx_refill_buff_pool.num_bufs_refilled:
  * @rx_refill_buff_pool.num_bufs_allocated:
- * @rx_refill_buff_pool.num_batch_refill_fail: number of times all
- *                      allocation attempts in a burst failed, causing an
- *                      early exit from the refill loop
  * @peer_unauth_rx_pkt_drop: stats counter for drops due to unauthorized peer
  * @telemetry_stats: pdev telemetry stats
  * @deter_stats:
@@ -3763,7 +3559,6 @@ struct cdp_pdev_stats {
 		uint32_t x86_fail;
 		uint32_t low_thresh_intrs;
 		int32_t free_list;
-		uint32_t nbuf_alloc_succ;
 	} replenish;
 
 	uint32_t rx_raw_pkts;
@@ -3833,7 +3628,6 @@ struct cdp_pdev_stats {
 	struct {
 		uint64_t num_bufs_refilled;
 		uint64_t num_bufs_allocated;
-		uint64_t num_batch_refill_fail;
 	} rx_refill_buff_pool;
 
 	uint32_t peer_unauth_rx_pkt_drop;
@@ -3873,7 +3667,6 @@ struct cdp_peer_hmwds_ast_add_status {
  * @DP_SOC_PARAM_UMAC_HW_RESET_SUPPORT: Whether target supports UMAC HW reset
  * @DP_SOC_PARAM_MULTI_RX_REORDER_SETUP_SUPPORT: Whether setting up a group of
  *						 TIDs at a time is supported
- * @DP_SOC_PARAM_DAL_D3_WOW_SUPPORT: Support for DAL D3 WoW
  * @DP_SOC_PARAM_MAX:
  */
 enum cdp_soc_param_t {
@@ -3885,7 +3678,6 @@ enum cdp_soc_param_t {
 	DP_SOC_PARAM_RSSI_DBM_CONV_SUPPORT,
 	DP_SOC_PARAM_UMAC_HW_RESET_SUPPORT,
 	DP_SOC_PARAM_MULTI_RX_REORDER_SETUP_SUPPORT,
-	DP_SOC_PARAM_DAL_D3_WOW_SUPPORT,
 	DP_SOC_PARAM_MAX,
 };
 
@@ -4060,177 +3852,5 @@ struct cdp_pdev_tx_capture_stats {
 #ifdef WLAN_TX_PKT_CAPTURE_ENH_BE
 	uint32_t dp_tx_pkt_cap_stats[CDP_TX_PKT_CAP_TYPE_MAX];
 #endif
-};
-
-#define CDP_PERC_BUCKET_SIZE	5
-#define CDP_HIST_BUCKET_SIZE	8
-#define CDP_MAX_DATA_AC		4
-
-/*
- * cdp_latency_hist_bucket - Tx latency count histogram
- * @index_0 = 0_5 ms count
- * @index_1 = 5_10 ms count
- * @index_2 = 10_20 ms count
- * @index_3 = 20_30 ms count
- * @index_4 = 30_50 ms count
- * @index_5 = 50_100 ms count
- * @index_6 = 100_200 ms count
- * @index_7 = 200+ ms count
- */
-extern uint16_t cdp_latency_hist_bucket[];
-
-/*
- * cdp_latency_perc_bucket - Tx latency percetile value
- * @index_0 = 50 percentile value in ms
- * @index_1 = 75 percentile value in ms
- * @index_2 = 90 percentile value in ms
- * @index_3 = 95 percentile value in ms
- * @index_4 = 99 percentile value in ms
- */
-extern uint16_t cdp_latency_perc_bucket[];
-
-/**
- * enum cdp_latency_percentile - Percentile stats index
- * @P50_LATENCY_IDX: 50 percentile index
- * @P75_LATENCY_IDX: 75 percentile index
- * @P90_LATENCY_IDX: 90 percentile index
- * @P95_LATENCY_IDX: 95 percentile index
- * @P99_LATENCY_IDX: 99 percentile index
- * @MAX_PERC_LATENCY_IDX: Max index
- *
- */
-enum cdp_latency_percentile {
-	P50_LATENCY_IDX,
-	P75_LATENCY_IDX,
-	P90_LATENCY_IDX,
-	P95_LATENCY_IDX,
-	P99_LATENCY_IDX,
-	MAX_PERC_LATENCY_IDX
-};
-
-/**
- * enum cdp_report_type - Report Type
- * @REPORT_TYPE_HISTOGRAM: Histogram
- * @REPORT_TYPE_PERCENTILE: Percentile
- * @REPORT_TYPE_MAX: Max
- */
-enum cdp_report_type {
-	REPORT_TYPE_HISTOGRAM,
-	REPORT_TYPE_PERCENTILE,
-	REPORT_TYPE_MAX
-};
-
-/**
- * enum cdp_report_method: Report Method
- * @SOLICITED_PERIODIC: Periodic
- * @SOLICITED_ON_DEMAND: On demand
- * @SOLICITED_TRIGGERED: Triggered
- * @SOLICITED_MAX: Max
- */
-enum cdp_report_method {
-	SOLICITED_PERIODIC,
-	SOLICITED_ON_DEMAND,
-	SOLICITED_TRIGGERED,
-	SOLICITED_MAX
-};
-
-/**
- * struct cdp_qos_latency_stats - Latency Stats enable
- * @type: Report type
- * @method: Report method
- * @enable: Enable/Disable report
- */
-struct cdp_qos_latency_stats {
-	enum cdp_report_type type;
-	enum cdp_report_method method;
-	bool enable;
-};
-
-/**
- * enum cdp_report_granularity - Report granularity
- * @CDP_REPORT_GRAN_TID: Per TID
- * @CDP_REPORT_GRAN_AC: Per AC
- * @CDP_REPORT_GRAN_AGGR: Aggregated
- * @CDP_REPORT_GRAN_MAX: Max type
- */
-enum cdp_report_granularity {
-	CDP_REPORT_GRAN_TID,
-	CDP_REPORT_GRAN_AC,
-	CDP_REPORT_GRAN_AGGR,
-	CDP_REPORT_GRAN_MAX
-};
-
-/**
- * struct cdp_ac_hist_stats - Per AC histogram stats
- * @stats: stats buffer
- */
-struct cdp_ac_hist_stats {
-	uint32_t stats[CDP_MAX_DATA_AC][CDP_HIST_BUCKET_SIZE];
-};
-
-/**
- * struct cdp_ac_perc_stats - Per AC percentile stats
- * @stats: stats buffer
- */
-struct cdp_ac_perc_stats {
-	uint32_t stats[CDP_MAX_DATA_AC][CDP_PERC_BUCKET_SIZE];
-};
-
-/**
- * struct cdp_tid_hist_stats - Per TID histogram stats
- * @stats: stats buffer
- */
-struct cdp_tid_hist_stats {
-	uint32_t stats[CDP_MAX_DATA_TIDS][CDP_HIST_BUCKET_SIZE];
-};
-
-/**
- * struct cdp_tid_perc_stats -  Per TID percentile stats
- * @stats: stats buffer
- */
-struct cdp_tid_perc_stats {
-	uint32_t stats[CDP_MAX_DATA_TIDS][CDP_PERC_BUCKET_SIZE];
-};
-
-/**
- * struct cdp_aggr_hist_stats - Aggregated histogram stats
- * @stats: stats buffer
- */
-struct cdp_aggr_hist_stats {
-	uint32_t stats[CDP_HIST_BUCKET_SIZE];
-};
-
-/**
- * struct cdp_aggr_perc_stats -  Aggregated percentile stats
- * @stats: stats buffer
- */
-struct cdp_aggr_perc_stats {
-	uint32_t stats[CDP_PERC_BUCKET_SIZE];
-};
-
-/**
- * struct cdp_qos_latency_stats_req - Latency stats request
- * @method: Request Method
- * @granularity: Request granularity
- * @type: Report type
- * @ac_hist: If report is per AC histogram
- * @ac_perc: If report is per AC percentile
- * @tid_hist: If report is per TID histogram
- * @tid_perc: If report is per TID percentile
- * @aggr_hist: If report is aggregated histogram
- * @aggr_perc: If report is aggregated percentile
- */
-struct cdp_qos_latency_stats_req {
-	enum cdp_report_method method;
-	enum cdp_report_granularity granularity;
-	enum cdp_report_type type;
-	union {
-		struct cdp_ac_hist_stats ac_hist;
-		struct cdp_ac_perc_stats ac_perc;
-		struct cdp_tid_hist_stats tid_hist;
-		struct cdp_tid_perc_stats tid_perc;
-		struct cdp_aggr_hist_stats aggr_hist;
-		struct cdp_aggr_perc_stats aggr_perc;
-	};
 };
 #endif

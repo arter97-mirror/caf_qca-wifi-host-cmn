@@ -41,7 +41,6 @@
 #include <wlan_objmgr_peer_obj.h>
 #include "wlan_crypto_def_i.h"
 #include "wlan_crypto_obj_mgr_i.h"
-#include "wlan_cm_api.h"
 
 #ifdef FEATURE_WLAN_WAPI
 #ifdef FEATURE_WAPI_BIG_ENDIAN
@@ -158,20 +157,6 @@ target_if_crypto_vdev_set_param(struct wlan_objmgr_psoc *psoc, uint32_t vdev_id,
 	return wmi_unified_vdev_set_param_send(wmi_handle, &param);
 }
 
-#ifdef QCA_MULTIPASS_SUPPORT
-static void target_if_set_vlan_key_params(struct wlan_crypto_key *req,
-					  struct set_key_params *params)
-{
-	params->group_key_idx =
-		((req->keyix - WLAN_CRYPTO_VLAN_MIN_KEY_IDX) / 2) + 1;
-	params->key_idx = (req->keyix % 2) ? 2 : 1;
-}
-#else
-static inline void
-target_if_set_vlan_key_params(struct wlan_crypto_key *req,
-			      struct set_key_params *params) {}
-#endif
-
 QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 				    struct wlan_crypto_key *req,
 				    enum wlan_crypto_key_type key_type)
@@ -207,8 +192,6 @@ QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 	}
 	params.vdev_id = wlan_vdev_get_id(vdev);
 	params.key_idx = req->keyix;
-	if (is_vgtk(req->keyix))
-		target_if_set_vlan_key_params(req, &params);
 	qdf_mem_copy(params.peer_mac, req->macaddr, QDF_MAC_ADDR_SIZE);
 	pdev_wmi_handle = GET_WMI_HDL_FROM_PDEV(pdev);
 	if (!pdev_wmi_handle) {
@@ -228,12 +211,10 @@ QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 	qdf_mem_copy(&params.key_rsc_counter,
 		     &req->keyrsc[0], sizeof(uint64_t));
 
-	target_if_debug("key_type %d, key_idx %d, mac: " QDF_MAC_ADDR_FMT,
-			key_type, params.key_idx,
-			QDF_MAC_ADDR_REF(req->macaddr));
+	target_if_debug("key_type %d, mac: " QDF_MAC_ADDR_FMT,
+			key_type, QDF_MAC_ADDR_REF(req->macaddr));
 
-	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_NAN_DISC_MODE &&
-	    !wlan_cm_is_vdev_roaming(vdev)) {
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_NAN_DISC_MODE) {
 		peer_exist = cdp_find_peer_exist(soc,
 						 pdev->pdev_objmgr.wlan_pdev_id,
 						 req->macaddr);
@@ -297,9 +278,8 @@ QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 		    (uint32_t *)(req->keyval + WLAN_CRYPTO_IV_SIZE +
 		     WLAN_CRYPTO_MIC_LEN));
 send_install_key:
-	target_if_debug("vdev_id:%d, key: idx:%d, group_key_idx %d, len:%d",
-			params.vdev_id, params.key_idx,
-			params.group_key_idx, params.key_len);
+	target_if_debug("vdev_id:%d, key: idx:%d,len:%d", params.vdev_id,
+			params.key_idx, params.key_len);
 	target_if_debug("peer mac "QDF_MAC_ADDR_FMT,
 			QDF_MAC_ADDR_REF(params.peer_mac));
 	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_CRYPTO, QDF_TRACE_LEVEL_DEBUG,
@@ -308,62 +288,6 @@ send_install_key:
 
 	/* Zero-out local key variables */
 	qdf_mem_zero(&params, sizeof(struct set_key_params));
-
-	return status;
-}
-
-/**
- * target_if_crypto_del_ndi_key() - lmac handler to delete an NDI key
- * @vdev: VDEV object pointer
- * @key_index: Key index used in 802.11 frames
- * @pairwise: true if it is pairwise key
- * @macaddr: Peer address
- *
- * Sends WMI_VDEV_INSTALL_KEY_CMDID with cipher_type=WMI_CIPHER_NONE to
- * signal firmware to remove the key for the given NDI vdev/peer.
- *
- * Return: QDF_STATUS
- */
-static QDF_STATUS target_if_crypto_del_ndi_key(struct wlan_objmgr_vdev *vdev,
-					       uint8_t key_index, bool pairwise,
-					       const uint8_t *macaddr)
-{
-	struct set_key_params params = {0};
-	struct wlan_objmgr_pdev *pdev;
-	wmi_unified_t pdev_wmi_handle;
-	uint8_t vdev_id;
-	QDF_STATUS status;
-
-	pdev = wlan_vdev_get_pdev(vdev);
-	if (!pdev) {
-		target_if_err("Invalid PDEV");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	pdev_wmi_handle = GET_WMI_HDL_FROM_PDEV(pdev);
-	if (!pdev_wmi_handle) {
-		target_if_err("Invalid PDEV WMI handle");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	vdev_id = wlan_vdev_get_id(vdev);
-	params.vdev_id = vdev_id;
-	params.key_idx = key_index;
-	params.key_cipher = WMI_CIPHER_NONE;
-	params.key_flags = pairwise ? PAIRWISE_USAGE : GROUP_USAGE;
-	if (macaddr)
-		qdf_mem_copy(params.peer_mac, macaddr, QDF_MAC_ADDR_SIZE);
-
-	target_if_debug("NDI del key: vdev %d idx %d pairwise %d peer "
-			QDF_MAC_ADDR_FMT, vdev_id, key_index, pairwise,
-			QDF_MAC_ADDR_REF(macaddr));
-
-	status = wmi_unified_setup_install_key_cmd(pdev_wmi_handle, &params);
-	qdf_mem_zero(&params, sizeof(params));
-
-	if (QDF_IS_STATUS_ERROR(status))
-		target_if_err("NDI del key: WMI cmd failed vdev %d idx %d",
-			      vdev_id, key_index);
 
 	return status;
 }
@@ -427,12 +351,6 @@ target_if_crypto_install_key_comp_evt_handler(void *handle, uint8_t *event,
 		return -EINVAL;
 	}
 
-	if (wlan_cm_is_vdev_roaming(vdev)) {
-		target_if_debug("Install key response received for roaming peer. Ignore it");
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_CRYPTO_ID);
-		return 0;
-	}
-
 	priv_obj = wlan_get_vdev_crypto_obj(vdev);
 	if (!priv_obj) {
 		target_if_err("priv_obj is null");
@@ -447,22 +365,8 @@ target_if_crypto_install_key_comp_evt_handler(void *handle, uint8_t *event,
 	qdf_mem_copy(result.peer_macaddr, params.peer_macaddr,
 		     QDF_MAC_ADDR_SIZE);
 
-	if (!result.status) {
-		struct wlan_crypto_key *crypto_key;
-
-		crypto_key = wlan_crypto_get_key(vdev, result.peer_macaddr,
-						 result.key_ix);
-		if (crypto_key && crypto_key->keylen)
-			wlan_peer_set_key_install_flag(psoc,
-						       result.peer_macaddr,
-						       true);
-	}
-
 	if (priv_obj->add_key_cb)
 		priv_obj->add_key_cb(priv_obj->add_key_ctx, &result);
-
-	if (priv_obj->del_key_cb)
-		priv_obj->del_key_cb(priv_obj->del_key_ctx, &result);
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_CRYPTO_ID);
 
@@ -537,7 +441,6 @@ QDF_STATUS target_if_crypto_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 	crypto = &tx_ops->crypto_tx_ops;
 
 	crypto->set_key = target_if_crypto_set_key;
-	crypto->del_ndi_key = target_if_crypto_del_ndi_key;
 	crypto->set_ltf_keyseed = target_if_crypto_set_ltf_keyseed;
 	crypto->set_vdev_param  = target_if_crypto_vdev_set_param;
 	crypto->register_events = target_if_crypto_register_events;

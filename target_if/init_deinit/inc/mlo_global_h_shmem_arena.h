@@ -173,7 +173,7 @@ void *mlo_glb_h_shmem_arena_get_recovery_mode_address(uint8_t grp_id,
  * @grp_id: Id of the required MLO Group
  *
  * Return: number of chips participating in MLO from crash info shared by target
- * in case of success, else returns 0
+ * in case of sccess, else returns 0
  */
 uint8_t mlo_glb_h_shmem_arena_get_no_of_chips_from_crash_info(uint8_t grp_id);
 #endif

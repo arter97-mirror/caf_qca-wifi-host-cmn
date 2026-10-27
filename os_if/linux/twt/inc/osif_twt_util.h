@@ -27,9 +27,11 @@
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 /**
  * struct twt_en_dis_priv - twt enable/disable private context
+ * @pdev_id: pdev id
  * @status: TWT status
  */
 struct twt_en_dis_priv {
+	uint32_t pdev_id;
 	uint32_t status;
 };
 

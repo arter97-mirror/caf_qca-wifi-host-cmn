@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -70,15 +69,9 @@
  * Deduce if tasklets are available.  If not then
  * fall back to using the immediate work queue.
  */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0))
-#define qdf_sysctl_decl(f, ctl, write, filp, buffer, lenp, ppos) \
-	f(const struct ctl_table *ctl, int32_t write, void *buffer, \
-	size_t *lenp, loff_t *ppos)
-#else
 #define qdf_sysctl_decl(f, ctl, write, filp, buffer, lenp, ppos) \
 	f(struct ctl_table *ctl, int32_t write, void *buffer, \
 	size_t *lenp, loff_t *ppos)
-#endif
 
 #define QDF_SYSCTL_PROC_DOINTVEC(ctl, write, filp, buffer, lenp, ppos) \
 	__QDF_SYSCTL_PROC_DOINTVEC(ctl, write, filp, buffer, lenp, ppos)

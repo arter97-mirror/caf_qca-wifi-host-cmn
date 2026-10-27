@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -36,8 +35,6 @@
 #include <target_if_reg.h>
 #include <target_if_twt.h>
 #include <cdp_txrx_ctrl.h>
-#include <wlan_nan_api.h>
-#include <wmi_unified_api.h>
 
 /**
  *  init_deinit_alloc_host_mem_chunk() - allocates chunk of memory requested
@@ -339,7 +336,6 @@ void init_deinit_derive_band_to_mac_param(
 		struct wmi_init_cmd_param *init_param)
 {
 	uint8_t i;
-	uint8_t num_radios;
 	struct wlan_psoc_host_mac_phy_caps *mac_phy_cap;
 	struct wlan_psoc_host_hal_reg_capabilities_ext *reg_cap;
 	struct wmi_host_pdev_band_to_mac *band_to_mac = init_param->band_to_mac;
@@ -360,18 +356,11 @@ void init_deinit_derive_band_to_mac_param(
 		target_if_err("mac_phy_cap is NULL");
 		return;
 	}
-
-	num_radios = target_psoc_get_num_radios(tgt_hdl);
-	if (num_radios > WMI_HOST_MAX_PDEV) {
-		target_if_err("num_radios %u exceeds WMI_HOST_MAX_PDEV",
-			      num_radios);
-		num_radios = WMI_HOST_MAX_PDEV;
-	}
-
 	if (is_num_band_to_mac_required(tgt_hdl))
-		init_param->num_band_to_mac = num_radios;
+		init_param->num_band_to_mac =
+			target_psoc_get_num_radios(tgt_hdl);
 
-	for (i = 0; i < num_radios; i++) {
+	for (i = 0; i < target_psoc_get_num_radios(tgt_hdl); i++) {
 		if (mac_phy_cap->supported_bands ==
 			(WMI_HOST_WLAN_5G_CAPABILITY |
 					WMI_HOST_WLAN_2G_CAPABILITY)) {
@@ -385,13 +374,8 @@ void init_deinit_derive_band_to_mac_param(
 
 		} else if (mac_phy_cap->supported_bands ==
 				WMI_HOST_WLAN_2G_CAPABILITY) {
-			if (mac_phy_cap->phy_id < PSOC_MAX_PHY_REG_CAP) {
-				reg_cap[mac_phy_cap->phy_id].low_5ghz_chan = 0;
-				reg_cap[mac_phy_cap->phy_id].high_5ghz_chan = 0;
-			} else {
-				target_if_err("Invalid phy_id %u",
-					      mac_phy_cap->phy_id);
-			}
+			reg_cap[mac_phy_cap->phy_id].low_5ghz_chan = 0;
+			reg_cap[mac_phy_cap->phy_id].high_5ghz_chan = 0;
 
 			if (!init_param->num_band_to_mac)
 				goto next_mac_phy_cap;
@@ -408,13 +392,8 @@ void init_deinit_derive_band_to_mac_param(
 
 		} else if (mac_phy_cap->supported_bands ==
 					WMI_HOST_WLAN_5G_CAPABILITY) {
-			if (mac_phy_cap->phy_id < PSOC_MAX_PHY_REG_CAP) {
-				reg_cap[mac_phy_cap->phy_id].low_2ghz_chan = 0;
-				reg_cap[mac_phy_cap->phy_id].high_2ghz_chan = 0;
-			} else {
-				target_if_err("Invalid phy_id %u",
-					      mac_phy_cap->phy_id);
-			}
+			reg_cap[mac_phy_cap->phy_id].low_2ghz_chan = 0;
+			reg_cap[mac_phy_cap->phy_id].high_2ghz_chan = 0;
 
 			if (!init_param->num_band_to_mac)
 				goto next_mac_phy_cap;
@@ -499,51 +478,6 @@ init_deinit_set_tdls_mlo_vdev(struct wmi_init_cmd_param *init_param,
 {}
 #endif
 
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
-/**
- * init_deinit_nan_config() - Derive NAN init config
- *
- * @psoc: PSOC object
- * @init_param: Pointer to init param
- *
- * Return: void
- */
-static void
-init_deinit_nan_config(struct wlan_objmgr_psoc *psoc,
-		       struct wmi_init_cmd_param *init_param)
-{
-	init_param->res_cfg->dw_lead_time = wlan_get_nan_init_dw_time(psoc);
-}
-#else
-static inline void
-init_deinit_nan_config(struct wlan_objmgr_psoc *psoc,
-		       struct wmi_init_cmd_param *init_param)
-{}
-#endif
-
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
-/**
- * init_deinit_nan_offload_config() - Derive NAN offload mode init config
- *
- * @psoc: PSOC object
- * @init_param: Pointer to init param
- *
- * Return: void
- */
-static void
-init_deinit_nan_offload_config(struct wlan_objmgr_psoc *psoc,
-			       struct wmi_init_cmd_param *init_param)
-{
-	init_param->res_cfg->nan_offload_mode_enable =
-					wlan_nan_is_offload_enabled(psoc);
-}
-#else
-static inline void
-init_deinit_nan_offload_config(struct wlan_objmgr_psoc *psoc,
-			       struct wmi_init_cmd_param *init_param)
-{}
-#endif
-
 /**
  * init_deinit_set_dp_rx_peer_metadata_ver() - update RX peer metadata
  *                                             version to DP
@@ -575,7 +509,6 @@ void init_deinit_prepare_send_init_cmd(
 	struct wmi_unified *wmi_handle;
 	QDF_STATUS ret_val;
 	uint32_t fw_build_vers_ext;
-	uint8_t peer_metadata_ver = 0;
 
 	if (!tgt_hdl) {
 		target_if_err("target_psoc_info is null");
@@ -649,37 +582,16 @@ void init_deinit_prepare_send_init_cmd(
 	if (wmi_service_enabled(wmi_handle, wmi_service_ext2_msg))
 		init_deinit_derive_afc_dev_type_param(psoc, &init_param);
 
-	if (wmi_service_enabled(wmi_handle,
-				wmi_service_peer_metadata_v2_support)) {
-		peer_metadata_ver =
-			target_psoc_get_target_dp_peer_meta_data_ext_ver(
-								tgt_hdl);
-		info->wlan_res_cfg.dp_peer_meta_data_ext_ver =
-						peer_metadata_ver;
-		target_if_debug("peer_meta_data extended version 0x%x",
-				peer_metadata_ver);
-	} else if (wmi_service_enabled(wmi_handle,
-				       wmi_service_v1a_v1b_supported)) {
-		peer_metadata_ver = CDP_RX_PEER_METADATA_V1_A_B;
+	if (wmi_service_enabled(wmi_handle, wmi_service_v1a_v1b_supported))
 		info->wlan_res_cfg.dp_peer_meta_data_ver =
 					CDP_RX_PEER_METADATA_V1_A_B;
-	} else {
-		peer_metadata_ver =
-			target_psoc_get_target_dp_peer_meta_data_ver(tgt_hdl);
+	else
 		info->wlan_res_cfg.dp_peer_meta_data_ver =
-						peer_metadata_ver;
-	}
-
-	if (!wmi_service_enabled(wmi_handle,
-				 wmi_service_apf_data_offload_support_enabled))
-		info->wlan_res_cfg.apfv6_offload_disabled = 0;
+			target_psoc_get_target_dp_peer_meta_data_ver(tgt_hdl);
 
 	/* notify DP rx peer metadata version */
 	init_deinit_set_dp_rx_peer_metadata_ver(
-				psoc, peer_metadata_ver);
-
-	init_deinit_nan_config(psoc, &init_param);
-	init_deinit_nan_offload_config(psoc, &init_param);
+			psoc, info->wlan_res_cfg.dp_peer_meta_data_ver);
 
 	init_deinit_set_tdls_mlo_vdev(&init_param, wmi_handle);
 
@@ -689,21 +601,7 @@ void init_deinit_prepare_send_init_cmd(
 
 	target_if_set_num_max_mlo_link(psoc, info);
 
-	if (wmi_service_enabled(wmi_handle,
-				wmi_service_conc_2vdev_dcs_stats_support)) {
-		info->wlan_res_cfg.conc_2vdev_dcs_stats_support = true;
-		target_if_debug("Two vdev DCS stats enabled");
-	}
-
-	if (wmi_service_enabled(wmi_handle,
-				wmi_service_smd_bss_transition_support)) {
-		info->wlan_res_cfg.smd_bss_transition_support = true;
-		target_if_debug("SMD BSS transition is supported");
-	}
-
-	ret_val = wmi_unified_init_cmd_send(wmi_handle, &init_param);
-	if (QDF_IS_STATUS_SUCCESS(ret_val))
-		wmi_set_init_cmd_sent(wmi_handle);
+	wmi_unified_init_cmd_send(wmi_handle, &init_param);
 
 	/* Set Max scans allowed */
 	target_if_scan_set_max_active_scans(psoc,

@@ -33,7 +33,13 @@
 #include "host_diag_core_event.h"
 #endif
 
-bool
+/**
+ * wlan_cfr_is_ini_disabled() - Check if cfr feature is disabled
+ * @pdev: the physical device object.
+ *
+ * Return : true if cfr is disabled, else false.
+ */
+static bool
 wlan_cfr_is_ini_disabled(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_objmgr_psoc *psoc;
@@ -646,10 +652,6 @@ QDF_STATUS cfr_stop_indication(struct wlan_objmgr_vdev *vdev)
 	if (pa->nl_cb.cfr_nl_cb)
 		return QDF_STATUS_SUCCESS;
 
-	if (pa->nl_cb.cfr_nl_cb_v3 &&
-	    pa->is_cfr_version_v3)
-		return QDF_STATUS_SUCCESS;
-
 	status = cfr_streamfs_write(pa, (const void *)CFR_STOP_STR,
 				    sizeof(CFR_STOP_STR));
 
@@ -672,8 +674,7 @@ QDF_STATUS cfr_prevent_suspend(struct pdev_cfr *pcfr)
 		return QDF_STATUS_E_AGAIN;
 	}
 	qdf_wake_lock_acquire(&pcfr->wake_lock,
-			      WIFI_POWER_EVENT_WAKELOCK_CFR,
-			      QDF_WAKE_TIME_UNDEFINED);
+			      WIFI_POWER_EVENT_WAKELOCK_CFR);
 	qdf_runtime_pm_prevent_suspend(&pcfr->runtime_lock);
 	pcfr->is_prevent_suspend = true;
 

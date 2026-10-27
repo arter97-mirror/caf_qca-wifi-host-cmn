@@ -22,12 +22,6 @@
 #ifndef _WLAN_DCS_PUBLIC_STRUCTS_H_
 #define _WLAN_DCS_PUBLIC_STRUCTS_H_
 
-/*
- * Maximum number of vdevs supported for DCS.
- * Determined by the FW service bit: WMI_SERVICE_CONC_2VDEV_DCS_STATS_SUPPORT
- */
-#define WLAN_DCS_MAX_VDEVS 2
-
 /**
  * enum wlan_host_dcs_type - types of DCS interference events
  * @WLAN_HOST_DCS_NONE: invalid type
@@ -35,8 +29,6 @@
  * @WLAN_HOST_DCS_WLANIM: wlan interference stats
  * @WLAN_HOST_DCS_AWGNIM: additive white Gaussian noise (awgn) interference
  * @WLAN_HOST_DCS_AFC: AFC data update 6 GHz SP channels
- * @WLAN_HOST_DCS_OBSSIM: OBSS Type
- * @WLAN_HOST_DCS_JAMMERIM: Cambium Type interference
  */
 enum wlan_host_dcs_type {
 	WLAN_HOST_DCS_NONE   = 0,      /* 0x0 */
@@ -44,8 +36,6 @@ enum wlan_host_dcs_type {
 	WLAN_HOST_DCS_WLANIM = BIT(1), /* 0x2 */
 	WLAN_HOST_DCS_AWGNIM = BIT(2), /* 0x4 */
 	WLAN_HOST_DCS_AFC    = BIT(3), /* 0x8 */
-	WLAN_HOST_DCS_OBSSIM = BIT(4), /* 0x10 */
-	WLAN_HOST_DCS_JAMMERIM = BIT(5), /* 0x20 */
 };
 
 /**
@@ -147,14 +137,6 @@ struct wlan_host_dcs_im_user_stats {
 };
 
 /**
- * struct wlan_host_dcs_cw_int - DCS CW interference info
- * @chan_freq: either channel number or freq in mhz where interference detected
- */
-struct wlan_host_dcs_cw_int {
-	uint32_t chan_freq;
-};
-
-/**
  * struct wlan_host_dcs_awgn_info - DCS AWGN info
  * @channel_width: Channel width, enum phy_ch_width
  * @center_freq: Center frequency of primary channel
@@ -178,13 +160,11 @@ struct wlan_host_dcs_awgn_info {
  * @wlan_stat: wlan interference target statistics
  * @dcs_param: dcs event param
  * @awgn_info: awgn info
- * @cw_int: cw interference info
  */
 struct wlan_host_dcs_event {
 	struct wlan_host_dcs_im_tgt_stats wlan_stat;
 	struct wlan_host_dcs_interference_param dcs_param;
 	struct wlan_host_dcs_awgn_info awgn_info;
-	struct wlan_host_dcs_cw_int cw_int;
 };
 
 /**
@@ -197,29 +177,5 @@ struct dcs_param {
 	uint32_t mac_id;
 	uint8_t vdev_id;
 	uint8_t interference_type;
-};
-
-/**
- * struct wlan_dcs_user_config - define dcs user configuration
- * @dcs_enable: dcs enable from ucfg config
- * @intfr_detection_threshold: interference detection threshold
- * @phy_err_penalty: phy error penalty
- * @phy_err_threshold: phy error threshold
- * @radar_err_threshold: radar error threshold
- * @tx_err_threshold: transmission failure rate threshold
- * @intfr_detection_window: interference sampling window
- * @coch_intfr_threshold: co-channel interference threshold
- * @max_cu: tx channel utilization due to AP's tx and rx
- */
-struct wlan_dcs_user_config {
-	uint8_t dcs_enable;
-	uint32_t intfr_detection_threshold;
-	uint32_t phy_err_penalty;
-	uint32_t phy_err_threshold;
-	uint32_t radar_err_threshold;
-	uint32_t tx_err_threshold;
-	uint32_t intfr_detection_window;
-	uint32_t coch_intfr_threshold;
-	uint32_t max_cu;
 };
 #endif

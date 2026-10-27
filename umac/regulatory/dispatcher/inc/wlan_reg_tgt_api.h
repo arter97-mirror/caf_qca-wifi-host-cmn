@@ -45,17 +45,6 @@ QDF_STATUS tgt_reg_process_master_chan_list(struct cur_regulatory_info
 QDF_STATUS tgt_reg_process_master_chan_list_ext(struct cur_regulatory_info
 						*reg_info);
 
-#ifdef CONFIG_REG_CLIENT
-/**
- * tgt_reg_process_c2c_detect_evt() - Process C2C update event.
- * @psoc: PSOC pointer.
- * @indoor_ap_found: Indoor AP detected flag.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS tgt_reg_process_c2c_detect_evt(struct wlan_objmgr_psoc *psoc,
-					  bool indoor_ap_found);
-#endif
 /**
  * tgt_reg_set_both_psd_eirp_preferred_support() - Set PSD and EIRP as the
  * preferred support for TPC power command.
@@ -262,18 +251,4 @@ tgt_reg_get_eirp_preferred_support(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS tgt_reg_process_r2p_table_update_response(
 						struct wlan_objmgr_psoc *psoc,
 						uint32_t pdev_id);
-#endif
-
-#ifdef FEATURE_WLAN_TX_POWERBOOST
-QDF_STATUS tgt_reg_process_txpb_event_handler(
-			struct wlan_objmgr_psoc *psoc,
-			struct reg_txpb_evt_params *params);
-#else
-static inline
-QDF_STATUS tgt_reg_process_txpb_event_handler(
-			struct wlan_objmgr_psoc *psoc,
-			struct reg_txpb_evt_params *params)
-{
-	return QDF_STATUS_SUCCESS;
-}
 #endif

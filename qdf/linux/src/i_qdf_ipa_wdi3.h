@@ -26,11 +26,7 @@
 #ifdef IPA_OFFLOAD
 
 #include <qdf_status.h>         /* QDF_STATUS */
-#ifndef IPA_SIM
 #include <linux/ipa_wdi3.h>
-#else
-#include <ipa/ipa_wdi3.h>
-#endif
 #include <linux/version.h>
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)) || \
@@ -340,16 +336,6 @@ typedef struct ipa_wdi_pipe_setup_info_smmu __qdf_ipa_wdi_pipe_setup_info_smmu_t
 #define __QDF_IPA_WDI_SETUP_INFO_SMMU_CHIP_ID(txrx, chip_id)
 #endif
 
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-#define __QDF_IPA_WDI_SETUP_INFO_RX_PEER_METADATA_VER(txrx, ver)	\
-	((((struct ipa_wdi_pipe_setup_info *)(txrx))->	\
-	  rx_peer_metadata_ver) = (ver))
-
-#define __QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PEER_METADATA_VER(txrx, ver)	\
-	((((struct ipa_wdi_pipe_setup_info_smmu *)(txrx))->	\
-	  rx_peer_metadata_ver) = (ver))
-#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
-
 /**
  * __qdf_ipa_wdi_conn_in_params_t - information provided by
  *		uC offload client
@@ -635,26 +621,6 @@ static inline int __qdf_ipa_wdi_opt_dpath_notify_flt_rlsd_per_inst(
 	return ipa_wdi_opt_dpath_notify_flt_rlsd_per_inst(hdl, is_success);
 }
 #endif /*IPA_OPT_WIFI_DP */
-
-#if defined(CONFIG_BORON) && defined(IPA_OPT_WIFI_DP)
-/**
- * __qdf_ipa_wdi_update_txpt_classify_info_idx() - set tx pkt classify info
- * @hdl: ipa handle
- * @vdev_id: vdev_id
- * @txpt_classify_info_idx: tx pkt classify info
- *
- * Return 0 on success, negative on failure
- */
-static inline int __qdf_ipa_wdi_update_txpt_classify_info_idx(
-						ipa_wdi_hdl_t hdl,
-						uint8_t vdev_id,
-						uint8_t txpt_classify_info_idx)
-{
-	return ipa_wdi_update_txpt_classfy_info_idx(hdl, vdev_id,
-						    txpt_classify_info_idx);
-}
-#endif
-
 /**
  * __qdf_ipa_wdi_dereg_intf - Client Driver should call this
  * function to deregister before unload and after disconnect

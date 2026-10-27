@@ -409,7 +409,7 @@ int dfs_control(struct wlan_dfs *dfs,
 					dfsparams->dfs_inband))
 			error = -EINVAL;
 
-		/* 5413 specific. */
+		/* 5413 speicfic. */
 		if (!dfs_set_thresholds(dfs, DFS_PARAM_RELPWR,
 					dfsparams->dfs_relpwr))
 			error = -EINVAL;

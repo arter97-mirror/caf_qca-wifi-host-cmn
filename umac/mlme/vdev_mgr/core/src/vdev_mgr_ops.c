@@ -40,19 +40,17 @@
 #include <cdp_txrx_ctrl.h>
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <wlan_mlo_mgr_ap.h>
-#include <wlan_mlo_link_recfg.h>
 #endif
 #include <wlan_vdev_mgr_utils_api.h>
 #include <wlan_vdev_mgr_api.h>
 #ifdef WLAN_FEATURE_LL_LT_SAP
 #include "wlan_ll_sap_api.h"
 #endif
+#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
+#endif
 #include "wlan_mlme_vdev_mgr_interface.h"
 #include "wlan_cm_api.h"
-#include "wlan_mlo_mgr_link_switch.h"
-#include "wlan_mlme_api.h"
-#include "wlan_smd_roam.h"
 
 #ifdef QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT
 /**
@@ -140,7 +138,7 @@ vdev_mgr_param_mld_mac_addr_copy(struct wlan_objmgr_vdev *vdev,
 }
 #endif /* WLAN_FEATURE_11BE_MLO */
 
-#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
+#ifdef FEATURE_WLAN_SUPPORT_USD
 /**
  * vdev_mgr_update_wfd_mode() - update WFD mode in VDEV parameters
  * @vdev: pointer to VDEV object
@@ -159,7 +157,7 @@ vdev_mgr_update_wfd_mode(struct wlan_objmgr_vdev *vdev,
 			 struct vdev_create_params *param)
 {
 }
-#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 || FEATURE_WLAN_SUPPORT_PCC */
+#endif
 
 static QDF_STATUS vdev_mgr_create_param_update(
 					struct vdev_mlme_obj *mlme_obj,
@@ -250,7 +248,7 @@ static inline bool vdev_mgr_is_49G_5G_chan_freq(uint16_t chan_freq)
 #endif
 
 #ifdef WLAN_FEATURE_11BE
-static inline void
+static void
 vdev_mgr_start_param_update_11be(struct vdev_mlme_obj *mlme_obj,
 				 struct vdev_start_params *param,
 				 struct wlan_channel *des_chan)
@@ -266,7 +264,7 @@ vdev_mgr_set_cur_chan_punc_bitmap(struct wlan_channel *des_chan,
 	*puncture_bitmap = des_chan->puncture_bitmap;
 }
 #else
-static inline void
+static void
 vdev_mgr_start_param_update_11be(struct vdev_mlme_obj *mlme_obj,
 				 struct vdev_start_params *param,
 				 struct wlan_channel *des_chan)
@@ -278,21 +276,6 @@ vdev_mgr_set_cur_chan_punc_bitmap(struct wlan_channel *des_chan,
 				  uint16_t *puncture_bitmap)
 {
 	*puncture_bitmap = 0;
-}
-#endif
-
-#ifdef WLAN_FEATURE_11BN
-static inline void
-vdev_mgr_start_param_update_11bn(struct vdev_mlme_obj *mlme_obj,
-				 struct vdev_start_params *param)
-{
-	param->uhr_ops = mlme_obj->proto.uhr_ops_info.uhr_ops;
-}
-#else
-static inline void
-vdev_mgr_start_param_update_11bn(struct vdev_mlme_obj *mlme_obj,
-				 struct vdev_start_params *param)
-{
 }
 #endif
 
@@ -314,18 +297,7 @@ vdev_mgr_start_param_update_linkid(struct wlan_objmgr_vdev *vdev,
 	param->link_id = wlan_vdev_get_link_id(vdev);
 }
 #else
-static inline void
-vdev_mgr_start_param_update_linkid(struct wlan_objmgr_vdev *vdev,
-				   struct vdev_start_params *param)
-{
-	if (smd_is_roaming_in_progress(vdev)) {
-		param->mlo_flags.mlo_ieee_link_id_valid = 1;
-		param->link_id = wlan_vdev_get_link_id(vdev);
-	} else {
-		param->mlo_flags.mlo_ieee_link_id_valid = 0;
-		param->link_id = 0x0F;
-	}
-}
+#define vdev_mgr_start_param_update_linkid(vdev, param)
 #endif
 
 #ifdef WLAN_MCAST_MLO
@@ -482,10 +454,7 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 		if (wlan_cm_is_link_add_connecting(vdev) ||
 		    mlo_mgr_is_link_add_link_switch(vdev)) {
 			param->mlo_flags.mlo_link_add = 1;
-			if (mlo_link_recfg_is_start_as_active(vdev))
-				param->mlo_flags.start_as_active = 1;
-			mlme_debug("vdev mlo_link_add flag set 1 start_as_active %d",
-				   param->mlo_flags.start_as_active);
+			mlme_debug("vdev mlo_link_add flag set 1");
 		}
 	}
 
@@ -494,9 +463,6 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 		param->mlo_flags.emlsr_support  = 1;
 		mlme_debug("eMLSR support=%d", param->mlo_flags.emlsr_support);
 	}
-
-	if (smd_is_roaming_in_progress(vdev))
-		vdev_mgr_start_param_update_linkid(vdev, param);
 
 	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_SAP_MODE) {
 		if (wlan_vdev_mlme_op_flags_get(
@@ -520,28 +486,12 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 #endif
 
 #ifdef MOBILE_DFS_SUPPORT
-
-#define CAC_DURATION_ON_LINK_SWITCH 100
-
 static void
 vdev_mgr_start_param_update_cac_ms(struct wlan_objmgr_vdev *vdev,
 				   struct vdev_start_params *param)
 {
-	struct wlan_objmgr_psoc *psoc = wlan_vdev_get_psoc(vdev);
-
-	if (!psoc) {
-		mlme_err("psoc null");
-		return;
-	}
-
 	param->cac_duration_ms =
 			wlan_util_vdev_mgr_get_cac_timeout_for_vdev(vdev);
-	if (mlo_mgr_is_link_switch_in_progress_by_psoc(psoc) &&
-	    param->cac_duration_ms > CAC_DURATION_ON_LINK_SWITCH) {
-		param->cac_duration_ms = CAC_DURATION_ON_LINK_SWITCH;
-		mlme_debug("link switch ongoing, cac dur %d",
-			   param->cac_duration_ms);
-	}
 }
 
 static inline
@@ -565,8 +515,9 @@ bool vdev_mgr_is_sta_max_phy_enabled(enum QDF_OPMODE op_mode,
 }
 #endif
 
-static QDF_STATUS vdev_mgr_start_param_update(struct vdev_mlme_obj *mlme_obj,
-					      struct vdev_start_params *param)
+static QDF_STATUS vdev_mgr_start_param_update(
+					struct vdev_mlme_obj *mlme_obj,
+					struct vdev_start_params *param)
 {
 	struct wlan_channel *des_chan;
 	uint32_t dfs_reg;
@@ -632,34 +583,10 @@ static QDF_STATUS vdev_mgr_start_param_update(struct vdev_mlme_obj *mlme_obj,
 	param->beacon_interval = mlme_obj->proto.generic.beacon_interval;
 	param->dtim_period = mlme_obj->proto.generic.dtim_period;
 	param->disable_hw_ack = mlme_obj->mgmt.generic.disable_hw_ack;
-	mlme_get_vdev_nss_by_freq_from_dyn(mlme_obj->vdev,
-					   des_chan->ch_freq,
-					   (uint8_t *)&param->pref_tx_ss,
-					   (uint8_t *)&param->pref_rx_ss);
-
-	if (vdev_mgr_is_opmode_sap_or_p2p_go(op_mode)) {
-		param->channel.dfs_set =
-			wlan_reg_is_dfs_for_freq(pdev, des_chan->ch_freq);
-
-		policy_mgr_update_dfs_master_dynamic_enabled(wlan_pdev_get_psoc(pdev),
-							     true, op_mode, des_chan);
-
-		if (!wlan_mlme_get_sap_supports_nss_change(mlme_obj->vdev)) {
-			wlan_vdev_mlme_get_bss_nss_params(mlme_obj->vdev,
-							  (uint8_t *)&param->pref_tx_ss,
-							  (uint8_t *)&param->pref_rx_ss,
-							  (uint8_t *)&param->oper_tx_ss,
-							  (uint8_t *)&param->oper_rx_ss);
-		} else {
-			param->oper_tx_ss = param->pref_tx_ss;
-			param->oper_rx_ss = param->pref_rx_ss;
-		}
-	} else {
-		param->oper_tx_ss = QDF_MIN(param->pref_tx_ss,
-					    mlme_obj->proto.generic.op_tx_nss);
-		param->oper_rx_ss = QDF_MIN(param->pref_rx_ss,
-					    mlme_obj->proto.generic.op_rx_nss);
-	}
+	param->preferred_rx_streams =
+		mlme_obj->mgmt.chainmask_info.num_rx_chain;
+	param->preferred_tx_streams =
+		mlme_obj->mgmt.chainmask_info.num_tx_chain;
 
 	wlan_reg_get_dfs_region(pdev, &dfs_reg);
 	param->regdomain = dfs_reg;
@@ -673,6 +600,11 @@ static QDF_STATUS vdev_mgr_start_param_update(struct vdev_mlme_obj *mlme_obj,
 	param->channel.mhz = des_chan->ch_freq;
 	param->channel.half_rate = mlme_obj->mgmt.rate_info.half_rate;
 	param->channel.quarter_rate = mlme_obj->mgmt.rate_info.quarter_rate;
+
+	if (vdev_mgr_is_opmode_sap_or_p2p_go(op_mode))
+		param->channel.dfs_set = wlan_reg_is_dfs_for_freq(
+							pdev,
+							des_chan->ch_freq);
 
 	param->channel.is_chan_passive =
 		utils_is_dfs_chan_for_freq(pdev, param->channel.mhz);
@@ -704,8 +636,6 @@ static QDF_STATUS vdev_mgr_start_param_update(struct vdev_mlme_obj *mlme_obj,
 		vdev_mgr_start_param_update_cac_ms(vdev, param);
 	}
 	wlan_vdev_mlme_get_ssid(vdev, param->ssid.ssid, &param->ssid.length);
-
-	vdev_mgr_start_param_update_11bn(mlme_obj, param);
 
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_MLME_SB_ID);
 	return QDF_STATUS_SUCCESS;
@@ -746,7 +676,28 @@ void vdev_mgr_get_target_tsf(struct vdev_start_params *param,
 }
 #endif
 
-QDF_STATUS vdev_mgr_start_send(struct vdev_mlme_obj *mlme_obj, bool restart)
+#ifdef WLAN_POLICY_MGR_ENABLE
+static void vdev_update_dfs_master_state(struct wlan_objmgr_vdev *vdev)
+{
+	enum QDF_OPMODE op_mode;
+
+	op_mode = wlan_vdev_mlme_get_opmode(vdev);
+	if (op_mode == QDF_SAP_MODE || op_mode == QDF_P2P_GO_MODE)
+		policy_mgr_update_dfs_master_dynamic_enabled(
+				wlan_vdev_get_psoc(vdev),
+				true,
+				vdev->vdev_mlme.des_chan);
+}
+#else
+static inline void
+vdev_update_dfs_master_state(struct wlan_objmgr_vdev *vdev)
+{
+}
+#endif
+
+QDF_STATUS vdev_mgr_start_send(
+			struct vdev_mlme_obj *mlme_obj,
+			bool restart)
 {
 	QDF_STATUS status;
 	struct vdev_start_params param = {0};
@@ -756,16 +707,17 @@ QDF_STATUS vdev_mgr_start_send(struct vdev_mlme_obj *mlme_obj, bool restart)
 		return QDF_STATUS_E_INVAL;
 	}
 
-	if (restart) {
-		param.is_restart = true;
-		vdev_mgr_get_target_tsf(&param, mlme_obj->vdev);
-	}
-
 	status = vdev_mgr_start_param_update(mlme_obj, &param);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlme_err("Param Update Error: %d", status);
 		return status;
 	}
+
+	param.is_restart = restart;
+	if (param.is_restart)
+		vdev_mgr_get_target_tsf(&param, mlme_obj->vdev);
+
+	vdev_update_dfs_master_state(mlme_obj->vdev);
 
 	status = tgt_vdev_mgr_start_send(mlme_obj, &param);
 
@@ -869,46 +821,6 @@ static QDF_STATUS vdev_mgr_sta_ps_param_update(
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS vdev_mgr_sap_tm_param_update(
-				struct vdev_mlme_obj *mlme_obj)
-{
-	struct wlan_objmgr_vdev *vdev;
-	struct traffic_monitoring_params param = {0};
-
-	vdev = mlme_obj->vdev;
-	param.vdev_id = wlan_vdev_get_id(vdev);
-	param.perf_data_threshold =
-	    wlan_mlme_get_sap_perf_data_threshold(wlan_vdev_get_psoc(vdev));
-	param.traffic_monitoring_time =
-	    wlan_mlme_get_sap_traffic_monitoring_time_s(
-						wlan_vdev_get_psoc(vdev));
-
-	return tgt_vdev_mgr_tm_param_send(mlme_obj, &param);
-}
-
-static QDF_STATUS vdev_mgr_sta_high_band_roaming_param_update(
-				struct vdev_mlme_obj *mlme_obj)
-{
-	struct wlan_objmgr_vdev *vdev;
-	struct wlan_objmgr_psoc *psoc;
-	struct traffic_monitoring_params param = {0};
-
-	vdev = mlme_obj->vdev;
-	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc) {
-		mlme_err("PSOC is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	param.vdev_id = wlan_vdev_get_id(vdev);
-	param.perf_data_threshold =
-	    wlan_mlme_get_high_band_roaming_data_threshold(psoc);
-	param.traffic_monitoring_time =
-	    wlan_mlme_get_high_band_roaming_threshold_time_ms(psoc) / 1000;
-
-	return tgt_vdev_mgr_tm_param_send(mlme_obj, &param);
-}
-
 static QDF_STATUS vdev_mgr_up_param_update(
 				struct vdev_mlme_obj *mlme_obj,
 				struct vdev_up_params *param)
@@ -919,7 +831,6 @@ static QDF_STATUS vdev_mgr_up_param_update(
 	struct qdf_mac_addr bcast_mac = QDF_MAC_ADDR_BCAST_INIT;
 	struct scan_cache_entry *entry;
 	struct wlan_channel *chan;
-	struct qdf_mac_addr orig_trans_bssid;
 
 	vdev = mlme_obj->vdev;
 	param->vdev_id = wlan_vdev_get_id(vdev);
@@ -927,58 +838,32 @@ static QDF_STATUS vdev_mgr_up_param_update(
 
 	mbss = &mlme_obj->mgmt.mbss_11ax;
 	wlan_vdev_mgr_get_param_bssid(vdev, bssid);
-
-	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
-		goto update_tx_prof;
-
-	qdf_mem_copy(&orig_trans_bssid, mbss->trans_bssid,
-		     QDF_MAC_ADDR_SIZE);
-	if (!mbss->profile_num) {
-		entry = wlan_scan_get_entry_by_bssid(wlan_vdev_get_pdev(vdev),
-						     (struct qdf_mac_addr *)bssid);
-		if (entry) {
-			chan = wlan_vdev_mlme_get_bss_chan(vdev);
-			mlme_set_mbssid_info(vdev,
-					     &entry->mbssid_info,
-					     chan->ch_freq);
-			if (entry->is_gen_entry)
-				qdf_mem_copy(mbss->trans_bssid,
-					     bcast_mac.bytes,
-					     QDF_MAC_ADDR_SIZE);
-
-			util_scan_free_cache_entry(entry);
+	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) {
+		if (!mbss->profile_num) {
+			entry = wlan_scan_get_entry_by_bssid(wlan_vdev_get_pdev(vdev),
+							     (struct qdf_mac_addr *)bssid);
+			if (entry) {
+				chan = wlan_vdev_mlme_get_bss_chan(vdev);
+				mlme_set_mbssid_info(vdev,
+						     &entry->mbssid_info,
+						     chan->ch_freq);
+				util_scan_free_cache_entry(entry);
+			}
 		}
+
+		mlme_debug("trans BSSID " QDF_MAC_ADDR_FMT " non-trans BSSID " QDF_MAC_ADDR_FMT
+			   " profile_idx %d, profile_num %d",
+			   QDF_MAC_ADDR_REF(mbss->trans_bssid),
+			   QDF_MAC_ADDR_REF(mbss->non_trans_bssid),
+			  mbss->profile_idx, mbss->profile_num);
+		if (!qdf_mem_cmp(bcast_mac.bytes, mbss->trans_bssid,
+				 QDF_MAC_ADDR_SIZE))
+			goto update_tx_prof;
+
+		if ((qdf_mem_cmp(bssid, mbss->trans_bssid, QDF_MAC_ADDR_SIZE)) &&
+		    (qdf_mem_cmp(bssid, mbss->non_trans_bssid, QDF_MAC_ADDR_SIZE)))
+			return QDF_STATUS_SUCCESS;
 	}
-
-	mlme_info("trans BSSID " QDF_MAC_ADDR_FMT " non-trans BSSID " QDF_MAC_ADDR_FMT
-		  " profile_idx %d, profile_num %d",
-		  QDF_MAC_ADDR_REF(mbss->trans_bssid),
-		  QDF_MAC_ADDR_REF(mbss->non_trans_bssid),
-		  mbss->profile_idx, mbss->profile_num);
-
-	if (!qdf_mem_cmp(bcast_mac.bytes, mbss->trans_bssid,
-			 QDF_MAC_ADDR_SIZE))
-		goto update_tx_prof;
-
-	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)mbss->trans_bssid) &&
-	    !qdf_is_macaddr_zero(&orig_trans_bssid)) {
-		/*
-		 * Set Broadcast tx bssid mac, if a change is detected in the
-		 * trans bssid during VDEV restart. This allows firmware to
-		 * auto-detect the new trans bssid or disconnect if the AP moves
-		 * from MBSSID to non-MBSSID profile during channel switch.
-		 */
-		mlme_info("MBSSID profile change detected for bssid " QDF_MAC_ADDR_FMT
-			  " Original trans BSSID " QDF_MAC_ADDR_FMT,
-			  QDF_MAC_ADDR_REF(bssid),
-			  QDF_MAC_ADDR_REF(&orig_trans_bssid.bytes[0]));
-		qdf_mem_copy(mbss->trans_bssid, bcast_mac.bytes,
-			     QDF_MAC_ADDR_SIZE);
-	}
-
-	if ((qdf_mem_cmp(bssid, mbss->trans_bssid, QDF_MAC_ADDR_SIZE)) &&
-	    (qdf_mem_cmp(bssid, mbss->non_trans_bssid, QDF_MAC_ADDR_SIZE)))
-		return QDF_STATUS_SUCCESS;
 
 update_tx_prof:
 	param->profile_idx = mbss->profile_idx;
@@ -1042,7 +927,6 @@ QDF_STATUS vdev_mgr_up_send(struct vdev_mlme_obj *mlme_obj)
 	struct beacon_tmpl_params bcn_tmpl_param = {0};
 	enum QDF_OPMODE opmode;
 	struct wlan_objmgr_vdev *vdev;
-	struct wlan_objmgr_psoc *psoc;
 
 	if (!mlme_obj) {
 		mlme_err("VDEV_MLME is NULL");
@@ -1055,13 +939,6 @@ QDF_STATUS vdev_mgr_up_send(struct vdev_mlme_obj *mlme_obj)
 		return QDF_STATUS_E_INVAL;
 	}
 
-	psoc = wlan_vdev_get_psoc(vdev);
-
-	if (!psoc) {
-		mlme_err("Psoc is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
 	vdev_mgr_up_param_update(mlme_obj, &param);
 	vdev_mgr_bcn_tmpl_param_update(mlme_obj, &bcn_tmpl_param);
 
@@ -1069,8 +946,7 @@ QDF_STATUS vdev_mgr_up_send(struct vdev_mlme_obj *mlme_obj)
 	if (opmode == QDF_STA_MODE) {
 		vdev_mgr_sta_ps_param_update(mlme_obj, &ps_param);
 		status = tgt_vdev_mgr_sta_ps_param_send(mlme_obj, &ps_param);
-		if (QDF_IS_STATUS_ERROR(status))
-			return status;
+
 	}
 
 	status = tgt_vdev_mgr_beacon_tmpl_send(mlme_obj, &bcn_tmpl_param);
@@ -1087,26 +963,8 @@ QDF_STATUS vdev_mgr_up_send(struct vdev_mlme_obj *mlme_obj)
 	mlme_obj->mgmt.ap.max_chan_switch_time = 0;
 	mlme_obj->mgmt.ap.last_bcn_ts_ms = 0;
 
-	if (opmode == QDF_STA_MODE) {
-		/* Send high band roaming parameters to firmware */
-		if (wlan_mlme_get_enable_high_band_roaming(psoc)) {
-			status = vdev_mgr_sta_high_band_roaming_param_update(
-								mlme_obj);
-			if (QDF_IS_STATUS_ERROR(status))
-				return status;
-		}
-	}
-
-	if (opmode == QDF_SAP_MODE) {
+	if (opmode == QDF_SAP_MODE)
 		status = vdev_mgr_configure_fd_for_sap(mlme_obj);
-
-		/* In case of traffic monitoring is enabled, send traffic
-		 * monitoring params to FW.
-		 */
-		if (wlan_mlme_get_sap_perf_tuning_enabled(psoc) &&
-		    wlan_mlme_get_sap_perf_tuning_serv_cap(psoc))
-			vdev_mgr_sap_tm_param_update(mlme_obj);
-	}
 	return status;
 }
 
@@ -1115,7 +973,6 @@ static QDF_STATUS vdev_mgr_down_param_update(
 					struct vdev_down_params *param)
 {
 	struct wlan_objmgr_vdev *vdev;
-	struct wlan_objmgr_psoc *psoc;
 
 	vdev = mlme_obj->vdev;
 	if (!vdev) {
@@ -1123,13 +980,7 @@ static QDF_STATUS vdev_mgr_down_param_update(
 		return QDF_STATUS_E_INVAL;
 	}
 
-	psoc = wlan_vdev_get_psoc(vdev);
 	param->vdev_id = wlan_vdev_get_id(vdev);
-
-	if (mlo_mgr_is_link_switch_in_progress(vdev) &&
-	    mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(psoc))
-		mlo_mgr_get_link_switch_peer_mac_addr(vdev,
-						      &param->peer_macaddr);
 
 	return QDF_STATUS_SUCCESS;
 }

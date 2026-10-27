@@ -25,50 +25,22 @@
 #include "qdf_types.h"
 #include "qdf_module.h"
 #include "qdf_util.h"
-#include <i_qdf_trace.h>
 #include <linux/netdevice.h>
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
 QDF_STATUS
-qdf_net_if_create_dummy_if(struct qdf_net_if **nif)
-{
-	*nif = (struct qdf_net_if *)alloc_netdev_dummy(0);
-
-	if (!(*nif))
-		return QDF_STATUS_E_NOMEM;
-
-	return QDF_STATUS_SUCCESS;
-}
-#else
-QDF_STATUS
-qdf_net_if_create_dummy_if(struct qdf_net_if **nif)
+qdf_net_if_create_dummy_if(struct qdf_net_if *nif)
 {
 	int ret;
 
-	if (!(*nif))
+	if (!nif)
 		return QDF_STATUS_E_INVAL;
 
-	ret = init_dummy_netdev((struct net_device *)*nif);
+	ret = init_dummy_netdev((struct net_device *)nif);
 
 	return qdf_status_from_os_return(ret);
 }
-#endif
 
 qdf_export_symbol(qdf_net_if_create_dummy_if);
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
-void
-qdf_net_if_destroy_dummy_if(struct qdf_net_if *nif)
-{
-	if (nif)
-		free_netdev((struct net_device *)nif);
-}
-#else
-void
-qdf_net_if_destroy_dummy_if(struct qdf_net_if *nif)
-{
-}
-#endif
 
 /**
  * qdf_net_if_get_devname() - Retrieve netdevice name
@@ -162,9 +134,6 @@ qdf_export_symbol(qdf_net_update_net_device_dev_addr);
 
 void qdf_napi_enable(struct napi_struct *napi)
 {
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_DEBUG,
-		  "qdf_napi_enable: napi=%pk napi_id=%u state=0x%lx",
-		  napi, napi->napi_id, napi->state);
 	__qdf_napi_enable(napi);
 }
 
@@ -172,9 +141,6 @@ qdf_export_symbol(qdf_napi_enable);
 
 void qdf_napi_disable(struct napi_struct *napi)
 {
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_DEBUG,
-		  "qdf_napi_disable: napi=%pk napi_id=%u state=0x%lx",
-		  napi, napi->napi_id, napi->state);
 	__qdf_napi_disable(napi);
 }
 
@@ -183,9 +149,6 @@ qdf_export_symbol(qdf_napi_disable);
 void qdf_netif_napi_add(struct net_device *netdev, struct napi_struct *napi,
 			int (*poll)(struct napi_struct *, int), int weight)
 {
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_DEBUG,
-		  "qdf_netif_napi_add: napi=%pk netdev=%pk",
-		  napi, netdev);
 	__qdf_netif_napi_add(netdev, napi, poll, weight);
 }
 
@@ -193,9 +156,6 @@ qdf_export_symbol(qdf_netif_napi_add);
 
 void qdf_netif_napi_del(struct napi_struct *napi)
 {
-	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_DEBUG,
-		  "qdf_netif_napi_del: napi=%pk napi_id=%u state=0x%lx",
-		  napi, napi->napi_id, napi->state);
 	__qdf_netif_napi_del(napi);
 }
 

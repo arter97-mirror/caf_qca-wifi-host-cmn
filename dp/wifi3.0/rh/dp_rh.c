@@ -234,6 +234,7 @@ static void dp_soc_cfg_init_rh(struct dp_soc *soc)
 	case TARGET_TYPE_WCN6450:
 		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, true);
 		soc->ast_override_support = 1;
+		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		break;
 	default:
 		qdf_print("%s: Unknown tgt type %d\n", __func__, target_type);
@@ -244,6 +245,19 @@ static void dp_soc_cfg_init_rh(struct dp_soc *soc)
 
 static void dp_soc_cfg_attach_rh(struct dp_soc *soc)
 {
+	int target_type;
+
+	target_type = hal_get_target_type(soc->hal_soc);
+	switch (target_type) {
+	case TARGET_TYPE_WCN6450:
+		soc->wlan_cfg_ctx->rxdma1_enable = 0;
+		break;
+	default:
+		qdf_print("%s: Unknown tgt type %d\n", __func__, target_type);
+		qdf_assert_always(0);
+		break;
+	}
+
 	/*
 	 * keeping TCL and completion rings number, this data
 	 * is equivalent number of TX interface rings.
@@ -286,7 +300,6 @@ static QDF_STATUS dp_soc_attach_rh(struct dp_soc *soc,
 				   struct cdp_soc_attach_params *params)
 {
 	soc->wbm_sw0_bm_id = hal_tx_get_wbm_sw0_bm_id();
-	soc->wds_not_supported = TRUE;
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -378,6 +391,8 @@ static void *dp_soc_init_rh(struct dp_soc *soc, HTC_HANDLE htc_handle,
 	htt_set_htc_handle(htt_soc, htc_handle);
 
 	dp_soc_cfg_init_rh(soc);
+
+	dp_monitor_soc_cfg_init(soc);
 
 	/* Note: Any SRNG ring initialization should happen only after
 	 * Interrupt mode is set and followed by filling up the
@@ -742,7 +757,8 @@ dp_rxdma_ring_sel_cfg_rh(struct dp_soc *soc)
 	htt_tlv_filter.ppdu_end_user_stats_ext = 0;
 	htt_tlv_filter.ppdu_end_status_done = 0;
 	htt_tlv_filter.enable_fp = 1;
-
+	htt_tlv_filter.enable_md = 0;
+	htt_tlv_filter.enable_md = 0;
 	htt_tlv_filter.enable_mo = 0;
 
 	htt_tlv_filter.fp_mgmt_filter = 0;
@@ -753,6 +769,7 @@ dp_rxdma_ring_sel_cfg_rh(struct dp_soc *soc)
 	htt_tlv_filter.mo_mgmt_filter = 0;
 	htt_tlv_filter.mo_ctrl_filter = 0;
 	htt_tlv_filter.mo_data_filter = 0;
+	htt_tlv_filter.md_data_filter = 0;
 
 	htt_tlv_filter.offset_valid = true;
 
@@ -828,7 +845,8 @@ dp_rxdma_ring_sel_cfg_rh(struct dp_soc *soc)
 	htt_tlv_filter.ppdu_end_user_stats_ext = 0;
 	htt_tlv_filter.ppdu_end_status_done = 0;
 	htt_tlv_filter.enable_fp = 1;
-
+	htt_tlv_filter.enable_md = 0;
+	htt_tlv_filter.enable_md = 0;
 	htt_tlv_filter.enable_mo = 0;
 
 	htt_tlv_filter.fp_mgmt_filter = 0;
@@ -839,6 +857,7 @@ dp_rxdma_ring_sel_cfg_rh(struct dp_soc *soc)
 	htt_tlv_filter.mo_mgmt_filter = 0;
 	htt_tlv_filter.mo_ctrl_filter = 0;
 	htt_tlv_filter.mo_data_filter = 0;
+	htt_tlv_filter.md_data_filter = 0;
 
 	htt_tlv_filter.offset_valid = true;
 
@@ -926,62 +945,6 @@ static void dp_get_rx_hash_key_rh(struct dp_soc *soc,
 	dp_get_rx_hash_key_bytes(lro_hash);
 }
 
-/**
- * dp_print_peer_txrx_stats_rh() - Print RH specific peer stats
- * @peer_stats: cdp peer stats
- * @stats_type: stats type tx or rx
- *
- * Return: void
- */
-static void dp_print_peer_txrx_stats_rh(struct cdp_peer_stats *peer_stats,
-					enum peer_stats_type stats_type)
-{
-	if (stats_type == PEER_TX_STATS) {
-		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d\n",
-			       peer_stats->tx.bw[CMN_BW_20MHZ],
-			       peer_stats->tx.bw[CMN_BW_40MHZ],
-			       peer_stats->tx.bw[CMN_BW_80MHZ],
-			       peer_stats->tx.bw[CMN_BW_160MHZ]);
-		DP_PRINT_STATS("RU Locations");
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_26_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_26_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_26_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_26_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_52_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_52_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_52_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_52_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_106_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_106_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_106_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_106_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_242_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_242_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_242_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_242_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_484_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_484_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_484_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_484_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_996_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_996_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_996_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_996_INDEX].mpdu_tried);
-	} else {
-		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d",
-			       peer_stats->rx.bw[CMN_BW_20MHZ],
-			       peer_stats->rx.bw[CMN_BW_40MHZ],
-			       peer_stats->rx.bw[CMN_BW_80MHZ],
-			       peer_stats->rx.bw[CMN_BW_160MHZ]);
-	}
-}
-
 #if defined(DP_POWER_SAVE) || defined(FEATURE_RUNTIME_PM)
 static void dp_update_ring_hptp_rh(struct dp_soc *soc, bool force_flush)
 {
@@ -1056,15 +1019,4 @@ void dp_initialize_arch_ops_rh(struct dp_arch_ops *arch_ops)
 	arch_ops->dp_mlo_tx_pool_map = dp_mlo_tx_pool_map_rh;
 	arch_ops->dp_mlo_tx_pool_unmap = dp_mlo_tx_pool_unmap_rh;
 	arch_ops->dp_tx_override_flow_pool_id = dp_tx_override_flow_pool_id_rh;
-#ifdef FEATURE_DAL_DP_SUPPORT
-	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_rh;
-	arch_ops->dp_tx_hw_desc_sync = dp_tx_hw_desc_sync_rh;
-	arch_ops->dp_tx_desc_update_buffer_info =
-					dp_tx_desc_update_buffer_info_rh;
-	arch_ops->dp_dal_tx_comp_check_reserved_cookie =
-					dp_dal_tx_comp_check_reserved_cookie_rh;
-	arch_ops->dp_dal_rx_process_nbuf_list = dp_dal_rx_process_nbuf_list_rh;
-	arch_ops->dp_rx_validate_and_fetch_rx_desc =
-					dp_rx_validate_and_fetch_rx_desc_rh;
-#endif /* FEATURE_DAL_DP_SUPPORT */
 }

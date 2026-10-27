@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021,2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -78,21 +77,6 @@ wmi_unified_big_data_stats_request_send(wmi_unified_t wmi_handle,
 }
 #endif
 
-#ifdef WLAN_FEATURE_POWER_STATISTICS
-QDF_STATUS
-wmi_unified_power_datapath_stats_request_send(
-			wmi_unified_t wmi_handle,
-			struct wmi_power_datapath_stats_cmd_param *param)
-{
-	if (wmi_handle->ops->send_pdev_power_datapath_stats_cmd)
-		return wmi_handle->ops->send_pdev_power_datapath_stats_cmd(
-							wmi_handle,
-							param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-#endif
-
 QDF_STATUS
 wmi_extract_stats_param(wmi_unified_t wmi_handle, void *evt_buf,
 			wmi_host_stats_event *stats_param)
@@ -161,87 +145,3 @@ wmi_extract_inst_rssi_stats_resp(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
-
-#ifdef WLAN_FEATURE_CTAS
-QDF_STATUS
-wmi_unified_send_modify_tx_plim_cmd(wmi_unified_t wmi_handle,
-				    enum host_tas_direction direction)
-{
-	if (wmi_handle->ops->send_modify_tx_plim_cmd)
-		return wmi_handle->ops->send_modify_tx_plim_cmd(wmi_handle,
-								direction);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_extract_modify_tx_plim_event(wmi_unified_t wmi_handle,
-					 void *evt_buf,
-					 uint32_t *status)
-{
-	if (wmi_handle->ops->extract_modify_tx_plim_event)
-		return wmi_handle->ops->extract_modify_tx_plim_event(wmi_handle,
-								      evt_buf,
-								      status);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_send_get_avg_tx_power_cmd(wmi_unified_t wmi_handle,
-				      uint32_t dsi_id)
-{
-	if (wmi_handle->ops->send_get_avg_tx_power_cmd)
-		return wmi_handle->ops->send_get_avg_tx_power_cmd(wmi_handle,
-								  dsi_id);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_extract_avg_tx_power_event(
-		wmi_unified_t wmi_handle,
-		void *evt_buf,
-		uint32_t *fw_status,
-		uint32_t *time_window_in_sec,
-		wmi_avg_tx_power_region_per_antenna_chain **chain_data,
-		uint32_t *num_chains)
-{
-	if (wmi_handle->ops->extract_avg_tx_power_event)
-		return wmi_handle->ops->extract_avg_tx_power_event(
-					wmi_handle, evt_buf,
-					fw_status, time_window_in_sec,
-					chain_data, num_chains);
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_send_get_tx_power_calling_cmd(wmi_unified_t wmi_handle,
-					  uint32_t dsi_id)
-{
-	if (wmi_handle->ops->send_get_tx_power_calling_cmd)
-		return wmi_handle->ops->send_get_tx_power_calling_cmd(
-								wmi_handle,
-								dsi_id);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_extract_plimit_table_event(
-				wmi_unified_t wmi_handle,
-				void *evt_buf,
-				uint32_t *fw_status,
-				uint32_t *dsi_id,
-				wmi_tx_power_per_antenna_chain **chain_data,
-				uint32_t *num_chains)
-{
-	if (wmi_handle->ops->extract_plimit_table_event)
-		return wmi_handle->ops->extract_plimit_table_event(
-						wmi_handle, evt_buf,
-						fw_status, dsi_id,
-						chain_data, num_chains);
-
-	return QDF_STATUS_E_FAILURE;
-}
-#endif /* WLAN_FEATURE_CTAS */

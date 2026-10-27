@@ -60,7 +60,6 @@
 #include <cfg_mgmt_txrx.h>
 #include <cfg_ipa.h>
 #include <cfg_mlme_cm.h>
-#include "cfg_minidump.h"
 
 #define CFG_CONVERGED_ALL \
 		CFG_SCAN_ALL \
@@ -78,8 +77,7 @@
 		CFG_MGMT_TXRX_ALL \
 		CFG_IPA \
 		CFG_WIFI_RADAR_ALL \
-		CFG_CP_STATS_ALL \
-		CFG_MINIDUMP_ALL
+		CFG_CP_STATS_ALL
 
 #endif /* __CFG_CONVERGED_H */
 

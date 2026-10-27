@@ -113,7 +113,7 @@
 #define DP_MON_FILTER_FPMO_PACKET_CTRL_LSB                     0
 
 #define DP_MON_DATA_MAX_FILTER BIT(18)
-#define DP_MON_MGMT_MAX_FILTER BIT(4)
+#define DP_MON_MGMT_MAX_FILTER BIT(5)
 #define DP_MON_CTRL_MAX_FILTER BIT(3)
 
 #define DP_MON_FILTER_GET(src, field) \
@@ -175,35 +175,7 @@ enum dp_rx_hdr_dma_length {
 	RX_HDR_DMA_LENGTH_128B = 2,
 	/* dma length 256 bytes */
 	RX_HDR_DMA_LENGTH_256B = 3,
-	/* dma length 512 bytes */
-	RX_HDR_DMA_LENGTH_512B = 4,
-	/* dma length 1024 bytes */
-	RX_HDR_DMA_LENGTH_1024B = 5,
-	/* dma length 2048 bytes */
-	RX_HDR_DMA_LENGTH_2048B = 6,
-	/* Max dma length bytes – chipset dependency */
-	RX_HDR_DMA_LENGTH_MAX = 7,
 };
-
-#ifdef BORON_MONITOR
-#define RX_HDR_DMA_LENGTH_MAX_BYTES 2500
-#else
-#define RX_HDR_DMA_LENGTH_MAX_BYTES 256
-#endif
-
-/**
- * dp_convert_rx_hdr_dma_len_to_bytes() - Convert the length in HTT filter
- *                                        to number of bytes
- * @htt_len: RX_HDR length configured in HTT filter
- *
- * Return: RX_HDR length in bytes
- */
-static inline
-uint16_t dp_convert_rx_hdr_dma_len_to_bytes(uint16_t htt_len)
-{
-	return (htt_len == 0) ? 128 :
-		QDF_MIN((32 << htt_len), RX_HDR_DMA_LENGTH_MAX_BYTES);
-}
 
 /*
  * NB: intentionally not using kernel-doc comment because the kernel-doc
@@ -219,6 +191,7 @@ uint16_t dp_convert_rx_hdr_dma_len_to_bytes(uint16_t htt_len)
  * @DP_MON_FILTER_PKT_LOG_CBF_MODE: Packet log cbf mode
  * @DP_MON_FILTER_PKT_LOG_HYBRID_MODE: Packet log hybrid mode
  * @DP_MON_FILTER_UNDECODED_METADATA_CAPTURE_MODE: Undecoded frame capture
+ * @DP_MON_FILTER_LITE_MON_MODE:
  * @DP_MON_FILTER_MAX_MODE: max filter mode
  */
 enum dp_mon_filter_mode {
@@ -247,6 +220,9 @@ enum dp_mon_filter_mode {
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	DP_MON_FILTER_UNDECODED_METADATA_CAPTURE_MODE,
 #endif
+#ifdef QCA_SUPPORT_LITE_MONITOR
+	DP_MON_FILTER_LITE_MON_MODE,
+#endif /*QCA_SUPPORT_LITE_MONITOR*/
 	DP_MON_FILTER_MAX_MODE
 };
 
@@ -451,6 +427,26 @@ void dp_mon_filter_setup_undecoded_metadata_mode(struct dp_pdev *pdev);
 void dp_mon_filter_reset_undecoded_metadata_mode(struct dp_pdev *pdev);
 #endif /* QCA_UNDECODED_METADATA_SUPPORT */
 
+#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
+/**
+ * dp_mon_filter_setup_smart_monitor() - Setup the smart monitor mode filter
+ * @pdev: DP pdev handle
+ */
+void dp_mon_filter_setup_smart_monitor(struct dp_pdev *pdev);
+
+/**
+ * dp_mon_filter_reset_smart_monitor() - Reset the smart monitor mode filter
+ * @pdev: DP pdev handle
+ */
+void dp_mon_filter_reset_smart_monitor(struct dp_pdev *pdev);
+#endif /* ATH_SUPPORT_NAC_RSSI || ATH_SUPPORT_NAC */
+
+/**
+ * dp_mon_filter_set_reset_mon_mac_filter() - Setup the monitor mac filter
+ * @pdev: DP pdev handle
+ * @val: indicating set/reset
+ */
+void dp_mon_filter_set_reset_mon_mac_filter(struct dp_pdev *pdev, bool val);
 
 #ifdef  WLAN_RX_PKT_CAPTURE_ENH
 /**
@@ -490,7 +486,7 @@ void dp_mon_filter_reset_tx_mon_mode(struct dp_pdev *pdev);
  */
 void dp_mon_filter_reset_mon_mode(struct dp_pdev *pdev);
 
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
+#ifdef WDI_EVENT_ENABLE
 /**
  * dp_mon_filter_setup_rx_pkt_log_full() - Setup the Rx pktlog full mode filter
  * @pdev: DP pdev handle

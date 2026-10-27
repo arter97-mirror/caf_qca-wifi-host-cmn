@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -129,64 +128,10 @@
 	CFG_VALUE_OR_DEFAULT, \
 	"MLO reconfig reassoc is supported by target")
 
-/*
- * <ini>
- * adaptive_early_rx - Adaptive early rx drift for extra sleep
- * @Min: 0
- * @Max: 10
- * @Default: 5
- *
- * This ini is used to configure the adaptive early rx drift for extra sleep
- * slop parameter (WMI_PDEV_PARAM_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP).
- *
- * Related: None
- *
- * Supported Feature: Power Management
- *
- * Usage: External
- *
- * </ini>
- */
-#define MIN_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP 0
-#define MAX_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP 10000
-#define DEF_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP 5
-
-#define CFG_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP CFG_INI_UINT( \
-	"adaptive_early_rx", \
-	MIN_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP, \
-	MAX_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP, \
-	DEF_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP, \
-	CFG_VALUE_OR_DEFAULT, \
-	"Adaptive early rx drift for extra sleep")
-
-/*
- * <ini>
- * mlme_11bn_target_capab - Flag to check the target capability for 11bn
- * @Min: false
- * @Max: true
- * @Default: true
- *
- * This flag helps in confirming whether 11bn is supported by the target.
- *
- * Related: None
- *
- * Supported Feature: 11bn
- *
- * Usage: Internal
- *
- * </ini>
- */
-#define CFG_MLME_11BN_TARGET_CAPAB CFG_BOOL( \
-	"mlme_11bn_target_capab",\
-	true, \
-	"11be is supported by target")
-
 #define CFG_CMN_MLME_ALL \
 	CFG(CFG_MLME_MAX_CHAN_SWITCH_IE_ENABLE) \
 	CFG(CFG_MLME_11BE_TARGET_CAPAB) \
 	CFG(CFG_MLME_MLO_RECONFIG_REASSOC_ENABLE) \
-	CFG_MLME_11BE_ALL \
-	CFG(CFG_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP) \
-	CFG(CFG_MLME_11BN_TARGET_CAPAB)
+	CFG_MLME_11BE_ALL
 
 #endif /* __CFG_CMN_MLME_H */

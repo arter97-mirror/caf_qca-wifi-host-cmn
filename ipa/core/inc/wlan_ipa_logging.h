@@ -16,22 +16,10 @@
 #include "qdf_event.h"
 #include "wlan_cfg80211.h"
 #include <wlan_nlink_srv.h>
-#define MAX_LOG_PAYLOAD_LENGTH 384
-#define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 128
-#define MAX_LOG_LENGTH MAX_LOG_PAYLOAD_LENGTH + WLAN_IPA_PREFIX_BUFFER_LEN_MAX
+#define MAX_LOG_LENGTH 512
 #define WLAN_IPA_MAX_LIST_SIZE 64
 #define WLAN_IPA_LOGGING(arg, ...) \
 	WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__)
-#define WLAN_IPA_LOGGING_RL(arg, ...) \
-	do { \
-		static ulong __last_ticks; \
-		ulong __ticks = jiffies; \
-		if (time_after(__ticks, __last_ticks + HZ)) { \
-			WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__); \
-			__last_ticks = __ticks; \
-		} \
-	} while (0)
-
 #define WLAN_IPA_LOGGING_FUNC wlan_ipa_log_message
 #define WLAN_IPA_LOG_MSG_LENGTH_MAX 2048
 #define WLAN_IPA_HOST_MSG_MARKER "OPT_DP_HOST"
@@ -58,6 +46,8 @@ enum wlan_ipa_logging_thread_state {
  * struct wlan_ipa_log_context - structure holding resources for ipa logging
  * @free_list: free node list which can be used for filling logs
  * @filled_list: filled nodes list having logs to send to upper layer
+ * @start_event: handle of Event for ipa log thread to signal startup
+ * @shutdown_event: event to signal that the wait queue has been stopped
  * @lock: Lock to synchronize access to shared logging resource
  * @payload: final payload to be send to userspace
  * @wait_q: Wait queue for Logger thread
@@ -66,12 +56,12 @@ enum wlan_ipa_logging_thread_state {
  * @event_flag: event flag to post events to logger thread
  * @log_truncation: log truncation indication
  * @thread_state: logging thread state
- * @wmi_fw_log_msg_stat: number of wmi msg received from FW
- * @fw_log_msg_to_nl_stat: number of fw log msg sent to nl
  */
 struct wlan_ipa_log_context {
 	qdf_list_t free_list;
 	qdf_list_t filled_list;
+	qdf_event_t start_event;
+	qdf_event_t shutdown_event;
 	qdf_spinlock_t lock;
 	char payload[WLAN_IPA_LOG_MSG_LENGTH_MAX];
 	qdf_wait_queue_head_t wait_q;
@@ -80,8 +70,6 @@ struct wlan_ipa_log_context {
 	unsigned long event_flag;
 	bool log_truncation;
 	enum wlan_ipa_logging_thread_state thread_state;
-	uint32_t wmi_fw_log_msg_stat;
-	uint32_t fw_log_msg_to_nl_stat;
 };
 
 /**
@@ -142,17 +130,6 @@ QDF_STATUS wlan_ipa_logging_sock_init(void);
  * wlan_ipa_logging_sock_deinit() - deinit ipa logging resources
  */
 void wlan_ipa_logging_sock_deinit(void);
-
-/**
- * ipa_fw_log_received_stats() - no. of wmi msg received for fw log
- */
-void ipa_fw_log_received_stats(void);
-
-/**
- * ipa_dump_logging_stats() - print stats related to ipa logging
- */
-void ipa_dump_logging_stats(void);
-
 #else
 static inline
 void wlan_ipa_log_message(const char *func, const char *msg, ...)
@@ -167,16 +144,6 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 
 static inline
 void wlan_ipa_logging_sock_deinit(void)
-{
-}
-
-static inline
-void ipa_fw_log_received_stats(void)
-{
-}
-
-static inline
-void ipa_dump_logging_stats(void)
 {
 }
 #endif

@@ -93,8 +93,10 @@ QDF_STATUS wlan_vdev_mlme_sm_deliver_evt(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	mlme_vdev_sm_spin_lock(vdev_mlme);
 	status = mlme_vdev_sm_deliver_event(vdev_mlme, event, event_data_len,
 					    event_data);
+	mlme_vdev_sm_spin_unlock(vdev_mlme);
 
 	return status;
 }
@@ -272,6 +274,32 @@ QDF_STATUS wlan_vdev_is_dfs_cac_wait(struct wlan_objmgr_vdev *vdev)
 	return QDF_STATUS_E_FAILURE;
 }
 
+void wlan_vdev_mlme_cmd_lock(struct wlan_objmgr_vdev *vdev)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme) {
+		mlme_err("vdev component object is NULL");
+		return;
+	}
+
+	mlme_vdev_cmd_mutex_acquire(vdev_mlme);
+}
+
+void wlan_vdev_mlme_cmd_unlock(struct wlan_objmgr_vdev *vdev)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme) {
+		mlme_err("vdev component object is NULL");
+		return;
+	}
+
+	mlme_vdev_cmd_mutex_release(vdev_mlme);
+}
+
 QDF_STATUS wlan_vdev_mlme_is_scan_allowed(struct wlan_objmgr_vdev *vdev)
 {
 	enum wlan_vdev_state state;
@@ -306,20 +334,6 @@ QDF_STATUS wlan_vdev_is_up_active_state(struct wlan_objmgr_vdev *vdev)
 	state = wlan_vdev_mlme_get_state(vdev);
 	substate = wlan_vdev_mlme_get_substate(vdev);
 	if (state == WLAN_VDEV_S_UP && substate == WLAN_VDEV_SS_UP_ACTIVE)
-		return QDF_STATUS_SUCCESS;
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wlan_vdev_is_link_removal_state(struct wlan_objmgr_vdev *vdev)
-{
-	enum wlan_vdev_state state;
-	enum wlan_vdev_state substate;
-
-	state = wlan_vdev_mlme_get_state(vdev);
-	substate = wlan_vdev_mlme_get_substate(vdev);
-
-	if (state == WLAN_VDEV_S_UP && substate == WLAN_VDEV_SS_UP_REMOVAL)
 		return QDF_STATUS_SUCCESS;
 
 	return QDF_STATUS_E_FAILURE;

@@ -74,9 +74,6 @@ QDF_STATUS reg_set_11d_country(struct wlan_objmgr_pdev *pdev,
 	country_code.pdev_id = pdev_id;
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
-	if (!tx_ops)
-		return QDF_STATUS_E_FAILURE;
-
 	if (tx_ops->get_phy_id_from_pdev_id)
 		tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -86,9 +83,6 @@ QDF_STATUS reg_set_11d_country(struct wlan_objmgr_pdev *pdev,
 
 	if (psoc_priv_obj->offload_enabled) {
 		tx_ops = reg_get_psoc_tx_ops(psoc);
-		if (!tx_ops)
-			return QDF_STATUS_E_FAILURE;
-
 		if (tx_ops->set_country_code) {
 			tx_ops->set_country_code(psoc, &country_code);
 		} else {
@@ -140,8 +134,6 @@ static QDF_STATUS reg_send_11d_msg_cbk(struct scheduler_msg *msg)
 	struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj;
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
-	if (!tx_ops)
-		return QDF_STATUS_E_FAILURE;
 
 	psoc_priv_obj = reg_get_psoc_obj(psoc);
 	if (!psoc_priv_obj) {
@@ -378,18 +370,6 @@ QDF_STATUS reg_save_new_11d_country(struct wlan_objmgr_psoc *psoc,
 	}
 
 	/*
-	 * Secondary defense-in-depth check: num_phy should have been
-	 * validated before being stored in psoc_priv_obj. Guard here
-	 * against future call-path changes to prevent out-of-bounds
-	 * write into new_11d_ctry_pending[PSOC_MAX_PHY_REG_CAP].
-	 */
-	if (psoc_priv_obj->num_phy > PSOC_MAX_PHY_REG_CAP) {
-		reg_err("psoc %u: num_phy %u exceeds PSOC_MAX_PHY_REG_CAP",
-			wlan_psoc_get_id(psoc), psoc_priv_obj->num_phy);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	/*
 	 * Need firmware to send channel list event
 	 * for all phys. Therefore set pdev_id to 0xFF
 	 */
@@ -402,9 +382,6 @@ QDF_STATUS reg_save_new_11d_country(struct wlan_objmgr_psoc *psoc,
 
 	if (psoc_priv_obj->offload_enabled) {
 		tx_ops = reg_get_psoc_tx_ops(psoc);
-		if (!tx_ops)
-			return QDF_STATUS_E_FAILURE;
-
 		if (tx_ops->set_country_code) {
 			tx_ops->set_country_code(psoc, &country_code);
 		} else {

@@ -87,7 +87,7 @@
 	"ht_caps_weightage", \
 	0, \
 	100, \
-	1, \
+	2, \
 	CFG_VALUE_OR_DEFAULT, \
 	"HT Caps Weightage")
 
@@ -339,7 +339,7 @@
  *
  * This ini is used to increase/decrease OCE WAN caps weightage in best
  * candidate selection. If AP have OCE WAN information, give weightage depending
- * on the download available capacity.
+ * on the downaload available capacity.
  *
  * Related: num_oce_wan_slots
  *
@@ -1248,40 +1248,6 @@
 #define CFG_CHECK_6GHZ_SECURITY CFG_INI_BOOL(\
 				"check_6ghz_security", PLATFORM_VALUE(1, 0), \
 				"Enable check for 6Ghz allowed security")
-
-/*
- * <ini>
- * check_6ghz_security_on_connect - Defer 6GHz security check to connection time
- * @Min: 0
- * @Max: 1
- * @Default: 0
- *
- * This ini controls when 6GHz security validation is performed:
- * 0 - Validate at scan time (current behavior, drop non-compliant APs)
- * 1 - Validate at connection time (show all APs, block connection to
- *                                  non-compliant)
- *
- * When enabled, all 6GHz APs appear in scan results but connection attempts
- * to non-compliant APs are rejected, with automatic fallback to 2.4/5GHz.
- *
- * This works in conjunction with check_6ghz_security:
- * - If check_6ghz_security=0: No validation (permissive mode)
- * - If check_6ghz_security=1 AND check_6ghz_security_on_connect=0:
- *   Validate at scan time (current strict behavior)
- * - If check_6ghz_security=1 AND check_6ghz_security_on_connect=1:
- *   Validate at connection time (new behavior for Samsung requirement)
- *
- * Related: check_6ghz_security
- *
- * Supported Feature: STA 6GHz Connection
- *
- * Usage: External
- *
- * </ini>
- */
-#define CFG_CHECK_6GHZ_SECURITY_ON_CONNECT CFG_INI_BOOL(\
-				"check_6ghz_security_on_connect", 0, \
-				"Validate 6GHz security on connection")
 /*
  * <ini>
  * key_mgmt_mask_6ghz - AKM bit mask (@wlan_crypto_key_mgmt) allowed in 6Ghz
@@ -1310,7 +1276,6 @@
 
 #define CFG_6GHZ_CONFIG \
 	CFG(CFG_CHECK_6GHZ_SECURITY) \
-	CFG(CFG_CHECK_6GHZ_SECURITY_ON_CONNECT) \
 	CFG(CFG_6GHZ_ALLOWED_AKM_MASK)
 #else
 #define CFG_6GHZ_CONFIG
@@ -1960,75 +1925,6 @@
 #define CFG_MLO_SCORE_CONFIG
 #endif
 
-#ifdef WLAN_FEATURE_11BN
-/*
- * <ini>
- * uhr_caps_weightage - UHR caps Weightage to calculate best candidate
- * @Min: 0
- * @Max: 100
- * @Default: 2
- *
- * This ini is used to increase/decrease UHR caps weightage in best candidate
- * selection. If AP supports UHR caps, AP will get additional weightage with
- * this param. Weightage will be given only if dot11mode is UHR capable.
- *
- * Related: None
- *
- * Supported Feature: STA Candidate selection
- *
- * Usage: External
- *
- * </ini>
- */
-#define CFG_SCORING_UHR_CAPS_WEIGHTAGE CFG_INI_UINT( \
-	"uhr_caps_weightage", \
-	0, \
-	100, \
-	2, \
-	CFG_VALUE_OR_DEFAULT, \
-	"UHR Caps Weightage")
-
-#define CFG_11BN_CONFIG \
-	CFG(CFG_SCORING_UHR_CAPS_WEIGHTAGE)
-
-#ifdef WLAN_FEATURE_11BN_SMD
-/*
- * <ini>
- * smd_weightage - SMD support Weightage to calculate best candidate
- * @Min: 0
- * @Max: 100
- * @Default: 2
- *
- * This ini is used to increase/decrease SMD weightage in best candidate
- * selection. If AP belongs to the same SMD, AP will get additional weightage
- * with this param.
- *
- * Related: None
- *
- * Supported Feature: STA Candidate selection
- *
- * Usage: External
- *
- * </ini>
- */
-#define CFG_SCORING_SMD_WEIGHTAGE CFG_INI_UINT( \
-	"smd_weightage", \
-	0, \
-	100, \
-	2, \
-	CFG_VALUE_OR_DEFAULT, \
-	"SMD Weightage")
-
-#define CFG_SMD_SCORE_CONFIG \
-	CFG(CFG_SCORING_SMD_WEIGHTAGE)
-#else /* WLAN_FEATURE_11BN_SMD */
-#define CFG_SMD_SCORE_CONFIG
-#endif /* WLAN_FEATURE_11BN_SMD */
-#else /* WLAN_FEATURE_11BN */
-#define CFG_11BN_CONFIG
-#define CFG_SMD_SCORE_CONFIG
-#endif /* WLAN_FEATURE_11BN */
-
 #define CFG_MLME_SCORE_ALL \
 	CFG(CFG_SCORING_RSSI_WEIGHTAGE) \
 	CFG(CFG_SCORING_HT_CAPS_WEIGHTAGE) \
@@ -2071,8 +1967,6 @@
 	CFG(CFG_VENDOR_ROAM_SCORE_ALGORITHM) \
 	CFG_6GHZ_CONFIG \
 	CFG_11BE_CONFIG \
-	CFG_MLO_SCORE_CONFIG \
-	CFG_11BN_CONFIG \
-	CFG_SMD_SCORE_CONFIG
+	CFG_MLO_SCORE_CONFIG
 
 #endif /* __CFG_MLME_SCORE_PARAMS_H */

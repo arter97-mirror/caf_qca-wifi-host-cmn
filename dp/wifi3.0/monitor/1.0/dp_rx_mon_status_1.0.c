@@ -147,9 +147,7 @@ dp_send_ack_frame_to_stack(struct dp_soc *soc,
 }
 #endif
 
-#if defined(RX_PPDU_END_USER_STATS_OFDMA_INFO_VALID_OFFSET) && \
-defined(RX_PPDU_END_USER_STATS_SW_RESPONSE_REFERENCE_PTR_EXT_OFFSET) && \
-defined(HTT_UL_OFDMA_USER_INFO_V0_W0_VALID_M)
+#if defined(HTT_UL_OFDMA_USER_INFO_V0_W0_VALID_M)
 static inline void
 dp_rx_ul_ofdma_ru_size_to_width(
 	uint32_t ru_size,
@@ -444,9 +442,11 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 	uint8_t *rx_tlv_start;
 	uint32_t tlv_status = HAL_TLV_STATUS_BUF_DONE;
 	struct cdp_pdev_mon_stats *rx_mon_stats;
+	int smart_mesh_status;
 	enum WDI_EVENT pktlog_mode = WDI_NO_VAL;
 	bool nbuf_used;
 	uint32_t rx_enh_capture_mode;
+	struct dp_mon_soc *mon_soc = soc->monitor_soc;
 	struct dp_mon_pdev *mon_pdev;
 	struct dp_mon_mac *mon_mac;
 
@@ -525,20 +525,36 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 					  ppdu_info->user_id, RX_SIDE);
 		dp_mon_rx_stats_update_rssi_dbm_params(mon_pdev, ppdu_info);
 
-		if (qdf_unlikely(mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_FULL))
-			pktlog_mode = WDI_EVENT_RX_DESC;
-		else if (qdf_unlikely(mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_LITE))
-			pktlog_mode = WDI_EVENT_LITE_RX;
+		if (qdf_unlikely(mon_pdev->dp_peer_based_pktlog)) {
+			dp_rx_process_peer_based_pktlog(soc, ppdu_info,
+							status_nbuf,
+							pdev->pdev_id);
+		} else {
+			if (qdf_unlikely(mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_FULL))
+				pktlog_mode = WDI_EVENT_RX_DESC;
+			else if (qdf_unlikely(mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_LITE))
+				pktlog_mode = WDI_EVENT_LITE_RX;
 
-		if (qdf_unlikely(pktlog_mode != WDI_NO_VAL))
-			dp_wdi_event_handler(pktlog_mode, soc, status_nbuf,
-					     HTT_INVALID_PEER,
-					     WDI_NO_VAL, pdev->pdev_id);
+			if (qdf_unlikely(pktlog_mode != WDI_NO_VAL))
+				dp_wdi_event_handler(pktlog_mode, soc,
+						     status_nbuf,
+						     HTT_INVALID_PEER,
+						     WDI_NO_VAL, pdev->pdev_id);
+		}
 
-		if (qdf_unlikely(IS_LOCAL_PKT_CAPTURE_RUNNING(mon_pdev,
-							      is_local_pkt_capture_running)))
+		/* smart monitor vap and m_copy cannot co-exist */
+		if (qdf_unlikely(ppdu_info->rx_status.monitor_direct_used &&
+				 mon_pdev->neighbour_peers_added &&
+				 mon_mac->mvdev)) {
+			smart_mesh_status = dp_rx_handle_smart_mesh_mode(soc,
+						pdev, ppdu_info, status_nbuf,
+						mac_id);
+			if (smart_mesh_status)
+				qdf_nbuf_free(status_nbuf);
+		} else if (qdf_unlikely(IS_LOCAL_PKT_CAPTURE_RUNNING(mon_pdev,
+				is_local_pkt_capture_running))) {
 			qdf_nbuf_free(status_nbuf);
-		else if (qdf_unlikely(mon_pdev->mcopy_mode)) {
+		} else if (qdf_unlikely(mon_pdev->mcopy_mode)) {
 			dp_rx_process_mcopy_mode(soc, pdev,
 						 ppdu_info, tlv_status,
 						 status_nbuf);
@@ -553,8 +569,11 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 			qdf_nbuf_free(status_nbuf);
 		}
 
-		if ((qdf_likely(tlv_status == HAL_TLV_STATUS_PPDU_DONE)) &&
-		    (!dp_rx_mon_check_phyrx_abort(pdev, ppdu_info))) {
+		if (qdf_unlikely(tlv_status == HAL_TLV_STATUS_PPDU_NON_STD_DONE)) {
+			dp_rx_mon_deliver_non_std(soc, mac_id);
+			dp_mon_rx_ppdu_status_reset(mon_mac);
+		} else if ((qdf_likely(tlv_status == HAL_TLV_STATUS_PPDU_DONE)) &&
+				(qdf_likely(!dp_rx_mon_check_phyrx_abort(pdev, ppdu_info)))) {
 			rx_mon_stats->status_ppdu_done++;
 			dp_rx_mon_handle_mu_ul_info(ppdu_info);
 
@@ -596,9 +615,14 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 					mon_mac->mon_chan_freq;
 			}
 
-			dp_rx_mon_dest_process(soc, int_ctx, mac_id,
-					       quota);
-			dp_mon_rx_ppdu_status_reset(mon_mac);
+			if (!mon_soc->full_mon_mode) {
+				dp_rx_mon_dest_process(soc, int_ctx, mac_id,
+						       quota);
+				dp_mon_rx_ppdu_status_reset(mon_mac);
+			} else {
+				mon_mac->mon_ppdu_status =
+						DP_PPDU_STATUS_START;
+			}
 		} else {
 			dp_rx_mon_handle_ppdu_undecoded_metadata(soc, pdev,
 								 ppdu_info,
@@ -651,8 +675,8 @@ dp_rx_mon_status_srng_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 			 !hal_srng_initialized(mon_status_srng))) {
 
 		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			"%s %d : HAL Monitor Status Ring Init Failed (mac_id = %d) -- %pK",
-			__func__, __LINE__, mac_id, mon_status_srng);
+			"%s %d : HAL Monitor Status Ring Init Failed -- %pK",
+			__func__, __LINE__, mon_status_srng);
 		return work_done;
 	}
 

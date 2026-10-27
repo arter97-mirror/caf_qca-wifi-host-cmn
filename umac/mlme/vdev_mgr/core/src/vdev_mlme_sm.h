@@ -188,7 +188,7 @@ static inline QDF_STATUS mlme_vdev_restart_send(
  *
  * API invokes stops pending VDEV restart operation
  *
- * Return: SUCCESS always
+ * Return: SUCCESS alsways
  */
 static inline QDF_STATUS mlme_vdev_stop_start_send(
 				struct vdev_mlme_obj *vdev_mlme,
@@ -738,69 +738,151 @@ static inline QDF_STATUS mlme_vdev_notify_mlo_sync_wait_entry(
 }
 #endif
 
-#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+#ifdef VDEV_SM_LOCK_SUPPORT
 /**
- * mlme_vdev_link_reconfig_remove() - Send link removal request in SS_UP_REMOVE
+ * mlme_vdev_sm_spinlock_create() - Create VDEV MLME spinlock
  * @vdev_mlme:  VDEV MLME comp object
- * @event_data_len: data size
- * @event_data: event data
  *
- * after vdev state change to SS_UP_REMOVE, send link reconfig remove to FW
+ * Creates VDEV MLME spinlock
  *
- * Return: QDF_STATUS
+ * Return: void
  */
-static inline
-QDF_STATUS mlme_vdev_link_reconfig_remove(struct vdev_mlme_obj *vdev_mlme,
-					  uint16_t event_data_len,
-					  void *event_data)
+static inline void mlme_vdev_sm_spinlock_create(struct vdev_mlme_obj *vdev_mlme)
 {
-	QDF_STATUS ret = QDF_STATUS_SUCCESS;
-
-	if (vdev_mlme->ops && vdev_mlme->ops->mlme_vdev_link_reconfig_remove)
-		ret = vdev_mlme->ops->mlme_vdev_link_reconfig_remove(
-				vdev_mlme, event_data_len, event_data);
-
-	return ret;
+	qdf_spinlock_create(&vdev_mlme->sm_lock);
 }
 
 /**
- * mlme_vdev_link_reconfig_remove_delay() - Set link removal delay
+ * mlme_vdev_sm_spinlock_destroy() - Destroy VDEV MLME spinlock
  * @vdev_mlme:  VDEV MLME comp object
- * @event_data_len: data size
- * @event_data: event data
  *
- * if vdev state not in SS_UP_ACTIVE, set link reconfig remove delay until
- * ap vdev restart done.
+ * Destroy VDEV MLME spinlock
  *
- * Return: QDF_STATUS
+ * Return: void
  */
-static inline
-QDF_STATUS mlme_vdev_link_reconfig_remove_delay(struct vdev_mlme_obj *vdev_mlme,
-						uint16_t event_data_len,
-						void *event_data)
+static inline void mlme_vdev_sm_spinlock_destroy(
+						struct vdev_mlme_obj *vdev_mlme)
 {
-	QDF_STATUS ret = QDF_STATUS_SUCCESS;
-
-	if (vdev_mlme->ops && vdev_mlme->ops->mlme_vdev_set_link_remove_delay)
-		ret = vdev_mlme->ops->mlme_vdev_set_link_remove_delay(
-				vdev_mlme, event_data_len, event_data);
-
-	return ret;
+	qdf_spinlock_destroy(&vdev_mlme->sm_lock);
 }
+
+/**
+ * mlme_vdev_sm_spin_lock() - acquire spinlock
+ * @vdev_mlme:  vdev mlme comp object
+ *
+ * acquire vdev mlme spinlock
+ *
+ * return: void
+ */
+static inline void mlme_vdev_sm_spin_lock(struct vdev_mlme_obj *vdev_mlme)
+{
+	qdf_spin_lock_bh(&vdev_mlme->sm_lock);
+}
+
+/**
+ * mlme_vdev_sm_spin_unlock() - release spinlock
+ * @vdev_mlme:  vdev mlme comp object
+ *
+ * release vdev mlme spinlock
+ *
+ * return: void
+ */
+static inline void mlme_vdev_sm_spin_unlock(struct vdev_mlme_obj *vdev_mlme)
+{
+	qdf_spin_unlock_bh(&vdev_mlme->sm_lock);
+}
+
+/**
+ * mlme_vdev_cmd_mutex_create() - Create VDEV MLME cmd mutex
+ * @vdev_mlme:  VDEV MLME comp object
+ *
+ * Creates VDEV MLME cmd mutex
+ *
+ * Return: void
+ */
+static inline void
+mlme_vdev_cmd_mutex_create(struct vdev_mlme_obj *vdev_mlme)
+{
+	qdf_mutex_create(&vdev_mlme->vdev_cmd_lock);
+}
+
+/**
+ * mlme_vdev_cmd_mutex_destroy() - Destroy VDEV MLME cmd mutex
+ * @vdev_mlme:  VDEV MLME comp object
+ *
+ * Destroy VDEV MLME cmd mutex
+ *
+ * Return: void
+ */
+static inline void
+mlme_vdev_cmd_mutex_destroy(struct vdev_mlme_obj *vdev_mlme)
+{
+	qdf_mutex_destroy(&vdev_mlme->vdev_cmd_lock);
+}
+
+/**
+ * mlme_vdev_cmd_mutex_acquire() - acquire mutex
+ * @vdev_mlme:  vdev mlme comp object
+ *
+ * acquire vdev mlme cmd mutex
+ *
+ * return: void
+ */
+static inline void mlme_vdev_cmd_mutex_acquire(struct vdev_mlme_obj *vdev_mlme)
+{
+	qdf_mutex_acquire(&vdev_mlme->vdev_cmd_lock);
+}
+
+/**
+ * mlme_vdev_cmd_mutex_release() - release mutex
+ * @vdev_mlme:  vdev mlme comp object
+ *
+ * release vdev mlme cmd mutex
+ *
+ * return: void
+ */
+static inline void mlme_vdev_cmd_mutex_release(struct vdev_mlme_obj *vdev_mlme)
+{
+	qdf_mutex_release(&vdev_mlme->vdev_cmd_lock);
+}
+
 #else
-static inline
-QDF_STATUS mlme_vdev_link_reconfig_remove(struct vdev_mlme_obj *vdev_mlme,
-					  uint16_t event_data_len,
-					  void *event_data)
+static inline void mlme_vdev_sm_spinlock_create(struct vdev_mlme_obj *vdev_mlme)
 {
-	return QDF_STATUS_SUCCESS;
+	mlme_debug("VDEV SM lock is disabled!!!");
 }
 
-static inline
-QDF_STATUS mlme_vdev_link_reconfig_remove_delay(struct vdev_mlme_obj *vdev_mlme,
-						uint16_t event_data_len,
-						void *event_data)
+static inline void mlme_vdev_sm_spinlock_destroy(
+						struct vdev_mlme_obj *vdev_mlme)
 {
-	return QDF_STATUS_SUCCESS;
+	mlme_debug("VDEV SM lock is disabled!!!");
+}
+
+static inline void mlme_vdev_sm_spin_lock(struct vdev_mlme_obj *vdev_mlme)
+{
+}
+
+static inline void mlme_vdev_sm_spin_unlock(struct vdev_mlme_obj *vdev_mlme)
+{
+}
+
+static inline void
+mlme_vdev_cmd_mutex_create(struct vdev_mlme_obj *vdev_mlme)
+{
+	mlme_debug("VDEV CMD lock is disabled!!!");
+}
+
+static inline void
+mlme_vdev_cmd_mutex_destroy(struct vdev_mlme_obj *vdev_mlme)
+{
+	mlme_debug("VDEV CMD lock is disabled!!!");
+}
+
+static inline void mlme_vdev_cmd_mutex_acquire(struct vdev_mlme_obj *vdev_mlme)
+{
+}
+
+static inline void mlme_vdev_cmd_mutex_release(struct vdev_mlme_obj *vdev_mlme)
+{
 }
 #endif

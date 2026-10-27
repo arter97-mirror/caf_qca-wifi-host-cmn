@@ -90,15 +90,5 @@ target_if_dcs_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops);
  */
 bool
 target_if_vdev_level_dcs_is_supported(struct wlan_objmgr_psoc *psoc);
-
-/**
- * target_if_two_vdev_dcs_is_supported() - API to check whether two vdev
- * DCS is supported or not
- * @psoc: pointer to psoc object
- *
- * Return: True/False
- */
-bool
-target_if_two_vdev_dcs_is_supported(struct wlan_objmgr_psoc *psoc);
 #endif /* __TARGET_IF_DCS_H__ */
 

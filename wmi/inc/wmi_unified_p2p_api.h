@@ -104,7 +104,7 @@ QDF_STATUS wmi_extract_p2p_lo_stop_ev_param(wmi_unified_t wmi_handle,
 					    struct p2p_lo_event *param);
 #endif /* FEATURE_P2P_LISTEN_OFFLOAD */
 
-#if defined(FEATURE_WLAN_SUPPORT_USD) || defined(FEATURE_WLAN_SUPPORT_P2P_R2)
+#ifdef FEATURE_WLAN_SUPPORT_USD
 /**
  * wmi_unified_send_p2p_usd_req_cmd() - send P2P USD request command to target
  * @wmi_handle: WMI handle
@@ -115,7 +115,7 @@ QDF_STATUS wmi_extract_p2p_lo_stop_ev_param(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_unified_send_p2p_usd_req_cmd(wmi_unified_t wmi_handle,
 				 struct p2p_usd_attr_params *param);
-#endif /* FEATURE_WLAN_SUPPORT_USD  || FEATURE_WLAN_SUPPORT_P2P_R2 */
+#endif /* FEATURE_WLAN_SUPPORT_USD */
 
 /**
  * wmi_unified_p2p_send_ap_assist_dfs_group_params() - Send P2P assisted AP

@@ -29,9 +29,8 @@
 #include <hal_be_api_mon.h>
 #include <dp_be.h>
 #include <htt_ppdu_stats.h>
-
-#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
-struct mon_ingress_ring gtx_mon_buf_ring_entry_symbol __attribute__((used));
+#ifdef QCA_SUPPORT_LITE_MONITOR
+#include "dp_lite_mon.h"
 #endif
 
 #if !defined(DISABLE_MON_CONFIG)
@@ -181,8 +180,6 @@ void dp_mon_desc_pool_free(struct dp_soc *soc,
 	dp_context_free_mem(soc, ctx_type, mon_desc_pool->array);
 }
 
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
-static
 QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_rx_2_0(struct dp_pdev *pdev)
 {
 	int rx_mon_max_entries;
@@ -227,7 +224,6 @@ QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_rx_2_0(struct dp_pdev *pdev)
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifndef REMOVE_PKT_LOG
 static
 QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_2_0(struct dp_pdev *pdev)
 {
@@ -243,8 +239,13 @@ QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_2_0(struct dp_pdev *pdev)
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif
-#endif
+
+static
+QDF_STATUS dp_vdev_set_monitor_mode_rings_2_0(struct dp_pdev *pdev,
+					      uint8_t delayed_replenish)
+{
+	return QDF_STATUS_SUCCESS;
+}
 
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 /**
@@ -510,7 +511,6 @@ QDF_STATUS dp_mon_pdev_htt_srng_setup_2_0(struct dp_soc *soc,
 }
 #endif
 
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 static
 QDF_STATUS dp_rx_mon_refill_buf_ring_2_0(struct dp_intr *int_ctx)
 {
@@ -553,7 +553,6 @@ QDF_STATUS dp_rx_mon_refill_buf_ring_2_0(struct dp_intr *int_ctx)
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif
 
 QDF_STATUS dp_mon_soc_detach_2_0(struct dp_soc *soc)
 {
@@ -738,6 +737,12 @@ void dp_vdev_set_monitor_mode_buf_rings_2_0(struct dp_pdev *pdev)
 {
 }
 
+static inline
+QDF_STATUS dp_vdev_set_monitor_mode_rings_2_0(struct dp_pdev *pdev,
+					      uint8_t delayed_replenish)
+{
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 void dp_pdev_mon_rings_deinit_2_0(struct dp_pdev *pdev)
@@ -911,6 +916,7 @@ dp_mon_buffers_replenish(struct dp_soc *dp_soc,
 	void *mon_ring_entry;
 	union dp_mon_desc_list_elem_t *next;
 	void *mon_srng;
+	unsigned long long desc;
 	QDF_STATUS ret = QDF_STATUS_E_FAILURE;
 	struct dp_mon_soc *mon_soc = dp_soc->monitor_soc;
 
@@ -999,12 +1005,17 @@ dp_mon_buffers_replenish(struct dp_soc *dp_soc,
 		(*desc_list)->mon_desc.buf_addr = mon_desc.buf_addr;
 		(*desc_list)->mon_desc.paddr = mon_desc.paddr;
 		(*desc_list)->mon_desc.magic = DP_MON_DESC_MAGIC;
+		(*desc_list)->mon_desc.cookie_2++;
 
 		mon_soc->stats.frag_alloc++;
 
+		/* populate lower 40 bit mon_desc address in desc
+		 * and cookie_2 in upper 24 bits
+		 */
+		desc = dp_mon_get_debug_desc_addr(desc_list);
 		hal_mon_buff_addr_info_set(dp_soc->hal_soc,
 					   mon_ring_entry,
-					   &((*desc_list)->mon_desc),
+					   desc,
 					   mon_desc.paddr);
 
 		*desc_list = next;
@@ -1013,8 +1024,6 @@ dp_mon_buffers_replenish(struct dp_soc *dp_soc,
 			break;
 	}
 
-	dp_tx_mon_buf_ring_record_entry(dp_soc, mon_srng,
-					num_req_buffers, count);
 	hal_srng_access_end(dp_soc->hal_soc, mon_srng);
 	if (replenish_cnt_ref)
 		*replenish_cnt_ref += count;
@@ -1106,7 +1115,6 @@ void dp_mon_ppdu_stats_handler_register(struct dp_mon_soc *mon_soc)
 }
 #endif
 
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 static void dp_mon_register_intr_ops_2_0(struct dp_soc *soc)
 {
 	struct dp_mon_soc *mon_soc = soc->monitor_soc;
@@ -1118,7 +1126,6 @@ static void dp_mon_register_intr_ops_2_0(struct dp_soc *soc)
 	mon_soc->mon_rx_process = dp_rx_mon_process_2_0;
 	dp_mon_ppdu_stats_handler_register(mon_soc);
 }
-#endif
 
 #ifdef MONITOR_TLV_RECORDING_ENABLE
 /**
@@ -1289,7 +1296,6 @@ QDF_STATUS dp_mcopy_check_deliver_2_0(struct dp_pdev *pdev,
 }
 #endif
 
-#ifdef DISABLE_MON_CONFIG
 /**
  * dp_mon_register_feature_ops_2_0() - register feature ops
  *
@@ -1307,26 +1313,30 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 		return;
 	}
 
+	mon_ops->mon_config_debug_sniffer = dp_config_debug_sniffer;
 	mon_ops->mon_peer_tx_init = NULL;
 	mon_ops->mon_peer_tx_cleanup = NULL;
 	mon_ops->mon_htt_ppdu_stats_attach = dp_htt_ppdu_stats_attach;
 	mon_ops->mon_htt_ppdu_stats_detach = dp_htt_ppdu_stats_detach;
 	mon_ops->mon_print_pdev_rx_mon_stats = dp_print_pdev_rx_mon_stats;
-#ifdef FEATURE_WDS
+	mon_ops->mon_set_bsscolor = dp_mon_set_bsscolor;
+	mon_ops->mon_pdev_get_filter_ucast_data =
+					dp_lite_mon_get_filter_ucast_data;
+	mon_ops->mon_pdev_get_filter_mcast_data =
+					dp_lite_mon_get_filter_mcast_data;
+	mon_ops->mon_pdev_get_filter_non_data =
+					dp_lite_mon_get_filter_non_data;
 	mon_ops->mon_neighbour_peer_add_ast = NULL;
-#endif
 #ifdef WLAN_TX_PKT_CAPTURE_ENH_BE
 	mon_ops->mon_peer_tid_peer_id_update = NULL;
 	mon_ops->mon_tx_capture_debugfs_init = NULL;
 	mon_ops->mon_tx_add_to_comp_queue = NULL;
-#ifdef WLAN_PKT_CAPTURE_TX_2_0_DISABLE
 	mon_ops->mon_print_pdev_tx_capture_stats =
 					dp_print_pdev_tx_monitor_stats_2_0;
 	mon_ops->mon_config_enh_tx_capture = dp_config_enh_tx_monitor_2_0;
 	mon_ops->mon_tx_peer_filter = dp_peer_set_tx_capture_enabled_2_0;
 	mon_ops->mon_pdev_tx_capture_get_stats =
 					dp_get_pdev_tx_capture_stats_2_0;
-#endif
 #endif
 #if (defined(WIFI_MONITOR_SUPPORT) && defined(WLAN_TX_MON_CORE_DEBUG))
 	mon_ops->mon_peer_tid_peer_id_update = NULL;
@@ -1376,9 +1386,8 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 	mon_ops->mon_filter_setup_rx_enh_capture = NULL;
 #endif
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
+#ifdef WDI_EVENT_ENABLE
 	mon_ops->mon_set_pktlog_wifi3 = dp_set_pktlog_wifi3;
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 	mon_ops->mon_filter_setup_rx_pkt_log_full =
 				dp_mon_filter_setup_rx_pkt_log_full_2_0;
 	mon_ops->mon_filter_reset_rx_pkt_log_full =
@@ -1391,7 +1400,6 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 				dp_mon_filter_setup_rx_pkt_log_cbf_2_0;
 	mon_ops->mon_filter_reset_rx_pkt_log_cbf =
 				dp_mon_filter_reset_rx_pktlog_cbf_2_0;
-#endif
 #if defined(BE_PKTLOG_SUPPORT) && defined(WLAN_PKT_CAPTURE_TX_2_0)
 	mon_ops->mon_filter_setup_pktlog_hybrid =
 				dp_mon_filter_setup_pktlog_hybrid_2_0;
@@ -1403,21 +1411,16 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 	mon_ops->mon_pktlogmod_exit = dp_pktlogmod_exit;
 #endif
 	mon_ops->rx_hdr_length_set = dp_rx_mon_hdr_length_set;
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 	mon_ops->rx_packet_length_set = dp_rx_mon_packet_length_set;
 	mon_ops->rx_mon_enable = dp_rx_mon_enable_set;
 	mon_ops->rx_wmask_subscribe = dp_rx_mon_word_mask_subscribe;
 	mon_ops->rx_pkt_tlv_offset = dp_rx_mon_pkt_tlv_offset_subscribe;
 	mon_ops->rx_enable_mpdu_logging = dp_rx_mon_enable_mpdu_logging;
-#endif
 	mon_ops->mon_neighbour_peers_detach = NULL;
-#if defined(WLAN_PKT_CAPTURE_RX_2_0) && !defined(REMOVE_PKT_LOG)
 	mon_ops->mon_vdev_set_monitor_mode_buf_rings =
 				dp_vdev_set_monitor_mode_buf_rings_2_0;
-#endif
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
-	mon_ops->mon_vdev_set_monitor_mode_rings = NULL;
-#endif
+	mon_ops->mon_vdev_set_monitor_mode_rings =
+				dp_vdev_set_monitor_mode_rings_2_0;
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 	mon_ops->mon_rx_stats_update = dp_rx_mon_stats_update_2_0;
 	mon_ops->mon_rx_populate_ppdu_usr_info =
@@ -1432,17 +1435,17 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 	mon_ops->mon_filter_reset_undecoded_metadata_capture =
 		dp_mon_filter_reset_undecoded_metadata_capture_2_0;
 #endif
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
 	mon_ops->rx_enable_fpmo = dp_rx_mon_enable_fpmo;
 	mon_ops->rx_config_packet_type_subtype =
 		dp_rx_mon_config_packet_type_subtype;
-#endif
 	mon_ops->mon_rx_print_advanced_stats =
 		dp_mon_rx_print_advanced_stats_2_0;
+	mon_ops->mon_mac_filter_set = NULL;
+	mon_ops->mon_config_mon_fcs_cap = dp_rx_mon_config_fcs_cap;
 }
-#endif
 
 struct dp_mon_ops monitor_ops_2_0 = {
+	.mon_soc_cfg_init = dp_mon_soc_cfg_init,
 	.mon_soc_attach[0] = NULL,
 	.mon_soc_attach[1] = dp_mon_soc_attach_2_0,
 	.mon_soc_detach[0] = NULL,
@@ -1461,6 +1464,7 @@ struct dp_mon_ops monitor_ops_2_0 = {
 	.mon_vdev_detach = dp_mon_vdev_detach,
 	.mon_peer_attach = dp_mon_peer_attach,
 	.mon_peer_detach = dp_mon_peer_detach,
+	.mon_peer_get_peerstats_ctx = dp_mon_peer_get_peerstats_ctx,
 	.mon_peer_reset_stats = dp_mon_peer_reset_stats,
 	.mon_peer_get_stats = dp_mon_peer_get_stats,
 	.mon_invalid_peer_update_pdev_stats =
@@ -1509,12 +1513,10 @@ struct dp_mon_ops monitor_ops_2_0 = {
 	.tx_mon_desc_pool_deinit = NULL,
 	.tx_mon_desc_pool_alloc = NULL,
 	.tx_mon_desc_pool_free = NULL,
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
+#ifndef DISABLE_MON_CONFIG
 	.mon_register_intr_ops = dp_mon_register_intr_ops_2_0,
 #endif
-#ifdef DISABLE_MON_CONFIG
 	.mon_register_feature_ops = dp_mon_register_feature_ops_2_0,
-#endif
 #ifdef WLAN_TX_PKT_CAPTURE_ENH_BE
 	.mon_tx_ppdu_stats_attach = dp_tx_ppdu_stats_attach_2_0,
 	.mon_tx_ppdu_stats_detach = dp_tx_ppdu_stats_detach_2_0,
@@ -1527,6 +1529,11 @@ struct dp_mon_ops monitor_ops_2_0 = {
 #endif
 	.mon_pdev_ext_init = dp_mon_pdev_ext_init_2_0,
 	.mon_pdev_ext_deinit = dp_mon_pdev_ext_deinit_2_0,
+	.mon_lite_mon_alloc = dp_lite_mon_alloc,
+	.mon_lite_mon_dealloc = dp_lite_mon_dealloc,
+	.mon_lite_mon_vdev_delete = dp_lite_mon_vdev_delete,
+	.mon_lite_mon_disable_rx = dp_lite_mon_disable_rx,
+	.mon_lite_mon_is_rx_adv_filter_enable = dp_lite_mon_is_rx_adv_filter_enable,
 #ifdef QCA_KMEM_CACHE_SUPPORT
 	.mon_rx_ppdu_info_cache_create = dp_rx_mon_ppdu_info_cache_create,
 	.mon_rx_ppdu_info_cache_destroy = dp_rx_mon_ppdu_info_cache_destroy,
@@ -1542,22 +1549,44 @@ struct cdp_mon_ops dp_ops_mon_2_0 = {
 	.txrx_reset_monitor_mode = dp_reset_monitor_mode,
 	/* Added support for HK advance filter */
 	.txrx_set_advance_monitor_filter = NULL,
+	.txrx_deliver_tx_mgmt = dp_deliver_tx_mgmt,
+	.config_full_mon_mode = NULL,
+	.soc_config_full_mon_mode = NULL,
+	.get_mon_pdev_rx_stats = dp_pdev_get_rx_mon_stats,
 	.txrx_enable_mon_reap_timer = NULL,
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 	.txrx_enable_enhanced_stats = dp_enable_enhanced_stats,
 	.txrx_disable_enhanced_stats = dp_disable_enhanced_stats,
 #endif /* QCA_ENHANCED_STATS_SUPPORT */
+#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
+	.txrx_update_filter_neighbour_peers = dp_lite_mon_config_nac_peer,
+#endif
+#ifdef ATH_SUPPORT_NAC_RSSI
+	.txrx_vdev_config_for_nac_rssi = dp_lite_mon_config_nac_rssi_peer,
+	.txrx_vdev_get_neighbour_rssi = dp_lite_mon_get_nac_peer_rssi,
+#endif
+#ifdef QCA_SUPPORT_LITE_MONITOR
+	.txrx_set_lite_mon_config = dp_lite_mon_set_config,
+	.txrx_get_lite_mon_config = dp_lite_mon_get_config,
+	.txrx_set_lite_mon_peer_config = dp_lite_mon_set_peer_config,
+	.txrx_get_lite_mon_peer_config = dp_lite_mon_get_peer_config,
+	.txrx_is_lite_mon_enabled = dp_lite_mon_is_enabled,
+	.txrx_get_lite_mon_legacy_feature_enabled =
+				dp_lite_mon_get_legacy_feature_enabled,
+#endif
 	.txrx_set_mon_pdev_params_rssi_dbm_conv =
 				dp_mon_pdev_params_rssi_dbm_conv,
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	.txrx_update_pdev_mon_telemetry_airtime_stats =
 			dp_pdev_update_telemetry_airtime_stats,
 #endif
+	.txrx_update_mon_mac_filter = NULL,
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 	.start_local_pkt_capture = NULL,
 	.stop_local_pkt_capture = NULL,
 	.is_local_pkt_capture_running = NULL,
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
+	.txrx_set_mu_sniffer = dp_pdev_set_mu_sniffer,
 };
 
 #if defined(WLAN_PKT_CAPTURE_TX_2_0) || \

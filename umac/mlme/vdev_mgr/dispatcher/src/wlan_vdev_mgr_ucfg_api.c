@@ -107,6 +107,27 @@ void ucfg_wlan_vdev_mgr_get_tsf_adjust(
 
 qdf_export_symbol(ucfg_wlan_vdev_mgr_get_tsf_adjust);
 
+QDF_STATUS ucfg_wlan_vdev_mgr_set_param(
+				struct wlan_objmgr_vdev *vdev,
+				enum wlan_mlme_cfg_id param_id,
+				struct wlan_vdev_mgr_cfg mlme_cfg)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_objmgr_vdev_get_comp_private_obj(
+							vdev,
+							WLAN_UMAC_COMP_MLME);
+
+	if (!vdev_mlme) {
+		QDF_ASSERT(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return wlan_util_vdev_mlme_set_param(vdev_mlme, param_id, mlme_cfg);
+}
+
+qdf_export_symbol(ucfg_wlan_vdev_mgr_set_param);
+
 void ucfg_wlan_vdev_mgr_get_param(
 				struct wlan_objmgr_vdev *vdev,
 				enum wlan_mlme_cfg_id param_id,

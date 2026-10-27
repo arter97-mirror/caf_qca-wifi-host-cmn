@@ -68,8 +68,6 @@ wlan_mlme_get_lmac_tx_ops(struct wlan_objmgr_psoc *psoc)
  *                                        does not have substate)
  * @WLAN_VDEV_SS_MLO_SYNC_WAIT:           Sync wait sub state for MLO SAP
  * @WLAN_VDEV_SS_UP_ACTIVE:               Up active sub state
- * @WLAN_VDEV_SS_UP_REMOVAL:              Up active sub state for MLO SAP which
- *                                        is going to remove the link
  * @WLAN_VDEV_SS_MAX:                     Max substate
  */
 enum wlan_vdev_state {
@@ -93,8 +91,7 @@ enum wlan_vdev_state {
 	WLAN_VDEV_SS_IDLE = 17,
 	WLAN_VDEV_SS_MLO_SYNC_WAIT = 18,
 	WLAN_VDEV_SS_UP_ACTIVE = 19,
-	WLAN_VDEV_SS_UP_REMOVAL = 20,
-	WLAN_VDEV_SS_MAX = 21,
+	WLAN_VDEV_SS_MAX = 20,
 };
 
 /**
@@ -127,10 +124,10 @@ enum wlan_vdev_state {
  *                                       channel should be selected before
  *                                       triggering this event
  * @WLAN_VDEV_SM_EV_CSA_RESTART:         Invokes CSA IE operation
- * @WLAN_VDEV_SM_EV_CSA_COMPLETE:        Notification of CSA process complete
+ * @WLAN_VDEV_SM_EV_CSA_COMPLETE:        Notifiction of CSA process complete
  * @WLAN_VDEV_SM_EV_MLME_DOWN_REQ:       Invoke DOWN command operation
  * @WLAN_VDEV_SM_EV_DOWN_COMPLETE:       Notification of DOWN complete
- * @WLAN_VDEV_SM_EV_ROAM:                Notification on ROAMING
+ * @WLAN_VDEV_SM_EV_ROAM:                Notifiction on ROAMING
  * @WLAN_VDEV_SM_EV_STOP_REQ:            Invoke API to initiate STOP handshake
  * @WLAN_VDEV_SM_EV_CHAN_SWITCH_DISABLED:Test only, CSA completes without
  *					 change in channel
@@ -139,8 +136,6 @@ enum wlan_vdev_state {
  *                                       links finish vdev start rsp.
  * @WLAN_VDEV_SM_EV_SUSPEND_CSA_RESTART: Invoke peer deletion for only legacy
  *					 peers
- * @WLAN_VDEV_SM_EV_REMOVAL:             User space send link removal request, and
- *					 triggers this event in up state
  */
 enum wlan_vdev_sm_evt {
 	WLAN_VDEV_SM_EV_START = 0,
@@ -176,7 +171,6 @@ enum wlan_vdev_sm_evt {
 	WLAN_VDEV_SM_EV_CHAN_SWITCH_DISABLED = 30,
 	WLAN_VDEV_SM_EV_MLO_SYNC_COMPLETE = 31,
 	WLAN_VDEV_SM_EV_SUSPEND_CSA_RESTART = 32,
-	WLAN_VDEV_SM_EV_REMOVAL = 33,
 };
 
 /**
@@ -252,46 +246,12 @@ void wlan_vdev_mlme_notify_set_mac_addr_response(struct wlan_objmgr_vdev *vdev,
 }
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO
-/**
- * mlme_cm_send_link_reconfig_status() - Send link recfg done to os if
- * @ctx: link recfg done ctx
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlme_cm_send_link_reconfig_status(void *ctx);
-
-/**
- * mlme_cm_populate_link_recfg_done_data() - populate link recfg done ctx from
- * os if
- * @vdev: vdev object
- *
- * Return: link recfg done data
- */
-void *
-mlme_cm_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev);
-
-/**
- * mlme_cm_free_link_reconfig_done_data() - free link recfg done ctx
- * @ctx: link recfg done data
- *
- * Return: void
- */
-void mlme_cm_free_link_reconfig_done_data(void *ctx);
+QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev);
 #else
 static inline
-QDF_STATUS mlme_cm_send_link_reconfig_status(void *ctx)
+QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev)
 {
 	return QDF_STATUS_SUCCESS;
-}
-
-static inline void *
-mlme_cm_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev)
-{
-	return NULL;
-}
-
-static inline void mlme_cm_free_link_reconfig_done_data(void *ctx)
-{
 }
 #endif
 #endif

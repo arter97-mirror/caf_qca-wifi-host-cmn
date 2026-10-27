@@ -242,27 +242,6 @@
 		CFG_INI_BOOL("gIPAVlanEnable", \
 		false, "Ctrl to enable vlan support with IPA Offload")
 
-/*
- * <ini>
- * gIPAL3HdrPadding - Enable/Disable l3 header padding in fw
- * @Min: 0
- * @Max: 1
- * @Default: 1
- *
- * This ini is used to enable/disable l3 header padding in fw
- *
- * Related: None
- *
- * Usage: External
- *
- * </ini>
- */
-#define CFG_DP_IPA_L3_HDR_PADDING \
-		CFG_INI_BOOL( \
-		"gIPAL3HdrPadding", \
-		1, \
-		"l3 header padding enable or disable flag")
-
 #define CFG_IPA \
 	CFG(CFG_DP_IPA_OFFLOAD_CONFIG) \
 	CFG(CFG_DP_IPA_DESC_SIZE) \
@@ -272,6 +251,5 @@
 	CFG(CFG_DP_IPA_ENABLE_FORCE_VOTING) \
 	CFG(CFG_DP_IPA_UC_TX_BUF_COUNT) \
 	CFG(CFG_DP_IPA_WDS_STATUS) \
-	CFG(CFG_DP_IPA_ENABLE_VLAN_SUPPORT) \
-	CFG(CFG_DP_IPA_L3_HDR_PADDING)
+	CFG(CFG_DP_IPA_ENABLE_VLAN_SUPPORT)
 #endif /* _CFG_IPA_H_ */

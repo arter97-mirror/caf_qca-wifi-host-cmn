@@ -71,6 +71,7 @@
  */
 
 /* NB: Modeled after ce_completed_send_next */
+/* Shift bits to convert IS_*_RING_*_WATERMARK_MASK to CE_WM_FLAG_*_* */
 #define CE_WM_SHFT 1
 
 #ifdef WLAN_FEATURE_FASTPATH
@@ -138,7 +139,7 @@ int ce_send_fast(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 			     QDF_DP_TRACE_CE_FAST_PACKET_PTR_RECORD,
 			     QDF_TRACE_DEFAULT_PDEV_ID,
 			     qdf_nbuf_data_addr(msdu),
-			     qdf_nbuf_len(msdu), QDF_TX));
+			     sizeof(qdf_nbuf_data(msdu)), QDF_TX));
 
 	qdf_spin_lock_bh(&ce_state->ce_index_lock);
 
@@ -263,7 +264,7 @@ int ce_send_fast(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 				     QDF_DP_TRACE_CE_FAST_PACKET_PTR_RECORD,
 				     QDF_TRACE_DEFAULT_PDEV_ID,
 				     qdf_nbuf_data_addr(msdu),
-				     qdf_nbuf_len(msdu), QDF_TX));
+				     sizeof(qdf_nbuf_data(msdu)), QDF_TX));
 	}
 
 	src_ring->write_index = write_index;
@@ -271,8 +272,8 @@ int ce_send_fast(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 	if (ok_to_send) {
 		if (qdf_likely(ce_state->state == CE_RUNNING)) {
 			type = FAST_TX_WRITE_INDEX_UPDATE;
-			CE_SRC_RING_WRITE_IDX_SET(scn, ctrl_addr,
-						  write_index);
+			war_ce_src_ring_write_idx_set(scn, ctrl_addr,
+						      write_index);
 			Q_TARGET_ACCESS_END(scn);
 		} else {
 			ce_state->state = CE_PENDING;
@@ -305,8 +306,7 @@ static void ce_fastpath_rx_handle(struct CE_state *ce_state,
 	uint32_t write_index;
 
 	qdf_spin_unlock(&ce_state->ce_index_lock);
-	ce_state->fastpath_handler(ce_state->context, cmpl_msdus,
-				   num_cmpls, ce_state->id);
+	ce_state->fastpath_handler(ce_state->context,	cmpl_msdus, num_cmpls);
 	qdf_spin_lock(&ce_state->ce_index_lock);
 
 	/* Update Destination Ring Write Index */
@@ -485,7 +485,7 @@ more_data:
 			hif_err("Potential infinite loop detected during Rx processing nentries_mask:0x%x sw read_idx:0x%x hw read_idx:0x%x",
 				  nentries_mask,
 				  ce_state->dest_ring->sw_index,
-				  (uint32_t)CE_DEST_RING_READ_IDX_GET(scn, ctrl_addr));
+				  CE_DEST_RING_READ_IDX_GET(scn, ctrl_addr));
 		}
 	}
 #ifdef NAPI_YIELD_BUDGET_BASED
@@ -604,8 +604,8 @@ ce_send_nolock_legacy(struct CE_handle *copyeng,
 			CE_state->state = CE_PENDING;
 		} else {
 			event_type = HIF_TX_DESC_POST;
-			CE_SRC_RING_WRITE_IDX_SET(scn, ctrl_addr,
-						  write_index);
+			war_ce_src_ring_write_idx_set(scn, ctrl_addr,
+						      write_index);
 		}
 
 		/* src_ring->write index hasn't been updated event though
@@ -685,7 +685,7 @@ ce_sendlist_send_legacy(struct CE_handle *copyeng,
 			QDF_DP_TRACE_CE_PACKET_PTR_RECORD,
 			QDF_TRACE_DEFAULT_PDEV_ID,
 			(uint8_t *)&(((qdf_nbuf_t)per_transfer_context)->data),
-			qdf_nbuf_len((qdf_nbuf_t)per_transfer_context),
+			sizeof(((qdf_nbuf_t)per_transfer_context)->data),
 			QDF_TX));
 	} else {
 		/*
@@ -853,8 +853,6 @@ ce_completed_recv_next_nolock_legacy(struct CE_state *CE_state,
 	*transfer_idp = dest_desc_info.meta_data;
 	*flagsp = (dest_desc_info.byte_swap) ? CE_RECV_FLAG_SWAPPED : 0;
 
-	qdf_mem_zero(dest_desc, sizeof(struct CE_dest_desc));
-
 	if (per_CE_contextp)
 		*per_CE_contextp = CE_state->recv_context;
 
@@ -951,7 +949,6 @@ ce_completed_send_next_nolock_legacy(struct CE_state *CE_state,
 	unsigned int sw_index = src_ring->sw_index;
 	unsigned int read_index;
 	struct hif_softc *scn = CE_state->scn;
-	void *ctx = NULL;
 
 	if (src_ring->hw_index == sw_index) {
 		/*
@@ -997,12 +994,6 @@ ce_completed_send_next_nolock_legacy(struct CE_state *CE_state,
 		*bufferp = HIF_CE_DESC_ADDR_TO_DMA(shadow_src_desc);
 		*nbytesp = shadow_src_desc->nbytes;
 		*transfer_idp = shadow_src_desc->meta_data;
-
-		if (CE_state->id == CE_ID_3) {
-			ctx = src_ring->per_transfer_context[sw_index];
-			hif_ce_tx_desc_data_record(scn, *bufferp,
-						   (qdf_nbuf_t)ctx);
-		}
 #ifdef QCA_WIFI_3_0
 		*toeplitz_hash_result = src_desc->toeplitz_hash_result;
 #else
@@ -1124,7 +1115,10 @@ ce_per_engine_handler_adjust_legacy(struct CE_state *CE_state,
 	else
 		CE_COPY_COMPLETE_INTR_DISABLE(scn, ctrl_addr);
 
-	CE_WATERMARK_INTR_DISABLE(scn, ctrl_addr);
+	if (CE_state->watermark_cb)
+		CE_WATERMARK_INTR_ENABLE(scn, ctrl_addr);
+	else
+		CE_WATERMARK_INTR_DISABLE(scn, ctrl_addr);
 	Q_TARGET_ACCESS_END(scn);
 }
 
@@ -1156,7 +1150,7 @@ int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 			     QDF_DP_TRACE_CE_FAST_PACKET_PTR_RECORD,
 			     QDF_TRACE_DEFAULT_PDEV_ID,
 			     qdf_nbuf_data_addr(msdu),
-			     qdf_nbuf_len(msdu), QDF_TX));
+			     sizeof(qdf_nbuf_data(msdu)), QDF_TX));
 
 	DATA_CE_UPDATE_SWINDEX(src_ring->sw_index, scn, ctrl_addr);
 
@@ -1267,7 +1261,7 @@ int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 				     QDF_DP_TRACE_CE_FAST_PACKET_PTR_RECORD,
 				     QDF_TRACE_DEFAULT_PDEV_ID,
 				     qdf_nbuf_data_addr(msdu),
-				     qdf_nbuf_len(msdu), QDF_TX));
+				     sizeof(qdf_nbuf_data(msdu)), QDF_TX));
 	}
 
 	src_ring->write_index = write_index;
@@ -1306,8 +1300,7 @@ static void ce_legacy_msi_param_setup(struct hif_softc *scn, uint32_t ctrl_addr,
 	tmp |= (addr_high & CE_RING_BASE_ADDR_HIGH_MASK);
 	CE_MSI_ADDR_HIGH_SET(scn, ctrl_addr, tmp);
 	CE_MSI_DATA_SET(scn, ctrl_addr, irq_id + msi_data_start);
-	if (!hif_ce_cmn_cfg_supported(scn))
-		CE_MSI_EN_SET(scn, ctrl_addr);
+	CE_MSI_EN_SET(scn, ctrl_addr);
 }
 
 static void ce_legacy_src_intr_thres_setup(struct hif_softc *scn,
@@ -1418,13 +1411,11 @@ static void ce_legacy_src_ring_setup(struct hif_softc *scn, uint32_t ce_id,
 					ctrl_addr, (uint32_t)dma_addr);
 	}
 	CE_SRC_RING_SZ_SET(scn, ctrl_addr, src_ring->nentries);
-	if (!hif_ce_cmn_cfg_supported(scn)) {
-		CE_SRC_RING_DMAX_SET(scn, ctrl_addr, attr->src_sz_max);
+	CE_SRC_RING_DMAX_SET(scn, ctrl_addr, attr->src_sz_max);
 #ifdef BIG_ENDIAN_HOST
-		/* Enable source ring byte swap for big endian host */
-		CE_SRC_RING_BYTE_SWAP_SET(scn, ctrl_addr, 1);
+	/* Enable source ring byte swap for big endian host */
+	CE_SRC_RING_BYTE_SWAP_SET(scn, ctrl_addr, 1);
 #endif
-	}
 	CE_SRC_RING_LOWMARK_SET(scn, ctrl_addr, 0);
 	CE_SRC_RING_HIGHMARK_SET(scn, ctrl_addr, src_ring->nentries);
 
@@ -1470,11 +1461,11 @@ static void ce_legacy_dest_ring_setup(struct hif_softc *scn, uint32_t ce_id,
 		CE_DEST_RING_BASE_ADDR_HIGH_SET(scn,
 				ctrl_addr, (uint32_t)dma_addr);
 	}
+
 	CE_DEST_RING_SZ_SET(scn, ctrl_addr, dest_ring->nentries);
 #ifdef BIG_ENDIAN_HOST
 	/* Enable Dest ring byte swap for big endian host */
-	if (!hif_ce_cmn_cfg_supported(scn))
-		CE_DEST_RING_BYTE_SWAP_SET(scn, ctrl_addr, 1);
+	CE_DEST_RING_BYTE_SWAP_SET(scn, ctrl_addr, 1);
 #endif
 	CE_DEST_RING_LOWMARK_SET(scn, ctrl_addr, 0);
 	CE_DEST_RING_HIGHMARK_SET(scn, ctrl_addr, dest_ring->nentries);
@@ -1609,115 +1600,7 @@ static void ce_prepare_shadow_register_v3_cfg_legacy(struct hif_softc *scn,
 				     num_shadow_registers_configured);
 }
 #endif
-#ifdef CE_CMN_REG_CFG_QMI
-/**
- * prepare_ce_ctrl1_reg_host_cfg_legacy() - Prepare CE CTRL1 config for host
- *
- * @scn: HIF context
- * @host_ce_cmn_reg_cfg_ret: copy engine common register configuration table.
- * @host_ce_cmn_reg_num_ret: number of the ce common register configuration,
- * also acting as current index for the common ce register configuration table.
- * Return: return by parameter.
- */
-static void prepare_ce_ctrl1_reg_host_cfg_legacy(
-	struct hif_softc *scn,
-	struct CE_cmn_register_config **host_ce_cmn_reg_cfg_ret,
-	uint32_t *host_ce_cmn_reg_num_ret)
-{
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
-	uint32_t final_offset;
-	struct CE_attr *attr;
-	uint32_t final_value;
-	uint32_t final_mask;
-	uint32_t ce_id;
-	uint32_t ce_cfg_idx = *host_ce_cmn_reg_num_ret;
-	/* Traverse through the ce configuration and set the values*/
-	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
-		attr = &hif_state->host_ce_config[ce_id];
-		final_offset =
-			CE_CTRL1_ADDRESS +
-			(CE1_BASE_ADDRESS - CE0_BASE_ADDRESS) * ce_id;
-		final_value  = 0;
-		final_mask   = 0;
-		if (attr->src_nentries) {
-			/* Src ce */
-			final_mask =
-				(CE_CTRL1_DMAX_LENGTH_MASK) |
-				(CE_MSI_ENABLE_BIT) |
-				(CE_CTRL1_IDX_UPD_EN);
-			final_value =
-				(attr->src_sz_max << CE_CTRL1_DMAX_LENGTH_LSB) |
-				(CE_CTRL1_IDX_UPD_EN) |
-				(CE_MSI_ENABLE_BIT);
-#ifdef BIG_ENDIAN_HOST
-			final_mask  |= CE_CTRL1_SRC_RING_BYTE_SWAP_EN_MASK;
-			final_value |= 1 << CE_CTRL1_SRC_RING_BYTE_SWAP_EN_LSB;
-#endif
-		} else if (attr->dest_nentries) {
-			/* dest  ce*/
-			final_mask = CE_MSI_ENABLE_BIT | CE_CTRL1_IDX_UPD_EN;
-			final_value = CE_CTRL1_IDX_UPD_EN | CE_MSI_ENABLE_BIT;
-#ifdef BIG_ENDIAN_HOST
-			final_mask  |= CE_CTRL1_DST_RING_BYTE_SWAP_EN_MASK;
-			final_value |= 1 << CE_CTRL1_DST_RING_BYTE_SWAP_EN_LSB;
-#endif
-		} else {
-			/*not a src/dest ce*/
-			continue;
-		}
-		(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].offset = final_offset;
-		(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].mask = final_mask;
-		(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].value = final_value;
-		hif_info(
-				"CE CTRL1 reg cfg CE No. %d offset %#x mask %#x value %#x",
-				ce_id,
-				(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].offset,
-				(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].mask,
-				(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].value);
-		ce_cfg_idx++;
-	}
-	*host_ce_cmn_reg_num_ret = ce_cfg_idx;
-}
 
-/**
- * ce_prepare_cmn_reg_cfg_legacy() - Prepare CE common registers config
- * @scn: HIF context
- * @host_ce_cmn_reg_cfg_ret: copy engine common register configuration table.
- * @host_ce_cmn_reg_num_ret: number of the ce common register configuration.
- * Also acts as the current index for the common ce register configuration
- * table.
- * Return: 0 on success.
- */
-static int ce_prepare_cmn_reg_cfg_legacy(
-		struct hif_softc *scn,
-		struct CE_cmn_register_config **host_ce_cmn_reg_cfg_ret,
-		uint32_t *host_ce_cmn_reg_num_ret)
-{
-	uint32_t ce_valid_cfg;
-	uint32_t ce_cmn_reg_count;
-	/* Call api to get the ce src and dest number count
-	 *(which host configures)
-	 */
-	ce_valid_cfg = hif_get_num_ce_src_dest_valid(scn);
-	/* Get number of common register bw fw and host*/
-	ce_cmn_reg_count = hif_get_common_reg_per_ce(scn);
-	/* Dynamically allocate memory for number of src and dest copy engines*/
-	*host_ce_cmn_reg_cfg_ret =
-		(struct CE_cmn_register_config *)qdf_mem_malloc(ce_valid_cfg *
-		 ce_cmn_reg_count *
-		 sizeof(struct CE_cmn_register_config));
-	if (!(*host_ce_cmn_reg_cfg_ret)) {
-		hif_err("Memory allocation failed for CE common register config table");
-		return -ENOMEM;
-	}
-	prepare_ce_ctrl1_reg_host_cfg_legacy(
-		scn,
-		host_ce_cmn_reg_cfg_ret,
-		host_ce_cmn_reg_num_ret);
-
-	return 0;
-}
-#endif /* CE_CMN_REG_CFG_QMI */
 struct ce_ops ce_service_legacy = {
 	.ce_get_desc_size = ce_get_desc_size_legacy,
 	.ce_ring_setup = ce_ring_setup_legacy,
@@ -1741,9 +1624,6 @@ struct ce_ops ce_service_legacy = {
 #ifdef CONFIG_SHADOW_V3
 	.ce_prepare_shadow_register_v3_cfg =
 		ce_prepare_shadow_register_v3_cfg_legacy,
-#endif
-#ifdef CE_CMN_REG_CFG_QMI
-	.ce_prepare_cmn_reg_cfg = ce_prepare_cmn_reg_cfg_legacy,
 #endif
 };
 

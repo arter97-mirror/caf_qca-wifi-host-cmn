@@ -222,24 +222,4 @@ QDF_STATUS wlan_crypto_set_random_pmkid(
  * Return: count of random pmkid
  */
 int32_t wlan_crypto_get_random_pmkid(struct wlan_crypto_params *crypto_params);
-
-/**
- * wlan_crypto_get_auth_algo() - get auth algorithm from crypto params
- * @crypto_params: crypto params
- *
- * Return: auth algorithm value
- */
-int32_t wlan_crypto_get_auth_algo(struct wlan_crypto_params *crypto_params);
-
-/**
- * wlan_crypto_set_auth_algo() - set auth algorithm in crypto params
- * @crypto_params: crypto params
- * @value: auth algorithm value to set
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-wlan_crypto_set_auth_algo(struct wlan_crypto_params *crypto_params,
-			  uint32_t value);
-
 #endif /* __WLAN_CRYPTO_PARAM_HANDLING_I_H_ */

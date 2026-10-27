@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -186,10 +185,10 @@ util_scan_entry_bssid(struct scan_cache_entry *scan_entry)
 }
 
 /**
- * util_scan_entry_capinfo() - function to read capability info
+ * util_scan_entry_capinfo() - function to read capibility info
  * @scan_entry: scan entry
  *
- * API, function to read capability info of scan entry
+ * API, function to read capibility info of scan entry
  *
  * Return: capability info
  */
@@ -495,19 +494,6 @@ static inline bool util_mdie_match(uint16_t mobility_domain,
 	   mdie->mobility_domain[0];
 
 	if (md == mobility_domain)
-		return true;
-
-	return false;
-}
-
-static inline bool
-util_is_local_generated_entry(bool is_local_gen,
-			      struct scan_cache_entry *scan_entry)
-{
-	if (!is_local_gen)
-		return true;
-
-	if (scan_entry->is_gen_entry)
 		return true;
 
 	return false;
@@ -822,18 +808,6 @@ util_scan_copy_beacon_data(struct scan_cache_entry *new_entry,
 	ie_lst->wifi6_rsno = conv_ptr(ie_lst->wifi6_rsno, old_ptr, new_ptr);
 	ie_lst->rsnxo = conv_ptr(ie_lst->rsnxo, old_ptr, new_ptr);
 	ie_lst->wifi7_rsno = conv_ptr(ie_lst->wifi7_rsno, old_ptr, new_ptr);
-#ifdef WLAN_FEATURE_11BN
-	ie_lst->uhrcap = conv_ptr(ie_lst->uhrcap, old_ptr, new_ptr);
-	ie_lst->uhrop = conv_ptr(ie_lst->uhrop, old_ptr, new_ptr);
-#endif
-#ifdef WLAN_FEATURE_11BN_SMD
-	ie_lst->smd_info = conv_ptr(ie_lst->smd_info, old_ptr, new_ptr);
-#endif
-
-#ifdef WLAN_FEATURE_SECURITY_PROFILE
-	ie_lst->security_profile =
-		conv_ptr(ie_lst->security_profile, old_ptr, new_ptr);
-#endif
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -1049,7 +1023,7 @@ util_scan_entry_rsnxo(struct scan_cache_entry *scan_entry)
  *
  * API, function to read adaptive 11r IE
  *
- * Return:  adaptive 11r ie or NULL if ie is not present
+ * Return:  apaptive 11r ie or NULL if ie is not present
  */
 static inline uint8_t*
 util_scan_entry_adaptive_11r(struct scan_cache_entry *scan_entry)
@@ -1405,10 +1379,10 @@ util_scan_entry_bss_type(struct scan_cache_entry *scan_entry)
 }
 
 /**
- * util_scan_entry_privacy() - function to check if privacy is enabled
+ * util_scan_entry_privacy() - function to check if privacy is enebled
  * @scan_entry: scan entry
  *
- * API, function to check if privacy is enabled
+ * API, function to check if privacy is enebled
  *
  * Return: true if privacy is enabled, false other wise
  */
@@ -1816,6 +1790,17 @@ util_scan_entry_fils_indication(struct scan_cache_entry *scan_entry)
 }
 
 /**
+ * util_get_last_scan_time() - function to get last scan time on this pdev
+ * @vdev: vdev object
+ *
+ * API, function to read last scan time on this pdev
+ *
+ * Return: qdf_time_t
+ */
+qdf_time_t
+util_get_last_scan_time(struct wlan_objmgr_vdev *vdev);
+
+/**
  * util_scan_is_hidden_ssid() - function to check if ssid is hidden
  * @ssid: struct ie_ssid object
  *
@@ -1913,18 +1898,6 @@ util_scan_get_rsnx_len(struct scan_cache_entry *scan_entry)
 bool util_is_rsnxe_h2e_capable(const uint8_t *rsnxe);
 
 /**
- * util_is_rsnxe_assoc_encrypt_capable() - API to check whether the
- * RSNXE has Association Encryption capable or not.
- * @rsnxe: Pointer to RSNXE IE.
- *
- * Returns true if RSNXE caps has Assoc_Encrypt capable bit set or
- * else false.
- *
- * Return: bool
- */
-bool util_is_rsnxe_assoc_encrypt_capable(const uint8_t *rsnxe);
-
-/**
  * util_scan_entry_sae_h2e_capable() - API to check whether the
  * current scan entry is SAE-H2E capable
  * @scan_entry: Scan cache entry
@@ -1935,33 +1908,6 @@ bool util_is_rsnxe_assoc_encrypt_capable(const uint8_t *rsnxe);
  * Return: bool
  */
 bool util_scan_entry_sae_h2e_capable(struct scan_cache_entry *scan_entry);
-
-/**
- * util_scan_entry_assoc_encrypt_capable() - API to check whether the
- * current scan entry is Association-Encryption capable
- * @scan_entry: Scan cache entry
- *
- * Returns true if the current scan entry has RSNXE IE with Assoc_Encrypt bit
- * set.
- *
- * Return: bool
- */
-bool util_scan_entry_assoc_encrypt_capable(struct scan_cache_entry *scan_entry);
-
-/**
- * util_scan_get_rsn_cap() - Extract RSN capabilities from a raw RSN IE
- * @rsn_ie: Pointer to the RSN IE including element ID and length fields
- * @rsn_ie_len: Total length of the RSN IE buffer
- * @rsn_cap: Output pointer for the extracted 2-byte RSN capabilities
- *
- * Parses the RSN IE byte stream to locate and extract the RSN capabilities
- * field, safely accounting for variable-length pairwise and AKM suite lists.
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_INVAL if the IE is
- * too short or malformed.
- */
-QDF_STATUS util_scan_get_rsn_cap(const uint8_t *rsn_ie, uint8_t rsn_ie_len,
-				 uint16_t *rsn_cap);
 
 /**
  * util_scan_scm_freq_to_band() - API to get band from frequency
@@ -2076,38 +2022,6 @@ util_scan_get_ml_info(struct scan_cache_entry *scan_params,
 }
 #endif
 
-#ifdef WLAN_FEATURE_11BN_SMD
-/**
- * util_scan_get_smd_info(): Dump SMD scan info
- * @scan_params: new received entry
- * @log_str: Buffer pointer
- * @str_len: max string length
- * @len: already filled length in buffer
- *
- * Return: length filled in buffer
- */
-static inline uint32_t
-util_scan_get_smd_info(struct scan_cache_entry *scan_params,
-		       char *log_str, uint32_t str_len, uint32_t len)
-{
-	const uint8_t *ie = scan_params->ie_list.smd_info;
-
-	if (!ie || ie[1] < WLAN_SMD_INFO_IE_MIN_LEN)
-		return 0;
-
-	return qdf_scnprintf(log_str + len, str_len - len,
-			     ", SMD " QDF_MAC_ADDR_FMT " timeout=%u",
-			     QDF_MAC_ADDR_REF(&ie[3]), ie[10]);
-}
-#else
-static inline uint32_t
-util_scan_get_smd_info(struct scan_cache_entry *scan_params,
-		       char *log_str, uint32_t str_len, uint32_t len)
-{
-	return 0;
-}
-#endif
-
 /**
  * util_scan_get_6g_oper_channel() - function to get primary channel
  * from he op IE
@@ -2147,22 +2061,6 @@ util_scan_get_phymode(struct wlan_objmgr_pdev *pdev,
  */
 bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 			  struct qdf_mac_addr *bssid, qdf_freq_t freq);
-
-/**
- * util_is_scan_entry_non_tx_bssid - Check if a scan entry corresponds to a
- * non-transmitting BSSID
- *
- * @scan_entry: Pointer to the scan cache entry to be checked
- *
- * This function determines whether a given scan cache entry represents a
- * non-transmitting BSSID (NTB) based on the BSSID index information stored
- * within the entry. A non-transmitting BSSID is typically part of a MBSSID
- * setup where the BSSID is advertised but does not actively transmit frames.
- *
- * Return: true if the scan entry represents a non-transmitting BSSID,
- * false otherwise
- */
-bool util_is_scan_entry_non_tx_bssid(struct scan_cache_entry *scan_entry);
 
 /**
  * util_scan_entry_renew_timestamp() - function to renew timestamp of scan entry
@@ -2222,196 +2120,4 @@ uint8_t util_get_rsnxe_len_by_gen(struct scan_cache_entry *scan_entry,
 QDF_STATUS
 util_scan_is_valid_rsn_present(struct scan_cache_entry *entry,
 			       struct wlan_crypto_params *params);
-
-/**
- * scm_validate_6ghz_security_and_policy() - Wrapper api to Validate 6 GHz
- *                                           security requirements
- * @psoc: psoc object
- * @scan_entry: scan cache entry to validate
- * @is_connection_time: true if called during connection, false if during scan
- *
- * This function consolidates all 6 GHz security validation checks into a single
- * reusable API. It validates:
- * 1. HE Capability/Operation IE presence (mandatory for 6 GHz)
- * 2. RSN IE presence
- * 3. RSN IE validity
- * 4. Cipher suite compliance (no TKIP/WEP/None)
- * 5. AKM suite compliance (PMF, H2E requirements)
- *
- * The function can be called from two contexts:
- * - Scan time: To filter APs before adding to scan cache
- * - Connection time: To validate candidates before connection attempt
- *
- * Return: QDF_STATUS_SUCCESS if all checks pass, error status otherwise
- */
-QDF_STATUS scm_validate_6ghz_security_and_policy(
-	struct wlan_objmgr_psoc *psoc,
-	struct scan_cache_entry *scan_entry,
-	bool is_connection_time);
-
-/**
- * util_scan_populate_bcn_ie_list() - Parse beacon/probe response frame and
- * populate IE list
- * @pdev: pdev object
- * @scan_params: scan entry to populate
- * @chan_freq: output parameter for channel frequency
- * @band_mask: band mask for frequency conversion
- *
- * API to parse beacon/probe response frame and populate the IE list in
- * scan_params. This is used to re-parse frames after modifications.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-util_scan_populate_bcn_ie_list(struct wlan_objmgr_pdev *pdev,
-			       struct scan_cache_entry *scan_params,
-			       qdf_freq_t *chan_freq, uint8_t band_mask);
-
-#ifdef WLAN_FEATURE_11BN
-/**
- * util_scan_entry_uhrop() - function to read uhr ops vendor ie
- * @scan_entry: scan entry
- *
- * API, function to read uhr ops vendor ie
- *
- * Return: uhr op vendorie or NULL if ie is not present
- */
-static inline uint8_t*
-util_scan_entry_uhrop(struct scan_cache_entry *scan_entry)
-{
-	return scan_entry->ie_list.uhrop;
-}
-
-/**
- * util_scan_entry_reset_11bn_caps() - Clear UHR cap/op IE pointers
- * @scan_entry: scan entry
- *
- * Nulls out ie_list.uhrcap and ie_list.uhrop
- */
-static inline void
-util_scan_entry_reset_11bn_caps(struct scan_cache_entry *scan_entry)
-{
-	scan_entry->ie_list.uhrcap = NULL;
-	scan_entry->ie_list.uhrop = NULL;
-}
-#else
-static inline uint8_t*
-util_scan_entry_uhrop(struct scan_cache_entry *scan_entry)
-{
-	return NULL;
-}
-
-static inline void
-util_scan_entry_reset_11bn_caps(struct scan_cache_entry *scan_entry)
-{
-}
-#endif
-
-#ifdef WLAN_FEATURE_11BN
-/**
- * util_scan_update_nontx_entry_uhr_ies() - Update UHR IEs in non-TX scan entry
- * @pdev:        pdev pointer
- * @nontx_bssid: BSSID of the non-TX MBSSID AP scan entry to update
- * @ie_start:    Pointer to the start of IE bytes (from TX AP probe response)
- * @ie_len:      Length of the IE buffer
- *
- * Appends full UHR CAP and UHR OP IEs extracted from the TX AP's probe response
- * to the non-TX BSSID's scan entry raw_frame and updates ie_list pointers.
- * Called during UHR MBSSID non-TX AP join after receiving the TX AP probe rsp.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-util_scan_update_nontx_entry_uhr_ies(struct wlan_objmgr_pdev *pdev,
-				     struct qdf_mac_addr *nontx_bssid,
-				     uint8_t *ie_start,
-				     uint32_t ie_len);
-#else
-static inline QDF_STATUS
-util_scan_update_nontx_entry_uhr_ies(struct wlan_objmgr_pdev *pdev,
-				     struct qdf_mac_addr *nontx_bssid,
-				     uint8_t *ie_start,
-				     uint32_t ie_len)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* WLAN_FEATURE_11BN */
-
-#ifdef WLAN_FEATURE_SECURITY_PROFILE
-/**
- * util_scan_entry_security_profile() - function to read Security Profile IE
- * @scan_entry: scan entry
- *
- * API, function to read Security Profile IE from scan entry
- *
- * Return: pointer to Security Profile IE or NULL if not present
- */
-static inline uint8_t *
-util_scan_entry_security_profile(struct scan_cache_entry *scan_entry)
-{
-	return scan_entry->ie_list.security_profile;
-}
-
-/**
- * util_scan_get_security_profile_rsn_caps() - Get effective RSN capabilities
- * with Security Profile element overrides applied
- * @scan_entry: scan entry
- * @rsn_caps: base RSN capabilities from RSNE (will be overridden in-place)
- *
- * Per IEEE P802.11bn sec. 37.32, when a Security Profile element is present
- * the Reduced RSN Capabilities field overrides the corresponding bits in the
- * RSNE RSN Capabilities field:
- *   B0 -> Extended Key ID (RSN Caps bit 13)
- *   B1 -> OCVC           (RSN Caps bit 14)
- *
- * Return: void
- */
-static inline void
-util_scan_get_security_profile_rsn_caps(struct scan_cache_entry *scan_entry,
-					uint16_t *rsn_caps)
-{
-	const uint8_t *ie;
-	uint8_t reduced_rsn_caps;
-
-	ie = util_scan_entry_security_profile(scan_entry);
-	if (!ie || ie[1] < 2)
-		return;
-
-	/*
-	 * Security Profile element (Draft 802.11bn 1.4 Figure 9-aa70):
-	 * +-----+-----+-----+------+-----+--------+----------+------+
-	 * | EID | Len | Ext | Rdc  | SP  |   SP   |  Vendor  | Ext  |
-	 * |     |     |     | RSN  | Ind | Bitmap | SP List  | RSN  |
-	 * |     |     |     | Caps |     |        |          | Caps |
-	 * +-----+-----+-----+------+-----+--------+----------+------+
-	 *  ie[0] ie[1] ie[2] ie[3]  ie[4] variable  variable  variable
-	 */
-	reduced_rsn_caps = ie[3];
-
-	/* Override Extended Key ID bit */
-	if (reduced_rsn_caps & BIT(0))
-		*rsn_caps |= WLAN_CRYPTO_RSN_CAP_EXTENDED_KEY_ID;
-	else
-		*rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_EXTENDED_KEY_ID;
-
-	/* Override OCVC bit */
-	if (reduced_rsn_caps & BIT(1))
-		*rsn_caps |= WLAN_CRYPTO_RSN_CAP_OCV_SUPPORTED;
-	else
-		*rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_OCV_SUPPORTED;
-}
-#else
-static inline uint8_t *
-util_scan_entry_security_profile(struct scan_cache_entry *scan_entry)
-{
-	return NULL;
-}
-
-static inline void
-util_scan_get_security_profile_rsn_caps(struct scan_cache_entry *scan_entry,
-					uint16_t *rsn_caps)
-{
-}
-#endif /* WLAN_FEATURE_SECURITY_PROFILE */
-
 #endif

@@ -716,7 +716,6 @@ cdp_ipa_rx_intrabss_fwd(ol_txrx_soc_handle soc, uint8_t vdev_id,
  * @pdev_id: device instance id
  * @line: line number
  * @func: function name
- * @is_opt_dp: smmu map called from opt_dp
  *
  * Create SMMU mappings for Tx buffers allocated to IPA
  *
@@ -724,7 +723,7 @@ cdp_ipa_rx_intrabss_fwd(ol_txrx_soc_handle soc, uint8_t vdev_id,
  */
 static inline QDF_STATUS
 cdp_ipa_tx_buf_smmu_mapping(ol_txrx_soc_handle soc, uint8_t pdev_id,
-			    const char *func, uint32_t line, bool is_opt_dp)
+			    const char *func, uint32_t line)
 {
 	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
 		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
@@ -735,8 +734,7 @@ cdp_ipa_tx_buf_smmu_mapping(ol_txrx_soc_handle soc, uint8_t pdev_id,
 	if (soc->ops->ipa_ops->ipa_tx_buf_smmu_mapping)
 		return soc->ops->ipa_ops->ipa_tx_buf_smmu_mapping(soc, pdev_id,
 								  func,
-								  line,
-								  is_opt_dp);
+								  line);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -901,25 +899,6 @@ cdp_ipa_pcie_link_down(ol_txrx_soc_handle soc)
 
 	return QDF_STATUS_SUCCESS;
 }
-
-/**
- * cdp_ipa_dump_ring_hp_tp() - dump hp-tp values of IPA and error ring
- * @soc: data path soc handle
- *
- * Return:
- */
-static inline void
-cdp_ipa_dump_ring_hp_tp(ol_txrx_soc_handle soc)
-{
-	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		return;
-	}
-
-	if (soc->ops->ipa_ops->ipa_dump_ring_hp_tp)
-		soc->ops->ipa_ops->ipa_dump_ring_hp_tp(soc);
-}
 #endif
 
 /**
@@ -998,23 +977,6 @@ struct wifi_dp_tx_flt_setup {
 	qdf_spinlock_t flt_rem_lock;
 };
 
-static inline void
-cdp_ipa_print_opt_dp_log(ol_txrx_soc_handle soc,
-			 bool is_opt_dp_filter_active,
-			 struct wifi_dp_flt_setup *dp_flt_param)
-{
-	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		return;
-	}
-
-	if (soc->ops->ipa_ops->ipa_print_opt_dp_log)
-		return soc->ops->ipa_ops->ipa_print_opt_dp_log(soc,
-						is_opt_dp_filter_active,
-						dp_flt_param);
-}
-
 static inline QDF_STATUS
 cdp_ipa_rx_cce_super_rule_setup(ol_txrx_soc_handle soc,
 				void *flt_params)
@@ -1030,44 +992,6 @@ cdp_ipa_rx_cce_super_rule_setup(ol_txrx_soc_handle soc,
 								  flt_params);
 
 	return QDF_STATUS_SUCCESS;
-}
-
-static inline int cdp_ipa_tx_buf_alloc_map(ol_txrx_soc_handle soc)
-{
-	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		return -EINVAL;
-	}
-
-	if (soc->ops->ipa_ops->ipa_tx_buf_alloc_map)
-		return soc->ops->ipa_ops->ipa_tx_buf_alloc_map(soc);
-
-	return 0;
-}
-
-static inline void cdp_ipa_opt_dp_set_tx_doorbell(ol_txrx_soc_handle soc)
-{
-	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		return;
-	}
-
-	if (soc->ops->ipa_ops->ipa_opt_dp_set_tx_doorbell)
-		return soc->ops->ipa_ops->ipa_opt_dp_set_tx_doorbell(soc);
-}
-
-static inline void cdp_ipa_opt_dp_reset_tx_doorbell(ol_txrx_soc_handle soc)
-{
-	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		return;
-	}
-
-	if (soc->ops->ipa_ops->ipa_opt_dp_reset_tx_doorbell)
-		return soc->ops->ipa_ops->ipa_opt_dp_reset_tx_doorbell(soc);
 }
 
 #ifdef IPA_OPT_WIFI_DP_CTRL
@@ -1182,55 +1106,6 @@ cdp_ipa_opt_dp_enable_disable_low_power_mode(struct wlan_objmgr_pdev *pdev,
 	return status;
 }
 #endif /* IPA_OPT_WIFI_DP */
-
-/**
- * cdp_ipa_rx_pp_cntrs_init() - Init IPA RX page pool counters
- * @soc: data path soc handle
- *
- * Allocate iova_cntr_pages for pool 0 when IPA RX page pool
- * buffers are mapped for IPA.
- *
- * Return: QDF_STATUS
- */
-static inline QDF_STATUS
-cdp_ipa_rx_pp_cntrs_init(ol_txrx_soc_handle soc)
-{
-	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (soc->ops->ipa_ops->ipa_rx_pp_cntrs_init)
-		return soc->ops->ipa_ops->ipa_rx_pp_cntrs_init(soc);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * cdp_ipa_rx_pp_cntrs_deinit() - Deinit IPA RX page pool counters
- * @soc: data path soc handle
- *
- * Free iova_cntr_pages for pool 0 when IPA RX page pool
- * mappings are released.
- *
- * Return: QDF_STATUS
- */
-static inline QDF_STATUS
-cdp_ipa_rx_pp_cntrs_deinit(ol_txrx_soc_handle soc)
-{
-	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (soc->ops->ipa_ops->ipa_rx_pp_cntrs_deinit)
-		return soc->ops->ipa_ops->ipa_rx_pp_cntrs_deinit(soc);
-
-	return QDF_STATUS_SUCCESS;
-}
-
 #ifndef IPA_OPT_WIFI_DP_CTRL
 static inline QDF_STATUS
 cdp_ipa_tx_opt_dp_ctrl_pkt(ol_txrx_soc_handle soc,

@@ -22,12 +22,6 @@
 
 #include "hal_be_hw_headers.h"
 #include "hal_tx.h"
-#include "hal_flow.h"
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-#include "dal_vndr_hal_be.h"
-#include "dal_vndr_hal_api.h"
-#endif
 
 /* Number of TX banks reserved i.e, will not be used by host driver. */
 /* MAX_TCL_BANK reserved for FW use */
@@ -84,7 +78,6 @@ enum hal_tx_notify_frame_type {
  * Structures
  * ---------------------------------------------------------------------------
  */
-#ifndef CONFIG_BORON
 /**
  * union hal_tx_bank_config - SW config bank params
  * @epd: EPD indication flag
@@ -98,7 +91,7 @@ enum hal_tx_notify_frame_type {
  * @mesh_enable:mesh enable flag
  * @vdev_id_check_en: vdev id check
  * @pmac_id: mac id
- * @mcast_pkt_ctrl: multicast packet control
+ * @mcast_pkt_ctrl: mulitcast packet control
  * @dscp_tid_map_id: DSCP to TID map id
  * @reserved: unused bits
  * @val: value representing bank config
@@ -122,7 +115,6 @@ union hal_tx_bank_config {
 	};
 	uint32_t val;
 };
-#endif /* !CONFIG_BORON */
 
 /**
  * union hal_tx_cmn_config_ppe - SW config exception related parameters
@@ -249,7 +241,7 @@ union hal_tx_ppe_pri2tid_map1_config {
  *  TCL Descriptor accessor APIs
  *---------------------------------------------------------------------------
  */
-#ifndef CONFIG_BORON
+
 /**
  * hal_tx_desc_set_tx_notify_frame() - Set TX notify_frame field in Tx desc
  * @desc: Handle to Tx Descriptor
@@ -534,21 +526,6 @@ static inline uint32_t hal_tx_get_wbm_sw0_bm_id(void)
 	return HAL_BE_WBM_SW0_BM_ID;
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * hal_tx_comp_get_desc_id() - Get TX descriptor id within comp descriptor
- * @hal_desc: completion ring descriptor pointer
- *
- * This function will tx descriptor id, cookie, within hardware completion
- * descriptor using DAL vendor HAL APIs.
- *
- * Return: cookie
- */
-static inline uint32_t hal_tx_comp_get_desc_id(void *hal_desc)
-{
-	return dal_vndr_hal_tx_comp_get_desc_id_generic(hal_desc);
-}
-#else
 /**
  * hal_tx_comp_get_desc_id() - Get TX descriptor id within comp descriptor
  * @hal_desc: completion ring descriptor pointer
@@ -569,23 +546,7 @@ static inline uint32_t hal_tx_comp_get_desc_id(void *hal_desc)
 	return (comp_desc & BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK) >>
 		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_LSB;
 }
-#endif
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * hal_tx_comp_get_paddr() - Get paddr within comp descriptor
- * @hal_desc: completion ring descriptor pointer
- *
- * This function will get buffer physical address within hardware completion
- * descriptor using DAL vendor HAL APIs.
- *
- * Return: Buffer physical address
- */
-static inline qdf_dma_addr_t hal_tx_comp_get_paddr(void *hal_desc)
-{
-	return dal_vndr_hal_tx_comp_get_paddr_be(hal_desc);
-}
-#else
 /**
  * hal_tx_comp_get_paddr() - Get paddr within comp descriptor
  * @hal_desc: completion ring descriptor pointer
@@ -611,7 +572,6 @@ static inline qdf_dma_addr_t hal_tx_comp_get_paddr(void *hal_desc)
 
 	return (qdf_dma_addr_t)(paddr_lo | (((uint64_t)paddr_hi) << 32));
 }
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #ifdef DP_HW_COOKIE_CONVERT_EXCEPTION
 /* HW set dowrd-2 bit30 to 1 if HW CC is done */
@@ -670,7 +630,6 @@ static inline uint64_t hal_tx_comp_get_desc_va(void *hal_desc)
 
 	return va_from_desc;
 }
-#endif /* !CONFIG_BORON */
 
 /*---------------------------------------------------------------------------
  * TX BANK register accessor APIs
@@ -755,38 +714,6 @@ hal_tx_config_rbm_mapping_be(hal_soc_handle_t hal_soc_hdl,
 }
 #endif
 
-#ifndef CONFIG_BORON
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * hal_tx_desc_clear_buf_addr_info_be() - Clear buffer address fields in Tx Desc
- * @desc: Handle to Tx Descriptor
- *
- * This function clears the buffer address related fields in the TCL descriptor
- * to prevent junk values when the descriptor is reused. Should be called before
- * hal_tx_desc_set_buf_addr_be() to ensure clean field updates.
- *
- * Return: void
- */
-static inline void
-hal_tx_desc_clear_buf_addr_info_be(void *desc)
-{
-	/* Clear buffer_addr_info.buffer_addr_31_0 */
-	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_ADDR_INFO_BUFFER_ADDR_31_0);
-
-	/* Clear buffer_addr_info.buffer_addr_39_32 */
-	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_ADDR_INFO_BUFFER_ADDR_39_32);
-
-	/* Clear buffer_addr_info.return_buffer_manager */
-	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_ADDR_INFO_RETURN_BUFFER_MANAGER);
-
-	/* Clear buffer_addr_info.sw_buffer_cookie */
-	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_ADDR_INFO_SW_BUFFER_COOKIE);
-
-	/* Clear Buffer or Ext Descriptor Type */
-	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_OR_EXT_DESC_TYPE);
-}
-#endif /* FEATURE_DAL_DP_SUPPORT */
-
 /**
  * hal_tx_desc_set_buf_addr_be() - Fill Buffer Address information in Tx Desc
  * @hal_soc_hdl: HAL SoC context
@@ -861,7 +788,6 @@ hal_tx_desc_set_buf_addr_be(hal_soc_handle_t hal_soc_hdl, void *desc,
 		    BUF_OR_EXT_DESC_TYPE) |=
 		HAL_TX_SM(TCL_DATA_CMD, BUF_OR_EXT_DESC_TYPE, type);
 }
-#endif
 #endif
 
 /**

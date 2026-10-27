@@ -211,33 +211,6 @@ QDF_STATUS
 wlan_twt_tgt_caps_get_restricted_support(struct wlan_objmgr_psoc *psoc,
 					 bool *val);
 /**
- * wlan_twt_tgt_caps_get_resp_disable_per_vdev() - Get TGT capability for
- * TWT responder disable per VDEV support
- *
- * @psoc: PSOC handle
- * @val: pointer to get caps enabled/disabled
- *
- * return: QDF_STATUS
- */
-QDF_STATUS
-wlan_twt_tgt_caps_get_resp_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
-					    bool *val);
-
-/**
- * wlan_twt_tgt_caps_get_req_en_dis_vdev_support() - Get TGT capability for
- * per-vdev TWT enable/disable command support for TWT requestor role
- * (STA/P2P-CLI etc.)
- *
- * @psoc: PSOC handle
- * @val: pointer to get caps enabled/disabled
- *
- * return: QDF_STATUS
- */
-QDF_STATUS
-wlan_twt_tgt_caps_get_req_en_dis_vdev_support(struct wlan_objmgr_psoc *psoc,
-					      bool *val);
-
-/**
  * wlan_twt_tgt_caps_get_p2p_go_concurrency_support() - Get TGT capability for
  * P2P GO concurrency support
  *
@@ -250,15 +223,3 @@ QDF_STATUS
 wlan_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
 						 bool *val);
 
-/**
- * wlan_twt_handle_p2p_chan_usage_unavail() - Handle P2P channel usage
- * unavailability
- * @psoc: psoc pointer
- * @params: P2P channel usage unavailability parameters
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_twt_handle_p2p_chan_usage_unavail(
-			struct wlan_objmgr_psoc *psoc,
-			struct twt_p2p_chan_usage_unavail_params *params);

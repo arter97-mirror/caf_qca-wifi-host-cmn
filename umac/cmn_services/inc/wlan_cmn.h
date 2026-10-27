@@ -429,16 +429,6 @@ typedef enum {
  * @WLAN_PHYMODE_11BEG_EHT80:     2GHz, EHT80
  * @WLAN_PHYMODE_11BEA_EHT160:    5GHz, EHT160
  * @WLAN_PHYMODE_11BEA_EHT320:    5GHz, EHT320
- * @WLAN_PHYMODE_11BNA_UHR20:     5GHz, UHR20
- * @WLAN_PHYMODE_11BNG_UHR20:     2GHz, UHR20
- * @WLAN_PHYMODE_11BNA_UHR40:     5GHz, UHR40
- * @WLAN_PHYMODE_11BNG_UHR40PLUS: 2GHz, UHR40 (ext ch +1)
- * @WLAN_PHYMODE_11BNG_UHR40MINUS:2GHz, UHR40 (ext ch -1)
- * @WLAN_PHYMODE_11BNG_UHR40:     2GHz, UHR40
- * @WLAN_PHYMODE_11BNA_UHR80:     5GHz, UHR80
- * @WLAN_PHYMODE_11BNG_UHR80:     2GHz, UHR80
- * @WLAN_PHYMODE_11BNA_UHR160:    5GHz, UHR160
- * @WLAN_PHYMODE_11BNA_UHR320:    5GHz, UHR320
  * @WLAN_PHYMODE_MAX: Max phymode
  */
 enum wlan_phymode {
@@ -485,92 +475,10 @@ enum wlan_phymode {
 	WLAN_PHYMODE_11BEA_EHT160       = 39,
 	WLAN_PHYMODE_11BEA_EHT320       = 40,
 #endif
-#ifdef WLAN_FEATURE_11BN
-	WLAN_PHYMODE_11BNA_UHR20        = 41,
-	WLAN_PHYMODE_11BNG_UHR20        = 42,
-	WLAN_PHYMODE_11BNA_UHR40        = 43,
-	WLAN_PHYMODE_11BNG_UHR40PLUS    = 44,
-	WLAN_PHYMODE_11BNG_UHR40MINUS   = 45,
-	WLAN_PHYMODE_11BNG_UHR40        = 46,
-	WLAN_PHYMODE_11BNA_UHR80        = 47,
-	WLAN_PHYMODE_11BNG_UHR80        = 48,
-	WLAN_PHYMODE_11BNA_UHR160       = 49,
-	WLAN_PHYMODE_11BNA_UHR320       = 50,
-#endif
 	WLAN_PHYMODE_MAX
 };
 
-#ifdef WLAN_FEATURE_11BN
-#define IS_WLAN_PHYMODE_320MHZ(_mode) ({typeof(_mode) mode = (_mode); \
-	((mode) == WLAN_PHYMODE_11BNA_UHR320) || \
-	((mode) == WLAN_PHYMODE_11BEA_EHT320); })
-
-#define IS_WLAN_PHYMODE_160MHZ(_mode) ({typeof(_mode) mode = (_mode); \
-	((mode) == WLAN_PHYMODE_11BNA_UHR160) || \
-	((mode) == WLAN_PHYMODE_11BEA_EHT160) || \
-	((mode) == WLAN_PHYMODE_11AC_VHT80_80) || \
-	((mode) == WLAN_PHYMODE_11AC_VHT160)     || \
-	((mode) == WLAN_PHYMODE_11AXA_HE80_80)  || \
-	((mode) == WLAN_PHYMODE_11AXA_HE160); })
-
-#define IS_WLAN_PHYMODE_80MHZ(_mode) ({typeof(_mode) mode = (_mode); \
-	((mode) == WLAN_PHYMODE_11BNA_UHR80) || \
-	((mode) == WLAN_PHYMODE_11BEA_EHT80) || \
-	((mode) == WLAN_PHYMODE_11AC_VHT80) || \
-	((mode) == WLAN_PHYMODE_11AC_VHT80_2G)     || \
-	((mode) == WLAN_PHYMODE_11AXA_HE80)  || \
-	((mode) == WLAN_PHYMODE_11AXG_HE80); })
-
-#define IS_WLAN_PHYMODE_40MHZ(_mode) ({typeof(_mode) mode = (_mode); \
-	((mode) == WLAN_PHYMODE_11NG_HT40) || \
-	((mode) == WLAN_PHYMODE_11NG_HT40PLUS)     || \
-	((mode) == WLAN_PHYMODE_11NG_HT40MINUS)  || \
-	((mode) == WLAN_PHYMODE_11NA_HT40)  || \
-	((mode) == WLAN_PHYMODE_11AC_VHT40)  || \
-	((mode) == WLAN_PHYMODE_11AC_VHT40_2G)  || \
-	((mode) == WLAN_PHYMODE_11AC_VHT40PLUS_2G)  || \
-	((mode) == WLAN_PHYMODE_11AC_VHT40MINUS_2G)  || \
-	((mode) == WLAN_PHYMODE_11BEA_EHT40)  || \
-	((mode) == WLAN_PHYMODE_11BEG_EHT40)  || \
-	((mode) == WLAN_PHYMODE_11BEG_EHT40PLUS)  || \
-	((mode) == WLAN_PHYMODE_11BEG_EHT40MINUS)  || \
-	((mode) == WLAN_PHYMODE_11BNA_UHR40)  || \
-	((mode) == WLAN_PHYMODE_11BNG_UHR40)  || \
-	((mode) == WLAN_PHYMODE_11BNG_UHR40PLUS)  || \
-	((mode) == WLAN_PHYMODE_11BNG_UHR40MINUS)  || \
-	((mode) == WLAN_PHYMODE_11AXA_HE40)  || \
-	((mode) == WLAN_PHYMODE_11AXG_HE40)  || \
-	((mode) == WLAN_PHYMODE_11AXG_HE40PLUS)  || \
-	((mode) == WLAN_PHYMODE_11AXG_HE40MINUS); })
-
-#define IS_WLAN_PHYMODE_UHR(_mode) ({typeof(_mode) mode = (_mode); \
-	((mode) == WLAN_PHYMODE_11BNA_UHR20) || \
-	((mode) == WLAN_PHYMODE_11BNG_UHR20)     || \
-	((mode) == WLAN_PHYMODE_11BNA_UHR40)  || \
-	((mode) == WLAN_PHYMODE_11BNG_UHR40)  || \
-	((mode) == WLAN_PHYMODE_11BNG_UHR40PLUS)  || \
-	((mode) == WLAN_PHYMODE_11BNG_UHR40MINUS)  || \
-	((mode) == WLAN_PHYMODE_11BNA_UHR80)  || \
-	((mode) == WLAN_PHYMODE_11BNG_UHR80)  || \
-	((mode) == WLAN_PHYMODE_11BNA_UHR160)  || \
-	((mode) == WLAN_PHYMODE_11BNA_UHR320); })
-
-#define IS_WLAN_PHYMODE_EHT(_mode) ({typeof(_mode) mode = (_mode); \
-	((mode) == WLAN_PHYMODE_11BEA_EHT20) || \
-	((mode) == WLAN_PHYMODE_11BEG_EHT20)     || \
-	((mode) == WLAN_PHYMODE_11BEA_EHT40)  || \
-	((mode) == WLAN_PHYMODE_11BEG_EHT40)  || \
-	((mode) == WLAN_PHYMODE_11BEG_EHT40PLUS)  || \
-	((mode) == WLAN_PHYMODE_11BEG_EHT40MINUS)  || \
-	((mode) == WLAN_PHYMODE_11BEA_EHT80)  || \
-	((mode) == WLAN_PHYMODE_11BEG_EHT80)  || \
-	((mode) == WLAN_PHYMODE_11BEA_EHT160)  || \
-	((mode) == WLAN_PHYMODE_11BEA_EHT320); })
-
-#define IS_WLAN_PHYMODE_ALLOW_MLO(_mode) \
-	({typeof(_mode) mode = (_mode); (mode) >= WLAN_PHYMODE_11BEA_EHT20; })
-
-#elif defined(WLAN_FEATURE_11BE)
+#ifdef WLAN_FEATURE_11BE
 #define IS_WLAN_PHYMODE_320MHZ(_mode) ({typeof(_mode) mode = (_mode); \
 	((mode) == WLAN_PHYMODE_11BEA_EHT320); })
 
@@ -618,9 +526,6 @@ enum wlan_phymode {
 	((mode) == WLAN_PHYMODE_11BEA_EHT160)  || \
 	((mode) == WLAN_PHYMODE_11BEA_EHT320); })
 
-#define IS_WLAN_PHYMODE_UHR(_mode) 0
-#define IS_WLAN_PHYMODE_ALLOW_MLO(_mode) \
-	({typeof(_mode) mode = (_mode); (mode) >= WLAN_PHYMODE_11BEA_EHT20; })
 #else
 #define IS_WLAN_PHYMODE_320MHZ(_mode) 0
 
@@ -651,8 +556,6 @@ enum wlan_phymode {
 	((mode) == WLAN_PHYMODE_11AXG_HE40MINUS); })
 
 #define IS_WLAN_PHYMODE_EHT(_mode) 0
-#define IS_WLAN_PHYMODE_UHR(_mode) 0
-#define IS_WLAN_PHYMODE_ALLOW_MLO(_mode) 0
 #endif
 
 #define IS_WLAN_PHYMODE_HT(_mode) ({typeof(_mode) mode = (_mode); \
@@ -745,7 +648,6 @@ enum wifi_traffic_ac {
  * @WLAN_PEER_RTT_PASN: Ranging PASN peer
  * @WLAN_PEER_MLO_BRIDGE: MLO Bridge peer
  * @WLAN_PEER_NAN_PASN: NAN PASN peer
- * @WLAN_PEER_PASSTHRU: Passthru peer
  */
 enum wlan_peer_type {
 	WLAN_PEER_SELF     = 1,
@@ -762,7 +664,6 @@ enum wlan_peer_type {
 	WLAN_PEER_RTT_PASN = 12,
 	WLAN_PEER_MLO_BRIDGE = 13,
 	WLAN_PEER_NAN_PASN = 14,
-	WLAN_PEER_PASSTHRU = 15,
 };
 
 /**
@@ -840,12 +741,6 @@ struct wlan_ssid {
 #define PSOC_HOST_EHT_MCS_NSS_MAP_5G_SIZE 4
 #endif
 
-#ifdef WLAN_FEATURE_11BN
-#define PSOC_HOST_MAX_UHR_MAC_SIZE 4
-#define PSOC_HOST_MAX_UHR_PHY_SIZE 8
-#define PSOC_HOST_MAX_UHR_DBE_SIZE 2
-#endif
-
 /**
  * enum host_edca_param_type - Host edca param type
  * @HOST_EDCA_PARAM_TYPE_AGGRESSIVE: Aggressive type
@@ -863,7 +758,6 @@ enum host_edca_param_type {
  * @RATEMASK_PARAMS_TYPE_VHT: type VHT
  * @RATEMASK_PARAMS_TYPE_HE: type HE
  * @RATEMASK_PARAMS_TYPE_EHT: type EHT
- * @RATEMASK_PARAMS_TYPE_UHR: type UHR
  * @RATEMASK_PARAMS_TYPE_MAX: Max ratemask param type
  */
 enum ratemask_param_type {
@@ -872,7 +766,6 @@ enum ratemask_param_type {
 	RATEMASK_PARAMS_TYPE_VHT = 2,
 	RATEMASK_PARAMS_TYPE_HE = 3,
 	RATEMASK_PARAMS_TYPE_EHT = 4,
-	RATEMASK_PARAMS_TYPE_UHR = 5,
 	RATEMASK_PARAMS_TYPE_MAX,
 };
 #endif /* _WLAN_OBJMGR_CMN_H_*/

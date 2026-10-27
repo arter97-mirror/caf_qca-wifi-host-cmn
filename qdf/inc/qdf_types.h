@@ -53,21 +53,11 @@
 /*
  * Add more levels here based on the number of perf clusters in SoC
  * Also modify hif_get_perf_cluster_bitmap
- *
- * SOC_PERF_CLUSTER_FIRST: define when hypervisor/platform assigns lower
- * cluster IDs to perf cores.
- * Only effective when NUM_SOC_PERF_CLUSTER <= 1 (single perf cluster).
  */
+#define CPU_CLUSTER_TYPE_LITTLE 0
+#define CPU_CLUSTER_TYPE_PERF 1
 #if defined(NUM_SOC_PERF_CLUSTER) && (NUM_SOC_PERF_CLUSTER > 1)
-#define CPU_CLUSTER_TYPE_LITTLE 0
-#define CPU_CLUSTER_TYPE_PERF   1
-#define CPU_CLUSTER_TYPE_PERF2  2
-#elif defined(SOC_PERF_CLUSTER_FIRST)
-#define CPU_CLUSTER_TYPE_LITTLE 1
-#define CPU_CLUSTER_TYPE_PERF   0
-#else
-#define CPU_CLUSTER_TYPE_LITTLE 0
-#define CPU_CLUSTER_TYPE_PERF   1
+#define CPU_CLUSTER_TYPE_PERF2 2
 #endif
 
 #define qdf_get_current() __qdf_get_current()
@@ -702,7 +692,6 @@ typedef enum {
 	QDF_MODULE_ID_TELEMETRY_AGENT,
 	QDF_MODULE_ID_RF_PATH_SWITCH,
 	QDF_MODULE_ID_MGMT_RX_SRNG,
-	QDF_MODULE_ID_WIFI_TRANSPORT,
 	QDF_MODULE_ID_ANY,
 	QDF_MODULE_ID_MAX,
 } QDF_MODULE_ID;
@@ -765,8 +754,6 @@ typedef enum {
  * @QDF_AHDEMO_MODE: AHDEMO mode
  * @QDF_TDLS_MODE: TDLS device mode
  * @QDF_NAN_DISC_MODE: NAN Discovery device mode
- * @QDF_PASSTHRU_MODE: Passthrough mode
- * @QDF_PD_MODE: Proximity Detection mode
  * @QDF_MAX_NO_OF_MODE: Max place holder
  *
  * These are generic IDs that identify the various roles
@@ -790,8 +777,6 @@ enum QDF_OPMODE {
 	QDF_AHDEMO_MODE,
 	QDF_TDLS_MODE,
 	QDF_NAN_DISC_MODE,
-	QDF_PASSTHRU_MODE,
-	QDF_PD_MODE,
 
 	/* Add new OP Modes to qdf_opmode_str as well */
 
@@ -920,8 +905,7 @@ enum QDF_GLOBAL_MODE {
 
 /**
  * typedef tQDF_MCC_TO_SCC_SWITCH_MODE - MCC to SCC switch mode.
- * @QDF_MCC_TO_SCC_SWITCH_DISABLE: Disable SCC switch. Should be used only if
- * the target supports STA + SAP MCC. Currently, there is no support for MCC.
+ * @QDF_MCC_TO_SCC_SWITCH_DISABLE: Disable switch
  * @QDF_MCC_TO_SCC_SWITCH_FORCE_WITHOUT_DISCONNECTION: Force switch without
  * restart of SAP
  * @QDF_MCC_TO_SCC_SWITCH_WITH_FAVORITE_CHANNEL: Switch using fav channel(s)
@@ -1138,7 +1122,6 @@ struct qdf_mac_addr {
  * @QDF_PROTO_ICMPV6_RA: icmpv6 ra packet
  * @QDF_PROTO_ICMPV6_NS: icmpv6 ns packet
  * @QDF_PROTO_ICMPV6_NA: icmpv6 na packet
- * @QDF_PROTO_ICMPV6_MLQ: icmpv6 Multicast Listener Query packet
  * @QDF_PROTO_IPV4_UDP: ipv4 udp
  * @QDF_PROTO_IPV4_TCP: ipv4 tcp
  * @QDF_PROTO_IPV6_UDP: ipv6 udp
@@ -1204,7 +1187,6 @@ enum qdf_proto_subtype {
 	QDF_PROTO_ICMPV6_RA,
 	QDF_PROTO_ICMPV6_NS,
 	QDF_PROTO_ICMPV6_NA,
-	QDF_PROTO_ICMPV6_MLQ,
 	QDF_PROTO_IPV4_UDP,
 	QDF_PROTO_IPV4_TCP,
 	QDF_PROTO_IPV6_UDP,
@@ -1449,14 +1431,12 @@ struct qdf_tso_frag_t {
  * @tcp_ipv4_checksum_en: Enable/Disable tcp ipv4 checksum
  * @tcp_ipv6_checksum_en: Enable/Disable tcp ipv6 checksum
  * @partial_checksum_en: Enable/Disable partial checksum
- * @is_udp: flag to indicate if udp
  * @reserved_3a: rsvd
  * @checksum_offset: checksum offset
  * @reserved_4a: rsvd
  * @payload_start_offset: payload start offset
  * @reserved_4b: rsvd
  * @payload_end_offset: payload end offset
- * @eit_hdr_len: total length for L2/L3/L4 header
  * @reserved_5: rsvd
  * @tcp_flags_mask: Tcp_flag is inserted into the header based
  * on the mask
@@ -1495,8 +1475,7 @@ struct qdf_tso_flags_t {
 			tcp_ipv4_checksum_en:1,
 			tcp_ipv6_checksum_en:1,
 			partial_checksum_en:1,
-			is_udp:1,
-			reserved_3a:9;
+			reserved_3a:10;
 
 	uint32_t checksum_offset:14,
 			reserved_4a:2,
@@ -1504,8 +1483,7 @@ struct qdf_tso_flags_t {
 			reserved_4b:2;
 
 	uint32_t payload_end_offset:14,
-			eit_hdr_len:16,
-			reserved_5:2;
+			reserved_5:18;
 };
 
 /**
@@ -1716,7 +1694,6 @@ enum qdf_suspend_type {
  * @QDF_ENABLE_IRQ_FAILURE: Failed to enable IRQs
  * @QDF_VDEV_LINK_MISMATCH: Vdev link info mismatch
  * @QDF_DP_PEER_ID_DUPLICATE_USE: DP peer ID duplicate used
- * @QDF_DP_INVALID_PEER_MAP: DP Invalid peer map
  */
 enum qdf_hang_reason {
 	QDF_REASON_UNSPECIFIED,
@@ -1765,7 +1742,6 @@ enum qdf_hang_reason {
 	QDF_ENABLE_IRQ_FAILURE,
 	QDF_VDEV_LINK_MISMATCH,
 	QDF_DP_PEER_ID_DUPLICATE_USE,
-	QDF_DP_INVALID_PEER_MAP,
 };
 
 /**
@@ -1949,7 +1925,6 @@ enum qdf_iommu_attr {
  *  pages
  * @QDF_DP_TX_DIRECT_LINK_BUF_TYPE: DP tx direct link buffer pages
  * @QDF_DP_RX_DIRECT_LINK_CE_BUF_TYPE: DP RX direct link CE dest ring buf pages
- * @QDF_DP_RX_IPA_MAP_REFCNT_TYPE: DP RX IPA IOMMU refcnt for page pool buffers
  * @QDF_DP_DESC_TYPE_MAX: DP max desc type
  */
 enum qdf_dp_desc_type {
@@ -1971,20 +1946,6 @@ enum qdf_dp_desc_type {
 	QDF_DP_TX_DIRECT_LINK_BUF_TYPE,
 	QDF_DP_RX_DIRECT_LINK_CE_BUF_TYPE,
 #endif
-	QDF_DP_RX_IPA_MAP_REFCNT_TYPE,
 	QDF_DP_DESC_TYPE_MAX
-};
-
-/**
- * enum qdf_dp_tx_pp_type - page pool type
- * @QDF_DP_PAGE_POOL_RX: rx page pool
- * @QDF_DP_PAGE_POOL_TX: tx page pool
- * @QDF_DP_PAGE_POOL_MAX: max page pool type
- */
-enum qdf_dp_tx_pp_type {
-	QDF_DP_PAGE_POOL_RX,
-	QDF_DP_PAGE_POOL_TX,
-
-	QDF_DP_PAGE_POOL_MAX
 };
 #endif /* __QDF_TYPES_H */

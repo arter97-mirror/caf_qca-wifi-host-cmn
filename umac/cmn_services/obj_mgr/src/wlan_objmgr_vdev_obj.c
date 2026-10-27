@@ -64,7 +64,8 @@ static QDF_STATUS wlan_objmgr_vdev_object_status(
 		 * If component failed to allocate its object, treat it as
 		 * failure, complete object need to be cleaned up
 		 */
-		} else if (QDF_IS_STATUS_ERROR(vdev->obj_status[id])) {
+		} else if ((vdev->obj_status[id] == QDF_STATUS_E_NOMEM) ||
+			(vdev->obj_status[id] == QDF_STATUS_E_FAILURE)) {
 			status = QDF_STATUS_E_FAILURE;
 			break;
 		}
@@ -131,88 +132,27 @@ static struct vdev_osif_priv *wlan_objmgr_vdev_get_osif_priv(
 	return osif_priv;
 }
 
-#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
-void wlan_vdev_set_wfd_mode(struct wlan_objmgr_vdev *vdev, uint8_t wfd_mode)
-{
-	vdev->vdev_mlme.wfd_mode = wfd_mode;
-}
-
+#ifdef FEATURE_WLAN_SUPPORT_USD
 /**
- * wlan_vdev_get_wfd_mode() - Get WFD mode from the VDEV create parameter
- * @params: pointer to VDEV create parameter structure
+ * wlan_vdev_mlme_set_wfd_mode() - set WFD mode in VDEV MLME object
+ * @vdev: VDEV object
+ * @params: VDEV create params
  *
- * Return: WFD mode
+ * Return: void
  */
-static inline uint8_t
-wlan_vdev_get_wfd_mode(struct wlan_vdev_create_params *params)
+static inline void
+wlan_vdev_mlme_set_wfd_mode(struct wlan_objmgr_vdev *vdev,
+			    struct wlan_vdev_create_params *params)
 {
-	return params->wfd_mode;
+	vdev->vdev_mlme.wfd_mode = params->wfd_mode;
 }
 #else
-static inline uint8_t
-wlan_vdev_get_wfd_mode(struct wlan_vdev_create_params *params)
+static inline void
+wlan_vdev_mlme_set_wfd_mode(struct wlan_objmgr_vdev *vdev,
+			    struct wlan_vdev_create_params *params)
 {
-	return 0xFF;
 }
-#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 || FEATURE_WLAN_SUPPORT_PCC */
-
-#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
-bool wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc,
-				  uint8_t vdev_id)
-{
-	uint8_t wfd_mode;
-	struct wlan_objmgr_vdev *vdev;
-
-	if (!psoc) {
-		obj_mgr_err("psoc is NULL");
-		return false;
-	}
-
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
-						    WLAN_MLME_OBJMGR_ID);
-	if (!vdev) {
-		obj_mgr_err("vdev is NULL for id%d", vdev_id);
-		return false;
-	}
-
-	wfd_mode = wlan_vdev_mlme_get_wfd_mode(vdev);
-
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
-	if (wfd_mode == P2P_MODE_WFD_R2)
-		return true;
-
-	return false;
-}
-#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 */
-
-#ifdef FEATURE_WLAN_SUPPORT_PCC
-bool wlan_vdev_p2p_is_pcc_mode(struct wlan_objmgr_psoc *psoc,
-			       uint8_t vdev_id)
-{
-	uint8_t wfd_mode;
-	struct wlan_objmgr_vdev *vdev;
-
-	if (!psoc) {
-		obj_mgr_err("psoc is NULL");
-		return false;
-	}
-
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
-						    WLAN_MLME_OBJMGR_ID);
-	if (!vdev) {
-		obj_mgr_err("vdev is NULL for id%d", vdev_id);
-		return false;
-	}
-
-	wfd_mode = wlan_vdev_mlme_get_wfd_mode(vdev);
-
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
-	if (wfd_mode == P2P_MODE_WFD_PCC)
-		return true;
-
-	return false;
-}
-#endif /* FEATURE_WLAN_SUPPORT_PCC */
+#endif
 
 struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 			struct wlan_objmgr_pdev *pdev,
@@ -225,7 +165,6 @@ struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 	wlan_objmgr_vdev_status_handler stat_handler;
 	void *arg;
 	QDF_STATUS obj_status;
-	uint8_t wfd_mode;
 
 	if (!pdev) {
 		obj_mgr_err("pdev is NULL");
@@ -310,8 +249,7 @@ struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 	/* store os-specific pointer */
 	vdev->vdev_nif.osdev = wlan_objmgr_vdev_get_osif_priv(vdev);
 	/* set WFD mode */
-	wfd_mode = wlan_vdev_get_wfd_mode(params);
-	wlan_vdev_set_wfd_mode(vdev, wfd_mode);
+	wlan_vdev_mlme_set_wfd_mode(vdev, params);
 
 	/* peer count to 0 */
 	vdev->vdev_objmgr.wlan_peer_count = 0;
@@ -336,31 +274,20 @@ struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 			WLAN_MAX_PDEV_TEMP_PEERS);
 	/* TODO init other parameters */
 
-	/**
-	 * Initialize vdev->obj_status[] to QDF_STATUS_COMP_DISABLED
-	 * and abort the handler iteration on first error
-	 * except QDF_STATUS_COMP_ASYNC to prevent subsequent
-	 * components from executing after a failure.
-	 */
-	for (id = 0; id < WLAN_UMAC_MAX_COMPONENTS; id++)
-		vdev->obj_status[id] = QDF_STATUS_COMP_DISABLED;
-
 	/* Invoke registered create handlers */
 	for (id = 0; id < WLAN_UMAC_MAX_COMPONENTS; id++) {
 		handler = g_umac_glb_obj->vdev_create_handler[id];
 		arg = g_umac_glb_obj->vdev_create_handler_arg[id];
-		if (handler) {
+		if (handler)
 			vdev->obj_status[id] = handler(vdev, arg);
-			if (QDF_IS_STATUS_ERROR(vdev->obj_status[id]) &&
-			    vdev->obj_status[id] != QDF_STATUS_COMP_ASYNC)
-				break;
-		}
+		else
+			vdev->obj_status[id] = QDF_STATUS_COMP_DISABLED;
 	}
 
 	/* Derive object status */
 	obj_status = wlan_objmgr_vdev_object_status(vdev);
 
-	if (QDF_IS_STATUS_SUCCESS(obj_status)) {
+	if (obj_status == QDF_STATUS_SUCCESS) {
 		/* Object status is SUCCESS, Object is created */
 		vdev->obj_state = WLAN_OBJ_STATE_CREATED;
 		/* Invoke component registered status handlers */
@@ -379,7 +306,7 @@ struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 	} else if (obj_status == QDF_STATUS_COMP_ASYNC) {
 		vdev->obj_state = WLAN_OBJ_STATE_PARTIALLY_CREATED;
 	/* Component object failed to be created, clean up the object */
-	} else if (QDF_IS_STATUS_ERROR(obj_status)) {
+	} else if (obj_status == QDF_STATUS_E_FAILURE) {
 		/* Clean up the psoc */
 		obj_mgr_err("VDEV comp objects creation failed for vdev-id:%d",
 			vdev->vdev_objmgr.vdev_id);
@@ -891,14 +818,13 @@ qdf_list_t *wlan_objmgr_vdev_get_log_del_peer_list(
 	qdf_list_t *peer_list;
 	qdf_list_t *log_del_peer_list = NULL;
 
-	wlan_vdev_obj_lock(vdev);
 	if (vdev->obj_state != WLAN_OBJ_STATE_CREATED) {
-		wlan_vdev_obj_unlock(vdev);
 		obj_mgr_err("Invalid state vdev:%d state:%d",
 			    wlan_vdev_get_id(vdev), vdev->obj_state);
 		return NULL;
 	}
 
+	wlan_vdev_obj_lock(vdev);
 	if (vdev->vdev_objmgr.wlan_peer_count == 0) {
 		wlan_vdev_obj_unlock(vdev);
 		return NULL;
@@ -1094,8 +1020,7 @@ QDF_STATUS wlan_objmgr_vdev_peer_attach(struct wlan_objmgr_vdev *vdev,
 		/* For AP mode, self peer and BSS peer are same */
 		if ((opmode == QDF_SAP_MODE) ||
 		    (opmode == QDF_P2P_GO_MODE) ||
-		    (opmode == QDF_NDI_MODE) ||
-		    (opmode == QDF_PASSTHRU_MODE))
+		    (opmode == QDF_NDI_MODE))
 			wlan_vdev_set_bsspeer(vdev, peer);
 	}
 	/* set BSS peer for sta */
@@ -1905,11 +1830,11 @@ void wlan_vdev_mlme_clear_mlo_link_vdev(struct wlan_objmgr_vdev *vdev)
 
 uint8_t wlan_vdev_get_peer_sta_count(struct wlan_objmgr_vdev *vdev)
 {
-	struct wlan_objmgr_peer *peer, *next;
+	struct wlan_objmgr_peer *peer;
 	uint8_t peer_count = 0;
 
 	wlan_vdev_obj_lock(vdev);
-	wlan_objmgr_for_each_vdev_peer(vdev, peer, next) {
+	wlan_objmgr_for_each_vdev_peer(vdev, peer) {
 		wlan_objmgr_peer_get_ref(peer, WLAN_OBJMGR_ID);
 		if (wlan_peer_get_peer_type(peer) == WLAN_PEER_STA)
 			peer_count++;

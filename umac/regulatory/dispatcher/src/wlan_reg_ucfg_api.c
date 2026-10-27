@@ -2,6 +2,7 @@
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
+ *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
@@ -192,6 +193,11 @@ QDF_STATUS ucfg_reg_set_country(struct wlan_objmgr_pdev *pdev,
 				uint8_t *country)
 {
 	return reg_set_country(pdev, country);
+}
+
+QDF_STATUS ucfg_reg_reset_country(struct wlan_objmgr_psoc *psoc)
+{
+	return reg_reset_country(psoc);
 }
 
 QDF_STATUS ucfg_reg_enable_dfs_channels(struct wlan_objmgr_pdev *pdev,
@@ -525,44 +531,3 @@ ucfg_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 
 qdf_export_symbol(ucfg_reg_get_num_rules_of_ap_pwr_type);
 #endif
-
-#ifdef FEATURE_WLAN_TX_POWERBOOST
-QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
-				       struct reg_pdev_pb_dma_buf *dma)
-{
-	return reg_txpb_send_dma_addr(pdev, dma);
-}
-
-QDF_STATUS ucfg_reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
-			 struct reg_txpb_cmd_params *params)
-{
-	return reg_txpb_send_inference_cmd(pdev, params);
-}
-
-void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
-				     void *cbk, void *arg)
-{
-	reg_txpb_register_callback(psoc, (txpb_callback)cbk, arg);
-}
-
-void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
-{
-	reg_txpb_unregister_callback(psoc);
-}
-#endif
-
-bool ucfg_reg_disable_unii_1_2a_for_current_cc(struct wlan_objmgr_pdev *pdev)
-{
-	return reg_disable_unii_1_2a_for_current_cc(pdev);
-}
-
-QDF_STATUS ucfg_reg_set_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev,
-					  bool disable_unii_1_2a)
-{
-	return reg_set_disable_unii_1_2a(pdev, disable_unii_1_2a);
-}
-
-bool ucfg_reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev)
-{
-	return reg_get_disable_unii_1_2a(pdev);
-}

@@ -419,7 +419,7 @@ struct host_log_wlan_roam_trigger_info {
  *  @timestamp:   Host timestamp in millisecs
  *  @type:        0 - Candidate AP; 1 - Current connected AP.
  *  @bssid:       AP bssid.
- *  @freq:        Channel frequency
+ *  @freq:        Channel frquency
  *  @cu_load:     Channel utilization load of the AP.
  *  @cu_score:    Channel Utilization score.
  *  @rssi:        Candidate AP rssi

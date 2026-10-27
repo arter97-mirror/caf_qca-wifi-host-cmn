@@ -29,7 +29,6 @@
 
 #include <qdf_timer.h>
 #include <qdf_atomic.h>
-#include <qdf_lock.h>
 #include <qdf_util.h>
 #include <wlan_cmn.h>
 #ifdef FEATURE_RUNTIME_PM
@@ -45,8 +44,6 @@
  * @PEER_DELETE_ALL_RESPONSE_BIT: vdev peer delete all response bit
  * @RSO_STOP_RESPONSE_BIT: RSO stop response bit
  * @UPDATE_MAC_ADDR_RESPONSE_BIT: MAC address update response bit
- * @UP_UNIFIED_CONNECT_RESPONSE_BIT: vdev up unified connect response bit
- * @UNIFIED_DISCONNECT_RESPONSE_BIT: vdev up unified disconnect response bit
  * @RESPONSE_BIT_MAX: Max enumeration
  */
 enum wlan_vdev_mgr_tgt_if_rsp_bit {
@@ -57,8 +54,6 @@ enum wlan_vdev_mgr_tgt_if_rsp_bit {
 	PEER_DELETE_ALL_RESPONSE_BIT = 4,
 	RSO_STOP_RESPONSE_BIT = 5,
 	UPDATE_MAC_ADDR_RESPONSE_BIT = 6,
-	UP_UNIFIED_CONNECT_RESPONSE_BIT = 7,
-	UNIFIED_DISCONNECT_RESPONSE_BIT = 8,
 	RESPONSE_BIT_MAX,
 };
 
@@ -78,9 +73,7 @@ static inline char *string_from_rsp_bit(enum wlan_vdev_mgr_tgt_if_rsp_bit bit)
 					"PEER DELETE ALL",
 					"RSO STOP",
 					"UPDATE_MAC_ADDR",
-					"UP_UNIFIED_CONNECT",
-					"UNIFIED_DISCONNECT",
-					"RESPONSE MAX"};
+					"RESPONE MAX"};
 	return (char *)strings[bit];
 }
 
@@ -91,8 +84,6 @@ static inline char *string_from_rsp_bit(enum wlan_vdev_mgr_tgt_if_rsp_bit bit)
 #define DELETE_RESPONSE_TIMER          (4000 + PMO_RESUME_TIMEOUT)
 #define PEER_DELETE_ALL_RESPONSE_TIMER (6000 + PMO_RESUME_TIMEOUT)
 #define RSO_STOP_RESPONSE_TIMER        (6000 + PMO_RESUME_TIMEOUT)
-#define UP_UNIFIED_CONNECT_RESPONSE_TIMER (6000 + PMO_RESUME_TIMEOUT)
-#define UNIFIED_DISCONNECT_RESPONSE_TIMER (4000 + PMO_RESUME_TIMEOUT)
 #elif defined(QCA_LOWMEM_CONFIG) || defined(QCA_512M_CONFIG) || \
 defined(QCA_WIFI_QCA5018)
 #define START_RESPONSE_TIMER           15000
@@ -100,16 +91,12 @@ defined(QCA_WIFI_QCA5018)
 #define DELETE_RESPONSE_TIMER          15000
 #define PEER_DELETE_ALL_RESPONSE_TIMER 15000
 #define RSO_STOP_RESPONSE_TIMER        15000
-#define UP_UNIFIED_CONNECT_RESPONSE_TIMER 15000
-#define UNIFIED_DISCONNECT_RESPONSE_TIMER 15000
 #else
 #define START_RESPONSE_TIMER           8000
 #define STOP_RESPONSE_TIMER            6000
-#define DELETE_RESPONSE_TIMER          8000
+#define DELETE_RESPONSE_TIMER          4000
 #define PEER_DELETE_ALL_RESPONSE_TIMER 6000
 #define RSO_STOP_RESPONSE_TIMER        6000
-#define UP_UNIFIED_CONNECT_RESPONSE_TIMER 8000
-#define UNIFIED_DISCONNECT_RESPONSE_TIMER 6000
 #endif
 
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
@@ -119,16 +106,10 @@ defined(QCA_WIFI_QCA5018)
 /*
  * struct vdev_cmd_rsp_rt_lock - VDEV level runtime lock struct
  * @is_lock_acquired: Is lock currently held by the vdev
- * @is_deinitialized: Runtime lock has been deinitialized
- * @lock_initialized: Guard mutex has been initialized
- * @lock: Serializes runtime lock ownership and deinitialization
  * @vdev_cmd_rt_lock: Runtime lock
  */
 struct vdev_cmd_rsp_rt_lock {
 	bool is_lock_acquired;
-	bool is_deinitialized;
-	bool lock_initialized;
-	qdf_mutex_t lock;
 	qdf_runtime_lock_t vdev_cmd_rt_lock;
 };
 
@@ -201,30 +182,6 @@ struct vdev_delete_response {
 };
 
 /**
- * struct peer_create_response - peer create response structure
- * @vdev_id: vdev id
- * @status: status of peer create request
- * @peer_macaddr: peer MAC address
- */
-struct peer_create_response {
-	uint8_t vdev_id;
-	uint32_t status;
-	struct qdf_mac_addr peer_macaddr;
-};
-
-/**
- * struct peer_assoc_response - peer association response structure
- * @vdev_id: vdev id
- * @status: status of peer association request
- * @peer_macaddr: peer MAC address
- */
-struct peer_assoc_response {
-	uint8_t vdev_id;
-	uint32_t status;
-	struct qdf_mac_addr peer_macaddr;
-};
-
-/**
  * struct peer_delete_all_response - peer delete all response structure
  * @vdev_id: vdev id
  * @status: FW status for vdev delete all peer request
@@ -234,35 +191,6 @@ struct peer_delete_all_response {
 	uint8_t vdev_id;
 	uint8_t status;
 	uint32_t peer_type_bitmap;
-};
-
-/**
- * enum host_vdev_unified_connect_event_status - Host unified connect
- * event status
- * @HOST_VDEV_UNIFIED_CONNECT_EVENT_SUCCESS: Unified connect success
- * @HOST_VDEV_UNIFIED_CONNECT_EVENT_FAILURE: Unified connect failure
- * @HOST_VDEV_UNIFIED_CONNECT_EVENT_TIMEOUT: Unified connect timeout
- */
-enum host_vdev_unified_connect_event_status {
-	HOST_VDEV_UNIFIED_CONNECT_EVENT_SUCCESS = 0,
-	HOST_VDEV_UNIFIED_CONNECT_EVENT_FAILURE = 1,
-	HOST_VDEV_UNIFIED_CONNECT_EVENT_TIMEOUT = 2,
-};
-
-/**
- * struct vdev_unified_connect_response - Unified connect response structure
- * @vdev_id: VDEV ID for which the unified connect event is received
- * @status: Overall status from host_vdev_unified_connect_event_status
- * @peer_create_resp: Peer create confirmation response
- * @vdev_start_resp: VDEV start response
- * @peer_assoc_resp: Peer association confirmation response
- */
-struct vdev_unified_connect_response {
-	uint8_t vdev_id;
-	uint32_t status;
-	struct peer_create_response peer_create_resp;
-	struct vdev_start_response vdev_start_resp;
-	struct peer_assoc_response peer_assoc_resp;
 };
 
 /**
@@ -294,32 +222,4 @@ struct vdev_sta_quiet_event {
 	bool quiet_status;
 };
 #endif
-
-/**
- * struct vdev_unified_disconnect_response - unified disconnect response struct
- * @vdev_id: vdev id
- * @status: FW status for vdev unified disconnect
- */
-struct vdev_unified_disconnect_response {
-	uint8_t vdev_id;
-	int status;
-};
-
-/**
- * struct vdev_cqm_rssi_breach_event - adaptive-hysteresis RSSI CQM breach
- * event, as extracted from the WMI_RSSI_ADAPTIVE_BREACH_EVENTID event
- * @request_id: request id echoed back from the config command
- * @vdev_id: vdev id where the breach/recovery occurred
- * @event_type: WLAN_RSSI_LOW_RSSI_THRESHOLD_CQM_MET /
- *		WLAN_RSSI_HIGH_RSSI_THRESHOLD_CQM_MET
- * @curr_rssi: current rssi in dBm at the time of the breach/recovery
- * @curr_bssid: bssid of the monitored AP
- */
-struct vdev_cqm_rssi_breach_event {
-	uint32_t request_id;
-	uint32_t vdev_id;
-	uint32_t event_type;
-	int8_t curr_rssi;
-	struct qdf_mac_addr curr_bssid;
-};
 #endif /* __WLAN_VDEV_MGR_TGT_IF_RX_DEFS_H__ */

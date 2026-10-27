@@ -27,34 +27,6 @@
 #include "hal_be_rx.h"
 #include "hal_be_rx_tlv.h"
 
-#ifdef AST_OFFLOAD_ENABLE
-void
-dp_rx_wds_learn(struct dp_soc *soc,
-		struct dp_vdev *vdev,
-		uint8_t *rx_tlv_hdr,
-		struct dp_txrx_peer *txrx_peer,
-		qdf_nbuf_t nbuf);
-#else
-static inline void
-dp_rx_wds_learn(struct dp_soc *soc,
-		struct dp_vdev *vdev,
-		uint8_t *rx_tlv_hdr,
-		struct dp_txrx_peer *txrx_peer,
-		qdf_nbuf_t nbuf)
-{
-	struct hal_rx_msdu_metadata msdu_metadata;
-
-	hal_rx_msdu_packet_metadata_get_generic_be(rx_tlv_hdr, &msdu_metadata);
-	/* WDS Source Port Learning */
-	if (qdf_likely(vdev->wds_enabled))
-		dp_rx_wds_srcport_learn(soc,
-					rx_tlv_hdr,
-					txrx_peer,
-					nbuf,
-					msdu_metadata);
-}
-#endif
-
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 
 /**
@@ -96,27 +68,12 @@ void dp_rx_word_mask_subscribe_be(struct dp_soc *soc,
 				  uint32_t *msg_word,
 				  void *rx_filter);
 
-#ifdef CONFIG_BORON
 /**
- * dp_rx_process_bn() - Rx processing functionality for BN
+ * dp_rx_process_be() - Brain of the Rx processing functionality
+ *		     Called from the bottom half (tasklet/NET_RX_SOFTIRQ)
  * @int_ctx: per interrupt context
  * @hal_ring_hdl: opaque pointer to the HAL Rx Ring, which will be serviced
- * @reo_ring_num: ring number of the reo ring.
- * @quota: No. of units (packets) that can be serviced in one shot.
- *
- * Return: uint32_t: No. of elements processed
- */
-uint32_t dp_rx_process_bn(struct dp_intr *int_ctx,
-			  hal_ring_handle_t hal_ring_hdl,
-			  uint8_t reo_ring_num,
-			  uint32_t quota);
-
-/**
- * dp_rx_process_be_bn() - Brain of the Rx processing functionality
- *                   Called from the bottom half (tasklet/NET_RX_SOFTIRQ)
- * @int_ctx: per interrupt context
- * @hal_ring_hdl: opaque pointer to the HAL Rx Ring, which will be serviced
- * @reo_ring_num: ring number of the reo ring.
+ * @reo_ring_num: ring number (0, 1, 2 or 3) of the reo ring.
  * @quota: No. of units (packets) that can be serviced in one shot.
  *
  * This function implements the core of Rx functionality. This is
@@ -124,227 +81,9 @@ uint32_t dp_rx_process_bn(struct dp_intr *int_ctx,
  *
  * Return: uint32_t: No. of elements processed
  */
-static inline
-uint32_t dp_rx_process_be_bn(struct dp_intr *int_ctx,
-			     hal_ring_handle_t hal_ring_hdl,
-			     uint8_t reo_ring_num,
-			     uint32_t quota)
-{
-	return dp_rx_process_bn(int_ctx, hal_ring_hdl,
-				reo_ring_num, quota);
-}
-
-/**
- * dp_rx_err_process_bn() - Processes error frames routed to REO error ring
- *                          for BN
- * @int_ctx: pointer to DP interrupt context
- * @soc: core txrx main context
- * @hal_ring_hdl: opaque pointer to the HAL RX error ring which is serviced
- * @quota: No. of units (packets) that can be serviced in one shot.
- *
- * This function implements error processing and top level demultiplexer
- * for all the frames routed to REO error ring.
- *
- * Return: uint32_t: No. of elements processed
- */
-uint32_t
-dp_rx_err_process_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
-		     hal_ring_handle_t hal_ring_hdl, uint32_t quota);
-
-/**
- * dp_rx_err_process_be_bn() - Processes error frames routed to REO error ring
- * @int_ctx: pointer to DP interrupt context
- * @soc: core txrx main context
- * @hal_ring_hdl: opaque pointer to the HAL RX error ring which is serviced
- * @quota: No. of units (packets) that can be serviced in one shot.
- *
- * This function implements error processing and top level demultiplexer
- * for all the frames routed to REO error ring.
- *
- * Return: uint32_t: No. of elements processed
- */
-static inline uint32_t
-dp_rx_err_process_be_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
-			hal_ring_handle_t hal_ring_hdl, uint32_t quota)
-{
-	return dp_rx_err_process_bn(int_ctx, soc, hal_ring_hdl, quota);
-}
-#else
-/**
- * dp_rx_process_be() - Rx processing functionality for BE
- * @int_ctx: per interrupt context
- * @hal_ring_hdl: opaque pointer to the HAL Rx Ring, which will be serviced
- * @reo_ring_num: ring number of the reo ring.
- * @quota: No. of units (packets) that can be serviced in one shot.
- *
- * Return: uint32_t: No. of elements processed
- */
-
 uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 			  hal_ring_handle_t hal_ring_hdl, uint8_t reo_ring_num,
 			  uint32_t quota);
-
-static inline
-uint32_t dp_rx_process_be_bn(struct dp_intr *int_ctx,
-			     hal_ring_handle_t hal_ring_hdl,
-			     uint8_t reo_ring_num,
-			     uint32_t quota)
-{
-	return dp_rx_process_be(int_ctx, hal_ring_hdl,
-				reo_ring_num, quota);
-}
-
-static inline uint32_t
-dp_rx_err_process_be_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
-			hal_ring_handle_t hal_ring_hdl, uint32_t quota)
-{
-	return dp_rx_err_process(int_ctx, soc, hal_ring_hdl, quota);
-}
-#endif
-
-#ifdef DP_RX_RING_DESC_SANITY_CHECK
-/* Increasing this value, runs the risk of srng backpressure */
-#define DP_STALE_RX_WAIT_TIMEOUT_US 1000
-/*
- * Value to mark ring desc is invalidated by buffer_virt_addr_63_32 field
- * of REO2SW ring Desc.
- */
-#define DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE 0x12121212
-
-/**
- * dp_rx_ring_desc_validate() - Validate a reaped REO ring descriptor
- * @ring_desc: REO2SW ring descriptor pointer
- *
- * Check whether the BUFFER_VIRT_ADDR_63_32 field still holds the magic
- * invalidation value written during ring initialization or after the
- * previous reap. If so, the hardware has not yet updated this entry and
- * the descriptor is stale.
- *
- * Return: QDF_STATUS_SUCCESS if the descriptor is valid and ready to
- *         process, QDF_STATUS_E_PENDING if it is stale.
- */
-static inline QDF_STATUS
-dp_rx_ring_desc_validate(hal_ring_desc_t ring_desc)
-{
-	if (qdf_unlikely(DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE ==
-			(hal_rx_get_reo_desc_va_63_32(ring_desc))))
-		return QDF_STATUS_E_PENDING;
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * dp_rx_ring_desc_invalidate() - Re-poison a consumed REO ring descriptor
- * @ring_desc: REO2SW ring descriptor pointer
- *
- * Write the magic invalidation value back into BUFFER_VIRT_ADDR_63_32 so
- * that the next reap of the same slot can detect whether hardware has
- * written a new descriptor.
- *
- * Return: None
- */
-static inline void
-dp_rx_ring_desc_invalidate(hal_ring_desc_t ring_desc)
-{
-	hal_rx_set_reo_desc_va_63_32(ring_desc,
-				     DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE);
-}
-
-/**
- * dp_rx_reset_stale_entry_detection() - Clear the stale-entry detection
- *  state for a given REO ring after a valid descriptor is processed
- * @soc: DP SoC handle
- * @ring_num: REO destination ring index
- *
- * Return: None
- */
-static inline void
-dp_rx_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
-{
-	soc->rx_stale_entry[ring_num].detected = 0;
-}
-
-/**
- * dp_rx_stale_entry_handle() - Handle a stale REO ring descriptor
- * @soc: DP SoC handle
- * @ring_num: REO destination ring index
- *
- * Called when dp_rx_ring_desc_validate() returns QDF_STATUS_E_PENDING.
- * Tracks how long the host has been waiting for hardware to update the
- * descriptor.  Returns QDF_STATUS_SUCCESS while within the timeout window
- * (caller should rewind the tail pointer and retry), or
- * QDF_STATUS_E_FAILURE once the timeout expires (caller should drop the
- * entry and move on).
- *
- * Return: QDF_STATUS_SUCCESS while within timeout,
- *         QDF_STATUS_E_FAILURE on timeout expiry.
- */
-static inline QDF_STATUS
-dp_rx_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num)
-{
-	uint64_t curr_timestamp = qdf_get_log_timestamp_usecs();
-	uint64_t delta_us;
-
-	if (soc->rx_stale_entry[ring_num].detected) {
-		/* stale entry process continuation */
-		delta_us = curr_timestamp -
-				soc->rx_stale_entry[ring_num].start_time;
-		if (delta_us > DP_STALE_RX_WAIT_TIMEOUT_US) {
-			dp_err_rl("Stale rx desc on ring %d, waited %llu us",
-				  ring_num, delta_us);
-			return QDF_STATUS_E_FAILURE;
-		}
-	} else {
-		/* This is the start of stale entry detection */
-		soc->rx_stale_entry[ring_num].detected = 1;
-		soc->rx_stale_entry[ring_num].start_time = curr_timestamp;
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * dp_srng_rx_ring_desc_mark_invalid_be() - Poison all REO dest ring
- *  descriptors with a magic value in the BUFFER_VIRT_ADDR_63_32 field
- * @soc: DP SoC handle
- * @srng: pointer to the REO destination srng
- *
- * Called once during ring initialization so that any descriptor not yet
- * written by hardware is recognizable as stale when first reaped.
- *
- * Return: None
- */
-void dp_srng_rx_ring_desc_mark_invalid_be(struct dp_soc *soc,
-					  struct dp_srng *srng);
-
-#else
-static inline QDF_STATUS
-dp_rx_ring_desc_validate(hal_ring_desc_t ring_desc)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline void
-dp_rx_ring_desc_invalidate(hal_ring_desc_t ring_desc)
-{
-}
-
-static inline void
-dp_rx_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
-{
-}
-
-static inline QDF_STATUS
-dp_rx_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline void
-dp_srng_rx_ring_desc_mark_invalid_be(struct dp_soc *soc, struct dp_srng *srng)
-{
-}
-#endif /* DP_RX_RING_DESC_SANITY_CHECK */
 
 /**
  * dp_rx_desc_pool_init_be() - Initialize Rx Descriptor pool(s)
@@ -428,6 +167,9 @@ struct dp_rx_desc *dp_rx_desc_ppeds_cookie_2_va(struct dp_soc *soc,
 						unsigned long cookie);
 
 #define DP_PEER_METADATA_OFFLOAD_GET_BE(_peer_metadata)		(0)
+
+#define HTT_RX_PEER_META_DATA_FIELD_GET(_var, _field_s, _field_m) \
+	(((_var) & (_field_m)) >> (_field_s))
 
 #ifdef DP_USE_REDUCED_PEER_ID_FIELD_WIDTH
 static inline uint16_t
@@ -522,7 +264,6 @@ dp_soc_get_num_soc_be(struct dp_soc *soc)
 }
 #endif
 
-#ifndef CONFIG_BORON
 static inline QDF_STATUS
 dp_peer_rx_reorder_q_setup_per_tid(struct dp_peer *peer, uint32_t tid_bitmap,
 				   uint32_t ba_window_size, bool per_tid_ba)
@@ -644,7 +385,6 @@ dp_peer_rx_reorder_multi_q_setup(struct dp_peer *peer, uint32_t tid_bitmap,
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif /* CONFIG_BORON */
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
@@ -663,7 +403,6 @@ bool dp_rx_mlo_igmp_handler(struct dp_soc *soc,
 			    qdf_nbuf_t nbuf,
 			    uint8_t link_id);
 
-#ifndef CONFIG_BORON
 /**
  * dp_peer_rx_reorder_queue_setup_be() - Send reo queue
  *        setup wmi cmd to FW per peer type
@@ -786,18 +525,6 @@ QDF_STATUS dp_peer_rx_reorder_queue_setup_be(struct dp_soc *soc,
 					     uint32_t ba_window_size,
 					     bool per_tid_ba)
 {
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* CONFIG_BORON */
-#else
-#ifndef CONFIG_BORON
-static inline
-QDF_STATUS dp_peer_rx_reorder_queue_setup_be(struct dp_soc *soc,
-					     struct dp_peer *peer,
-					     uint32_t tid_bitmap,
-					     uint32_t ba_window_size,
-					     bool per_tid_ba)
-{
 	struct dp_rx_tid *rx_tid;
 	int tid;
 
@@ -845,17 +572,6 @@ QDF_STATUS dp_peer_rx_reorder_queue_setup_be(struct dp_soc *soc,
 							  ba_window_size,
 							  per_tid_ba);
 }
-#else
-static inline
-QDF_STATUS dp_peer_rx_reorder_queue_setup_be(struct dp_soc *soc,
-					     struct dp_peer *peer,
-					     uint32_t tid_bitmap,
-					     uint32_t ba_window_size,
-					     bool per_tid_ba)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* CONFIG_BORON */
 #endif /* WLAN_FEATURE_11BE_MLO */
 
 #ifdef QCA_DP_RX_NBUF_AND_NBUF_DATA_PREFETCH
@@ -998,7 +714,6 @@ uint64_t dp_rx_get_reo_qdesc_addr_be(hal_soc_handle_t hal_soc,
 }
 #endif
 
-#ifndef CONFIG_BORON
 /**
  * dp_rx_wbm_err_reap_desc_be() - Function to reap and replenish
  *                                WBM RX Error descriptors
@@ -1020,15 +735,6 @@ qdf_nbuf_t
 dp_rx_wbm_err_reap_desc_be(struct dp_intr *int_ctx, struct dp_soc *soc,
 			   hal_ring_handle_t hal_ring_hdl, uint32_t quota,
 			   uint32_t *rx_bufs_used);
-#else
-static inline qdf_nbuf_t
-dp_rx_wbm_err_reap_desc_be(struct dp_intr *int_ctx, struct dp_soc *soc,
-			   hal_ring_handle_t hal_ring_hdl, uint32_t quota,
-			   uint32_t *rx_bufs_used)
-{
-	return NULL;
-}
-#endif /* CONFIG_BORON */
 
 /**
  * dp_rx_intrabss_get_params_be() - Function to get destination soc and vdev id
@@ -1123,13 +829,11 @@ dp_rx_set_msdu_lmac_id(qdf_nbuf_t nbuf, uint32_t peer_mdata)
 #ifndef CONFIG_NBUF_AP_PLATFORM
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(DP_MLO_LINK_STATS_SUPPORT)
 static inline uint8_t
-dp_rx_peer_mdata_link_id_get_be(struct dp_soc *soc, uint32_t peer_mdata)
+dp_rx_peer_mdata_link_id_get_be(uint32_t peer_mdata)
 {
 	uint8_t link_id;
 
-	link_id = HTT_RX_PEER_META_DATA_FIELD_GET(peer_mdata,
-						  soc->htt_logical_link_id_s,
-						  soc->htt_logical_link_id_m) + 1;
+	link_id = HTT_RX_PEER_META_DATA_V1A_LOGICAL_LINK_ID_GET(peer_mdata) + 1;
 	if (link_id > DP_MAX_MLO_LINKS)
 		link_id = 0;
 
@@ -1137,7 +841,7 @@ dp_rx_peer_mdata_link_id_get_be(struct dp_soc *soc, uint32_t peer_mdata)
 }
 #else
 static inline uint8_t
-dp_rx_peer_mdata_link_id_get_be(struct dp_soc *soc, uint32_t peer_metadata)
+dp_rx_peer_mdata_link_id_get_be(uint32_t peer_metadata)
 {
 	return 0;
 }
@@ -1151,39 +855,25 @@ dp_rx_set_mpdu_seq_number_be(qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr)
 }
 
 static inline void
-dp_rx_set_link_id_be(struct dp_soc *soc, qdf_nbuf_t nbuf, uint32_t peer_mdata)
+dp_rx_set_link_id_be(qdf_nbuf_t nbuf, uint32_t peer_mdata)
 {
 	uint8_t logical_link_id;
 
-	logical_link_id = dp_rx_peer_mdata_link_id_get_be(soc, peer_mdata);
+	logical_link_id = dp_rx_peer_mdata_link_id_get_be(peer_mdata);
 	QDF_NBUF_CB_RX_LOGICAL_LINK_ID(nbuf) = logical_link_id;
 }
 
 #ifdef IPA_OPT_WIFI_DP_CTRL
-#ifdef CONFIG_BORON
 static inline void
-dp_rx_set_refill_opt_dp_ctrl(struct dp_soc *soc, uint8_t *is_ctrl_refill,
+dp_rx_set_refill_opt_dp_ctrl(uint8_t *is_ctrl_refill,
 			     uint32_t peer_mdata)
 {
 	*is_ctrl_refill =
-		HTT_RX_PEER_META_DATA_FIELD_GET(peer_mdata,
-						soc->htt_opt_dp_ctrl_refill_s,
-						soc->htt_opt_dp_ctrl_refill_m);
+		HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_GET(peer_mdata);
 }
 #else
 static inline void
-dp_rx_set_refill_opt_dp_ctrl(struct dp_soc *soc, uint8_t *is_ctrl_refill,
-			     uint32_t peer_mdata)
-{
-	*is_ctrl_refill =
-		HTT_RX_PEER_META_DATA_FIELD_GET(peer_mdata,
-						soc->htt_opt_dp_ctrl_refill_s,
-						soc->htt_opt_dp_ctrl_refill_m);
-}
-#endif
-#else
-static inline void
-dp_rx_set_refill_opt_dp_ctrl(struct dp_soc *soc, uint8_t *is_ctrl_refill,
+dp_rx_set_refill_opt_dp_ctrl(uint8_t *is_ctrl_refill,
 			     uint32_t peer_mdata)
 {
 }
@@ -1239,8 +929,8 @@ static inline uint8_t dp_rx_copy_desc_info_in_nbuf_cb(struct dp_soc *soc,
 	QDF_NBUF_CB_RX_VDEV_ID(nbuf) =
 		dp_rx_peer_metadata_vdev_id_get_be(soc, peer_mdata);
 	dp_rx_set_msdu_lmac_id(nbuf, peer_mdata);
-	dp_rx_set_link_id_be(soc, nbuf, peer_mdata);
-	dp_rx_set_refill_opt_dp_ctrl(soc, is_ctrl_refill, peer_mdata);
+	dp_rx_set_link_id_be(nbuf, peer_mdata);
+	dp_rx_set_refill_opt_dp_ctrl(is_ctrl_refill, peer_mdata);
 
 	/* to indicate whether this msdu is rx offload */
 	pkt_capture_offload =
@@ -1288,19 +978,11 @@ static inline uint8_t dp_rx_copy_desc_info_in_nbuf_cb(struct dp_soc *soc,
 	return pkt_capture_offload;
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-static inline uint8_t hal_rx_get_l3_pad_bytes_be(qdf_nbuf_t nbuf,
-						 uint8_t *rx_tlv_hdr)
-{
-	return dal_vndr_hal_rx_get_l3_pad_bytes_be(rx_tlv_hdr);
-}
-#else
 static inline uint8_t hal_rx_get_l3_pad_bytes_be(qdf_nbuf_t nbuf,
 						 uint8_t *rx_tlv_hdr)
 {
 	return HAL_RX_TLV_L3_HEADER_PADDING_GET(rx_tlv_hdr);
 }
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
 static inline uint8_t
 dp_rx_wbm_err_msdu_continuation_get(struct dp_soc *soc,
@@ -1312,7 +994,7 @@ dp_rx_wbm_err_msdu_continuation_get(struct dp_soc *soc,
 }
 #else
 static inline void
-dp_rx_set_link_id_be(struct dp_soc *soc, qdf_nbuf_t nbuf, uint32_t peer_mdata)
+dp_rx_set_link_id_be(qdf_nbuf_t nbuf, uint32_t peer_mdata)
 {
 }
 
@@ -1430,191 +1112,4 @@ dp_get_soc_by_chip_id_be(struct dp_soc *soc, uint8_t chip_id)
 	return soc;
 }
 #endif
-
-/**
- * dp_rx_can_reap_all_frags() - Peek the REO dest ring to check whether
- *                               every fragment of the in-progress MSDU is
- *                               already visible to the host, and fits
- *                               within the current reap budget
- * @soc: datapath soc handle
- * @hal_ring_hdl: REO destination ring handle
- * @num_pending: number of entries left to reap in this pass (includes the
- *               fragment that was just reaped and triggered this check)
- * @num_valid: number of valid entries currently available from the ring's
- *             tp, e.g. as returned by hal_srng_dst_num_valid(). tp/hp are
- *             not touched by this function, so the caller must have
- *             computed this against the same (unmoved) tp/cached_hp.
- *
- * Called right after the first fragment (continuation bit set) of a
- * scattered MSDU has been reaped, i.e. tp already points past it. Walks
- * the ring purely by peeking -- starting at the current tp -- without
- * moving tp/hp, counting fragments (num_frags) until either a
- * non-continuation entry (last fragment) is found, @num_valid entries are
- * exhausted, or num_pending budget (minus the already-reaped triggering
- * fragment) runs out -- checked before each peek so a peek is never
- * wasted on an offset the caller couldn't afford to use anyway.
- *
- * Return: true if the entry terminating this MSDU (continuation bit
- *         clear) was found within budget before running out of visible
- *         entries, i.e. all fragments are present and can be reaped now;
- *         false if the ring ran dry mid-MSDU, or num_pending is not
- *         enough to dequeue all of it, and the caller should wait/retry
- */
-static inline bool
-dp_rx_can_reap_all_frags(struct dp_soc *soc,
-			 hal_ring_handle_t hal_ring_hdl,
-			 uint32_t num_pending,
-			 uint32_t num_valid)
-{
-	hal_soc_handle_t hal_soc = soc->hal_soc;
-	hal_ring_desc_t desc;
-	struct hal_rx_msdu_desc_info msdu_desc_info;
-	uint32_t num_frags = 0;
-
-	/* --num_pending accounts for the triggering fragment already
-	 * reaped; short-circuits before peeking once budget runs out.
-	 */
-	while (--num_pending &&
-	       (desc = hal_srng_dst_peek_n(hal_soc, hal_ring_hdl, num_frags,
-					   num_valid))) {
-		num_frags++;
-
-		hal_rx_msdu_desc_info_get_be(desc, &msdu_desc_info);
-
-		if (!(msdu_desc_info.msdu_flags & HAL_MSDU_F_MSDU_CONTINUATION))
-			return true;
-	}
-
-	return false;
-}
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * dp_dal_rx_process_nbuf_list_be() - Process network buffer list in DAL RX
- *				       path for BE architecture
- * @soc: Handle to DP SoC structure
- * @nbuf_list: Linked list of network buffers to process
- * @reo_ring_num: REO ring number (0-3) from which packets are received
- *
- * This function processes a list of network buffers in the Data Abstraction
- * Layer (DAL) RX path. It handles the RX processing for packets that have
- * been prepared with descriptor information in their control blocks. This
- * is the BE architecture specific implementation.
- *
- * Return: QDF_STATUS - QDF_STATUS_SUCCESS on success, error code on failure
- */
-QDF_STATUS dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc,
-					  qdf_nbuf_t nbuf_list,
-					  uint8_t reo_ring_num);
-
-#ifdef CONFIG_BORON
-/**
- * dp_dal_rx_process_nbuf_list_bn() - Process network buffer list in DAL RX
- *				       path for BN architecture
- * @soc: Handle to DP SoC structure
- * @nbuf_list: Linked list of network buffers to process
- * @reo_ring_num: REO ring number (0-3) from which packets are received
- *
- * This function processes a list of network buffers in the Data Abstraction
- * Layer (DAL) RX path. It handles the RX processing for packets that have
- * been prepared with descriptor information in their control blocks. This
- * is the BN architecture specific implementation.
- *
- * Return: QDF_STATUS - QDF_STATUS_SUCCESS on success, error code on failure
- */
-QDF_STATUS dp_dal_rx_process_nbuf_list_bn(struct dp_soc *soc,
-					  qdf_nbuf_t nbuf_list,
-					  uint8_t reo_ring_num);
-
-static inline
-QDF_STATUS dp_dal_rx_process_nbuf_list_be_bn(struct dp_soc *soc,
-					     qdf_nbuf_t nbuf_list,
-					     uint8_t reo_ring_num)
-{
-	return dp_dal_rx_process_nbuf_list_bn(soc, nbuf_list, reo_ring_num);
-}
-
-/**
- * dp_rx_validate_and_fetch_rx_desc_bn() - RX descriptor validation for BN
- * @soc: DP SOC context
- * @ring_desc: HAL ring descriptor
- * @ring_id: Ring ID
- *
- * This function performs BN-specific validation and fetches the RX descriptor.
- * It includes all validation steps from error checking to descriptor sanity
- * and error handling with descriptor cleanup.
- *
- * Return: Pointer to rx_desc on success, NULL on failure
- */
-struct dp_rx_desc *
-dp_rx_validate_and_fetch_rx_desc_bn(struct dp_soc *soc,
-				    hal_ring_desc_t ring_desc,
-				    uint8_t ring_id);
-
-/**
- * dp_rx_validate_and_fetch_rx_desc_be_bn() - BN RX descriptor validation API
- * @soc: DP SOC context
- * @ring_desc: HAL ring descriptor
- * @ring_id: Ring ID
- *
- * This function performs BN-specific validation and fetches the RX descriptor.
- * It includes all validation steps from error checking to descriptor sanity
- * and error handling with descriptor cleanup.
- *
- * Return: Pointer to rx_desc on success, NULL on failure
- */
-static inline struct dp_rx_desc *
-dp_rx_validate_and_fetch_rx_desc_be_bn(struct dp_soc *soc,
-				       hal_ring_desc_t ring_desc,
-				       uint8_t ring_id)
-{
-	return dp_rx_validate_and_fetch_rx_desc_bn(soc, ring_desc, ring_id);
-}
-#else /* Beryllium */
-
-static inline
-QDF_STATUS dp_dal_rx_process_nbuf_list_be_bn(struct dp_soc *soc,
-					     qdf_nbuf_t nbuf_list,
-					     uint8_t reo_ring_num)
-{
-	return dp_dal_rx_process_nbuf_list_be(soc, nbuf_list, reo_ring_num);
-}
-/**
- * dp_rx_validate_and_fetch_rx_desc_be() - RX descriptor validation API for BE
- * @soc: DP SOC context
- * @ring_desc: HAL ring descriptor
- * @ring_id: Ring ID
- *
- * This function performs BE-specific validation and fetches the RX descriptor.
- * It includes all validation steps from error checking to descriptor sanity
- * and error handling with descriptor cleanup.
- *
- * Return: Pointer to rx_desc on success, NULL on failure
- */
-struct dp_rx_desc *
-dp_rx_validate_and_fetch_rx_desc_be(struct dp_soc *soc,
-				    hal_ring_desc_t ring_desc,
-				    uint8_t ring_id);
-
-/**
- * dp_rx_validate_and_fetch_rx_desc_be_bn() - BE RX descriptor validation API
- * @soc: DP SOC context
- * @ring_desc: HAL ring descriptor
- * @ring_id: Ring ID
- *
- * This function performs BE-specific validation and fetches the RX descriptor.
- * It includes all validation steps from error checking to descriptor sanity
- * and error handling with descriptor cleanup.
- *
- * Return: Pointer to rx_desc on success, NULL on failure
- */
-static inline struct dp_rx_desc *
-dp_rx_validate_and_fetch_rx_desc_be_bn(struct dp_soc *soc,
-				       hal_ring_desc_t ring_desc,
-				       uint8_t ring_id)
-{
-	return dp_rx_validate_and_fetch_rx_desc_be(soc, ring_desc, ring_id);
-}
-#endif /* CONFIG_BERYLLIUM */
-#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

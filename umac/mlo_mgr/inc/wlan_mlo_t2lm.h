@@ -215,8 +215,6 @@ struct ttlm_req_params {
  * @WLAN_TTLM_SS_AP_BEACON_INPROGRESS: AP side Beacon is in progress
  * @WLAN_TTLM_SS_AP_BTM_INPROGRESS: AP side BTM is in progress
  * @WLAN_TTLM_SS_TEARDOWN_INPROGRESS: Teardown is in progress
- * @WLAN_TTLM_SS_LINK_RECFG_UPDATE_MAPPING_INPROGRESS: Update TTLM mapping
- * due to Link Reconfiguration request
  * @WLAN_TTLM_SS_MAX: Max substate
  */
 enum wlan_ttlm_sm_state {
@@ -229,7 +227,6 @@ enum wlan_ttlm_sm_state {
 	WLAN_TTLM_SS_AP_BEACON_INPROGRESS = 6,
 	WLAN_TTLM_SS_AP_BTM_INPROGRESS = 7,
 	WLAN_TTLM_SS_TEARDOWN_INPROGRESS = 8,
-	WLAN_TTLM_SS_LINK_RECFG_UPDATE_MAPPING_INPROGRESS = 9,
 	WLAN_TTLM_SS_MAX,
 };
 
@@ -248,10 +245,6 @@ enum wlan_ttlm_sm_state {
  * @WLAN_TTLM_SM_EV_RX_TEARDOWN: TTLM Teardown from AP
  * @WLAN_TTLM_SM_EV_TIMEOUT: TTLM Timeout happen
  * @WLAN_TTLM_SM_EV_TTLM_REQ_TIMEOUT: TTLM req timer timeout happen
- * @WLAN_TTLM_SM_EV_LINK_RECFG_DEL_UPDATE_MAPPING: TTLM update mapping due to
- * Link reconfig delete link request
- * @WLAN_TTLM_SM_EV_LINK_RECFG_ADD_UPDATE_MAPPING: TTLM update mapping due to
- * Link reconfig add link request
  * @WLAN_TTLM_SM_EV_MAX: Max event
  */
 enum wlan_ttlm_sm_evt {
@@ -267,8 +260,6 @@ enum wlan_ttlm_sm_evt {
 	WLAN_TTLM_SM_EV_RX_TEARDOWN = 9,
 	WLAN_TTLM_SM_EV_TIMEOUT = 10,
 	WLAN_TTLM_SM_EV_TTLM_REQ_TIMEOUT = 11,
-	WLAN_TTLM_SM_EV_LINK_RECFG_DEL_UPDATE_MAPPING = 12,
-	WLAN_TTLM_SM_EV_LINK_RECFG_ADD_UPDATE_MAPPING = 13,
 	WLAN_TTLM_SM_EV_MAX,
 };
 
@@ -649,16 +640,12 @@ struct wlan_t2lm_onging_negotiation_info {
  * @t2lm_negotiated_info: Previous successful T2LM negotiation is saved here.
  * @ongoing_tid_to_link_mapping: This has the ongoing TID-to-link mapping info
  *                               transmitted by this peer to the connected peer.
- * @is_fw_btm_ind: FW has sent BTM indication for load balance.
- * @is_standby_link_enabled: If standby link enabled and vdev repurpose will start.
  */
 struct wlan_mlo_peer_t2lm_policy {
 	uint8_t self_gen_dialog_token;
 	enum wlan_t2lm_enable t2lm_enable_val;
 	struct wlan_prev_t2lm_negotiated_info t2lm_negotiated_info;
 	struct wlan_t2lm_onging_negotiation_info ongoing_tid_to_link_mapping;
-	bool is_fw_btm_ind;
-	bool is_standby_link_enabled;
 };
 
 /**
@@ -1295,22 +1282,6 @@ wlan_clear_peer_level_tid_to_link_mapping(struct wlan_objmgr_vdev *vdev);
 QDF_STATUS
 wlan_mlo_link_disable_request_handler(struct wlan_objmgr_psoc *psoc,
 				      void *evt_params);
-
-/**
- * wlan_mlo_send_ttlm_complete() - API to send TTLM complete
- * command to FW.
- *
- * @vdev: Pointer to vdev
- * @ml_peer: ML peer context pointer
- * @success: boolean status
- *
- * Return QDF_STATUS
- */
-void
-wlan_mlo_send_ttlm_complete(struct wlan_objmgr_vdev *vdev,
-			    struct wlan_mlo_peer_context *ml_peer,
-			    bool success);
-
 #else
 static inline void
 wlan_clear_peer_level_tid_to_link_mapping(struct wlan_objmgr_vdev *vdev)
@@ -1322,13 +1293,6 @@ wlan_mlo_link_disable_request_handler(struct wlan_objmgr_psoc *psoc,
 				      void *evt_params)
 {
 	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline void
-wlan_mlo_send_ttlm_complete(struct wlan_objmgr_vdev *vdev,
-			    struct wlan_mlo_peer_context *ml_peer,
-			    bool success)
-{
 }
 #endif
 #endif /* _WLAN_MLO_T2LM_H_ */

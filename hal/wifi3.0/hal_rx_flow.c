@@ -61,7 +61,7 @@ static inline void hal_rx_dump_fse_ext(struct rx_flow_search_entry *fse)
 		fse->aggregation_count,
 		fse->lro_eligible,
 #if defined(QCA_WIFI_KIWI_V2) || defined(QCA_WIFI_WCN7750) || \
-	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_WCN8750)
+	defined(QCA_WIFI_QCC2072)
 		fse->cumulative_ip_length_pmac1,
 #else
 		fse->cumulative_l4_checksum,

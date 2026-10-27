@@ -15,8 +15,9 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#include "tcl_assist_cmd.h"
-#include "tqm2sw_completion_ring.h"
+/* TODO: TCL_ASSIST_CMD */
+//#include "tcl_data_cmd.h"
+//#include "mac_tcl_reg_seq_hwioreg.h"
 #include "phyrx_rssi_legacy.h"
 #include "hal_be_hw_headers.h"
 #include "hal_internal.h"

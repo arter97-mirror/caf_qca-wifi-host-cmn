@@ -26,6 +26,7 @@
 
 #include "wlan_cm_public_struct.h"
 #include "wlan_ext_mlme_obj_types.h"
+
 /**
  * wlan_cm_start_connect() - connect start request
  * @vdev: vdev pointer
@@ -223,28 +224,6 @@ bool wlan_cm_is_vdev_idle_due_to_link_switch(struct wlan_objmgr_vdev *vdev);
  * Return: bool
  */
 bool wlan_cm_is_vdev_roaming(struct wlan_objmgr_vdev *vdev);
-
-#ifdef WLAN_FEATURE_11BN_SMD
-/**
- * cm_is_vdev_smd_roam_sync_in_progress() - Check if vdev is in
- *   CONNECTED+SMD_ROAM_SYNC sub-state.
- * @vdev: vdev pointer
- *
- * Returns true when a link switch during SMD roaming has completed (vdev
- * is connected on the new AP) but old-link cleanup is still pending.
- * Used by guards G1/G2/G3 to block RSO state changes, link reconfig
- * requests, and RSO stop while cleanup is in progress.
- *
- * Return: true if in SMD_ROAM_SYNC sub-state
- */
-bool cm_is_vdev_smd_roam_sync_in_progress(struct wlan_objmgr_vdev *vdev);
-#else
-static inline bool
-cm_is_vdev_smd_roam_sync_in_progress(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_11BN_SMD */
 
 /**
  * wlan_cm_free_connect_req() - free up connect request and its sub memory
@@ -562,8 +541,10 @@ QDF_STATUS wlan_cm_reassoc_rsp(struct wlan_objmgr_vdev *vdev,
  *
  * Return: void
  */
+#ifdef WLAN_POLICY_MGR_ENABLE
 void wlan_cm_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 				 wlan_cm_id cm_id, QDF_STATUS status);
+#endif /* ifdef POLICY_MGR_ENABLE */
 
 #ifdef SM_ENG_HIST_ENABLE
 /**
@@ -594,6 +575,7 @@ static inline void wlan_cm_req_history_print(struct wlan_objmgr_vdev *vdev)
 {}
 #endif
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * wlan_cm_set_candidate_advance_filter_cb() - Set CM candidate advance
  * filter cb
@@ -624,6 +606,17 @@ void wlan_cm_set_candidate_custom_sort_cb(
 				 qdf_list_t *list))
 {
 }
+#else
+void wlan_cm_set_candidate_advance_filter_cb(
+		struct wlan_objmgr_vdev *vdev,
+		void (*filter_fun)(struct wlan_objmgr_vdev *vdev,
+				   struct scan_filter *filter));
+
+void wlan_cm_set_candidate_custom_sort_cb(
+		struct wlan_objmgr_vdev *vdev,
+		void (*sort_fun)(struct wlan_objmgr_vdev *vdev,
+				 qdf_list_t *list));
+#endif
 
 /**
  * wlan_cm_get_rnr() - get rnr
@@ -648,18 +641,6 @@ QDF_STATUS wlan_cm_get_rnr(struct wlan_objmgr_vdev *vdev, wlan_cm_id cm_id,
 struct scan_cache_entry *
 wlan_cm_get_curr_candidate_entry(struct wlan_objmgr_vdev *vdev,
 				 wlan_cm_id cm_id);
-
-/**
- * wlan_cm_is_connect_ap_eppke_capable() - Check if the active connect
- * candidate AP is EPPKE capable
- * @vdev: VDEV object manager
- *
- * Determine whether the currently selected AP candidate advertises EPPKE
- * (via its RSN IE or Security Profile IE). Used to gate 11bi peer creation.
- *
- * Return: true if the selected AP is EPPKE capable, false otherwise
- */
-bool wlan_cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev);
 
 /**
  * wlan_cm_disc_cont_after_rso_stop() - Continue disconnect after RSO stop
@@ -766,40 +747,4 @@ wlan_cm_bss_mlo_type(struct wlan_objmgr_psoc *psoc,
 void wlan_cm_bearer_switch_resp(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 				wlan_cm_id cm_id, QDF_STATUS status);
 #endif /* WLAN_FEATURE_LL_LT_SAP */
-
-/**
- * wlan_cm_is_link_switch_connection() - Check whether the connection is
- * because of link switch or not
- * @vdev: pointer to vdev
- *
- * Return: True/False
- */
-bool wlan_cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev);
-
-/**
- * wlan_cm_update_all_sta_links_assoc_state() - Update assoc_state for all
- *                                              connected STA links
- * @pdev: pdev pointer
- *
- * Iterates all STA vdevs on the pdev and updates assoc_state to
- * SCAN_ENTRY_CON_STATE_ASSOC for connected entries. For MLO connections,
- * updates all links (active + standby). For non-MLO connections, updates
- * the connected BSSID entry. Called on scan completion to prevent scan
- * entries from aging out after CSA events.
- */
-void wlan_cm_update_all_sta_links_assoc_state(struct wlan_objmgr_pdev *pdev);
-
-/**
- * wlan_cm_mgmt_tx_status() - indicate mgmt tx status to OSIF
- * @vdev: vdev pointer
- * @cookie: cookie from NL80211 mgmt tx (0 if not applicable)
- * @buf: management frame buffer
- * @len: frame length
- * @ack: true if acked by peer, false otherwise
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS wlan_cm_mgmt_tx_status(struct wlan_objmgr_vdev *vdev,
-				  uint64_t cookie, const uint8_t *buf,
-				  uint32_t len, bool ack);
 #endif /* __WLAN_CM_UCFG_API_H */

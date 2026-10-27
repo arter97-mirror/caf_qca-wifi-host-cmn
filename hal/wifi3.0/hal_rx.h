@@ -78,11 +78,7 @@
 /* MONITOR STATUS BUFFER SIZE = 1408 data bytes, buffer allocation of 2k bytes
  * including buffer reservation, buffer alignment and skb shared info size.
  */
-#ifdef BORON_MONITOR
-#define RX_MON_STATUS_BASE_BUF_SIZE    4096
-#else
 #define RX_MON_STATUS_BASE_BUF_SIZE    2048
-#endif /* BORON_MONITOR */
 #define RX_MON_STATUS_BUF_ALIGN  128
 #define RX_MON_STATUS_BUF_RESERVATION  128
 #define RX_MON_STATUS_BUF_SIZE  (RX_MON_STATUS_BASE_BUF_SIZE - \
@@ -228,27 +224,13 @@ enum hal_reo_error_status {
 };
 
 /**
- * enum hal_rxdma_error_status - Enum which encapsulates "rxdma_push_reason"
- *
- * @HAL_RXDMA_ERROR_DETECTED : RXDMA pushed with an error detected
- * @HAL_RXDMA_ROUTING_INSTRUCTION: RXDMA pushed without error, just per
- *                                 routing instruction.
- * @HAL_RXDMA_RX_FLUSH: RXDMA pushed with flush request
- */
-enum hal_rxdma_error_status {
-	HAL_RXDMA_ERROR_DETECTED = 0,
-	HAL_RXDMA_ROUTING_INSTRUCTION = 1,
-	HAL_RXDMA_RX_FLUSH = 2,
-};
-
-/**
  * struct hal_rx_msdu_desc_info - RX MSDU Descriptor
  * @msdu_flags: [0] first_msdu_in_mpdu
  *              [1] last_msdu_in_mpdu
  *              [2] msdu_continuation - MSDU spread across buffers
  *             [23] sa_is_valid - SA match in peer table
  *             [24] sa_idx_timeout - Timeout while searching for SA match
- *             [25] da_is_valid - Used to identify intra-bss forwarding
+ *             [25] da_is_valid - Used to identtify intra-bss forwarding
  *             [26] da_is_MCBC
  *             [27] da_idx_timeout - Timeout while searching for DA match
  * @msdu_len: length of the MSDU (14 bits of length)
@@ -439,17 +421,6 @@ enum hal_rx_mpdu_desc_flags {
 
 /* TODO: Convert the following structure fields accesseses to offsets */
 
-#ifdef CONFIG_BORON
-#define HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)	\
-	(HAL_RX_BUFFER_ADDR_39_32_GET(&			\
-	(((struct reo_destination_ring *)		\
-		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
-
-#define HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_desc)	\
-	(HAL_RX_BUFFER_ADDR_31_0_GET(&			\
-	(((struct reo_destination_ring *)		\
-		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
-#else
 #define HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)	\
 	(HAL_RX_BUFFER_ADDR_39_32_GET(&			\
 	(((struct reo_destination_ring *)		\
@@ -459,7 +430,6 @@ enum hal_rx_mpdu_desc_flags {
 	(HAL_RX_BUFFER_ADDR_31_0_GET(&			\
 	(((struct reo_destination_ring *)		\
 		reo_desc)->buf_or_link_desc_addr_info)))
-#endif
 
 #define HAL_RX_REO_BUF_COOKIE_INVALID_RESET(reo_desc)	\
 		(HAL_RX_BUF_COOKIE_INVALID_RESET(&		\
@@ -566,11 +536,7 @@ hal_rx_mpdu_desc_info_get(hal_soc_handle_t hal_soc_hdl, void *desc_addr,
 						       mpdu_desc_info);
 }
 
-#ifdef CONFIG_BORON
-#define HAL_RX_NUM_MSDU_DESC 15
-#else
 #define HAL_RX_NUM_MSDU_DESC 6
-#endif
 #define HAL_RX_MAX_SAVED_RING_DESC 16
 
 /* TODO: rework the structure */
@@ -789,7 +755,6 @@ hal_rx_priv_info_set_in_tlv(hal_soc_handle_t hal_soc_hdl,
 							 len);
 }
 
-#ifdef CONFIG_BORON
 /**
  * hal_rx_reo_ent_rxdma_push_reason_get() - Retrieves RXDMA push reason from
  *	reo_entrance_ring descriptor
@@ -802,20 +767,10 @@ static inline
 uint8_t hal_rx_reo_ent_rxdma_push_reason_get(hal_rxdma_desc_t reo_ent_desc)
 {
 	return _HAL_MS((*_OFFSET_TO_WORD_PTR(reo_ent_desc,
-		REO_ENTRANCE_RING_RXDMA_PUSH_REASON_OFFSET)),
-		REO_ENTRANCE_RING_RXDMA_PUSH_REASON_MASK,
-		REO_ENTRANCE_RING_RXDMA_PUSH_REASON_LSB);
-}
-#else
-static inline
-uint8_t hal_rx_reo_ent_rxdma_push_reason_get(hal_rxdma_desc_t reo_ent_desc)
-{
-	return _HAL_MS((*_OFFSET_TO_WORD_PTR(reo_ent_desc,
 		HAL_REO_ENTRANCE_RING_RXDMA_PUSH_REASON_OFFSET)),
 		HAL_REO_ENTRANCE_RING_RXDMA_PUSH_REASON_MASK,
 		HAL_REO_ENTRANCE_RING_RXDMA_PUSH_REASON_LSB);
 }
-#endif
 
 /**
  * hal_rx_reo_ent_rxdma_error_code_get() - Retrieves RXDMA error code from
@@ -893,27 +848,6 @@ hal_rx_print_pn(hal_soc_handle_t hal_soc_hdl, uint8_t *buf)
 	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
 
 	hal_soc->ops->hal_rx_print_pn(buf);
-}
-
-/**
- * hal_rx_msdu_end_l3_hdr_padding_set() - API to set the
- * l3_header padding from rx_msdu_end TLV
- * @hal_soc_hdl: hal_soc handle
- * @buf: pointer to the start of RX PKT TLV headers
- * @l3_hdr_pad: l3_hdr_pad value to be set
- *
- * Return: void
- */
-static inline void
-hal_rx_msdu_end_l3_hdr_padding_set(hal_soc_handle_t hal_soc_hdl,
-				   uint8_t *buf,
-				   uint32_t l3_hdr_pad)
-{
-	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
-
-	if (hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set)
-		hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set(buf,
-								 l3_hdr_pad);
 }
 
 /**
@@ -3174,33 +3108,6 @@ hal_rx_mpdu_info_ampdu_flag_get(hal_soc_handle_t hal_soc_hdl, uint8_t *buf)
 	return hal_soc->ops->hal_rx_mpdu_info_ampdu_flag_get(buf);
 }
 
-/**
- * hal_rx_msdu_stats_tlv_resolve() - resolve which fragment's TLV holds the
- *                                   msdu_start/msdu_end derived stats fields
- *                                   for a (possibly scatter-gathered) MSDU
- * @hal_soc_hdl: hal soc handle
- * @first_msdu_tlv: rx_pkt_tlvs pointer of the first (head) fragment
- * @last_msdu_tlv: rx_pkt_tlvs pointer of the last (tail) fragment
- *
- * For targets where msdu_start is a TLV distinct from msdu_end (e.g. li/rh),
- * the stats fields consumed by dp_rx_msdu_extd_stats_update() are valid on
- * the first fragment. For targets where those fields live in the merged
- * msdu_end TLV (e.g. be family), they are valid only on the last fragment.
- * This lets callers fetch the correct TLV pointer without target-specific
- * checks.
- *
- * Return: rx_pkt_tlvs pointer to use for msdu_start/msdu_end derived fields
- */
-static inline uint8_t *
-hal_rx_msdu_stats_tlv_resolve(hal_soc_handle_t hal_soc_hdl,
-			      uint8_t *first_msdu_tlv, uint8_t *last_msdu_tlv)
-{
-	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
-
-	return hal_soc->ops->hal_rx_msdu_stats_tlv_resolve(first_msdu_tlv,
-							   last_msdu_tlv);
-}
-
 #ifdef REO_SHARED_QREF_TABLE_EN
 /**
  * hal_reo_shared_qaddr_write() - Write REo tid queue addr
@@ -3371,29 +3278,4 @@ hal_rx_get_phy_ppdu_id_size(hal_soc_handle_t hal_soc_hdl)
 	return hal_soc->ops->hal_rx_get_phy_ppdu_id_size();
 }
 
-#ifdef DRIVER_PASSTHRU_MODE
-static inline
-uint32_t hal_rx_tlv_get_user_rssi(hal_soc_handle_t hal_soc_hdl,
-				  uint8_t *rx_pkt_tlv)
-{
-	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
-
-	if (hal_soc->ops->hal_rx_tlv_get_rssi)
-		return hal_soc->ops->hal_rx_tlv_get_rssi(rx_pkt_tlv);
-
-	return 0;
-}
-
-static inline
-uint32_t hal_rx_tlv_get_ppdu_start_ts(hal_soc_handle_t hal_soc_hdl,
-				      uint8_t *rx_tlv_hdr)
-{
-	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
-
-	if (hal_soc->ops->hal_rx_tlv_get_ppdu_start_ts)
-		return hal_soc->ops->hal_rx_tlv_get_ppdu_start_ts(rx_tlv_hdr);
-
-	return 0;
-}
-#endif
 #endif /* _HAL_RX_H */

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -142,16 +142,15 @@ static QDF_STATUS send_add_wow_wakeup_event_cmd_tlv(wmi_unified_t wmi_handle,
 	qdf_mem_copy(&(cmd->event_bitmaps[0]), bitmap, sizeof(uint32_t) *
 		     WMI_WOW_MAX_EVENT_BM_LEN);
 
-	wmi_debug("Wakeup pattern 0x%x|%x|%x|%x %s in fw",
-		  cmd->event_bitmaps[0], cmd->event_bitmaps[1],
-		  cmd->event_bitmaps[2], cmd->event_bitmaps[3],
-		  enable ? "enabled" : "disabled");
+	wmi_debug("Wakeup pattern 0x%x%x%x%x %s in fw", cmd->event_bitmaps[0],
+		 cmd->event_bitmaps[1], cmd->event_bitmaps[2],
+		 cmd->event_bitmaps[3], enable ? "enabled" : "disabled");
 
 	wmi_mtrace(WMI_WOW_ENABLE_DISABLE_WAKE_EVENT_CMDID, cmd->vdev_id, 0);
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_WOW_ENABLE_DISABLE_WAKE_EVENT_CMDID);
 	if (ret) {
-		wmi_err("Failed to config wow wakeup event %d", ret);
+		wmi_err("Failed to config wow wakeup event");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -282,7 +281,7 @@ static QDF_STATUS send_wow_patterns_to_fw_cmd_tlv(wmi_unified_t wmi_handle,
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_WOW_ADD_WAKE_PATTERN_CMDID);
 	if (ret) {
-		wmi_err("Failed to send wow ptrn to fw %d", ret);
+		wmi_err("Failed to send wow ptrn to fw");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -555,7 +554,7 @@ static QDF_STATUS send_enable_arp_ns_offload_cmd_tlv(wmi_unified_t wmi_handle,
 	res = wmi_unified_cmd_send(wmi_handle, buf, len,
 				     WMI_SET_ARP_NS_OFFLOAD_CMDID);
 	if (res) {
-		wmi_err("Failed to enable ARP NDP/NSffload %d", res);
+		wmi_err("Failed to enable ARP NDP/NSffload");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -607,7 +606,7 @@ static QDF_STATUS send_add_clear_mcbc_filter_cmd_tlv(wmi_unified_t wmi_handle,
 				   sizeof(*cmd),
 				   WMI_SET_MCASTBCAST_FILTER_CMDID);
 	if (err) {
-		wmi_err("Failed to send set_param cmd %d", err);
+		wmi_err("Failed to send set_param cmd");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -688,7 +687,7 @@ send_cmd:
 				   len,
 				   WMI_SET_MULTIPLE_MCAST_FILTER_CMDID);
 	if (err) {
-		wmi_err("Failed to send set_param cmd %d", err);
+		wmi_err("Failed to send set_param cmd");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -733,7 +732,7 @@ static QDF_STATUS send_conf_hw_filter_cmd_tlv(wmi_unified_t wmi,
 	status = wmi_unified_cmd_send(wmi, wmi_buf, sizeof(*cmd),
 				      WMI_HW_DATA_FILTER_CMDID);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		wmi_err("Failed to configure hw filter %d", status);
+		wmi_err("Failed to configure hw filter");
 		wmi_buf_free(wmi_buf);
 	}
 
@@ -829,11 +828,9 @@ QDF_STATUS send_igmp_offload_cmd_tlv(wmi_unified_t wmi_handle,
 
 	/* send the wmi command */
 	wmi_mtrace(WMI_VDEV_IGMP_OFFLOAD_CMDID, cmd->vdev_id, 0);
-	status = wmi_unified_cmd_send(wmi_handle, buf, len,
-				      WMI_VDEV_IGMP_OFFLOAD_CMDID);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		wmi_err("Failed to send WMI_VDEV_IGMP_OFFLOAD_CMDID %d",
-			status);
+	if (wmi_unified_cmd_send(wmi_handle, buf, len,
+				 WMI_VDEV_IGMP_OFFLOAD_CMDID)) {
+		wmi_err("Failed to send WMI_VDEV_IGMP_OFFLOAD_CMDID");
 		wmi_buf_free(buf);
 		status = QDF_STATUS_E_FAILURE;
 	}
@@ -935,10 +932,9 @@ QDF_STATUS send_gtk_offload_cmd_tlv(wmi_unified_t wmi_handle, uint8_t vdev_id,
 		 vdev_id, cmd->flags, params->kek_len);
 	/* send the wmi command */
 	wmi_mtrace(WMI_GTK_OFFLOAD_CMDID, cmd->vdev_id, 0);
-	status = wmi_unified_cmd_send(wmi_handle, buf, len,
-				      WMI_GTK_OFFLOAD_CMDID);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		wmi_err("Failed to send WMI_GTK_OFFLOAD_CMDID %d", status);
+	if (wmi_unified_cmd_send(wmi_handle, buf, len,
+				 WMI_GTK_OFFLOAD_CMDID)) {
+		wmi_err("Failed to send WMI_GTK_OFFLOAD_CMDID");
 		wmi_buf_free(buf);
 		status = QDF_STATUS_E_FAILURE;
 	}
@@ -986,11 +982,9 @@ static QDF_STATUS send_process_gtk_offload_getinfo_cmd_tlv(
 
 	/* send the wmi command */
 	wmi_mtrace(WMI_GTK_OFFLOAD_CMDID, cmd->vdev_id, 0);
-	status = wmi_unified_cmd_send(wmi_handle, buf, len,
-				      WMI_GTK_OFFLOAD_CMDID);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		wmi_err("Failed to send WMI_GTK_OFFLOAD_CMDID for req info %d",
-			status);
+	if (wmi_unified_cmd_send(wmi_handle, buf, len,
+				 WMI_GTK_OFFLOAD_CMDID)) {
+		wmi_err("Failed to send WMI_GTK_OFFLOAD_CMDID for req info");
 		wmi_buf_free(buf);
 		status = QDF_STATUS_E_FAILURE;
 	}
@@ -1041,10 +1035,9 @@ QDF_STATUS send_enable_enhance_multicast_offload_tlv(
 	wmi_mtrace(WMI_CONFIG_ENHANCED_MCAST_FILTER_CMDID, cmd->vdev_id, 0);
 	status = wmi_unified_cmd_send(wmi_handle, buf,
 			sizeof(*cmd), WMI_CONFIG_ENHANCED_MCAST_FILTER_CMDID);
-	if (QDF_IS_STATUS_ERROR(status)) {
+	if (status != QDF_STATUS_SUCCESS) {
 		wmi_buf_free(buf);
-		wmi_err("Failed to send ENHANCED_MCAST_FILTER_CMDID %d",
-			status);
+		wmi_err("Failed to send ENHANCED_MCAST_FILTER_CMDID");
 	}
 
 	return status;
@@ -1179,7 +1172,7 @@ static QDF_STATUS send_wow_sta_ra_filter_cmd_tlv(wmi_unified_t wmi_handle,
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_WOW_ADD_WAKE_PATTERN_CMDID);
 	if (ret) {
-		wmi_err("Failed to send RA rate limit to fw %d", ret);
+		wmi_err("Failed to send RA rate limit to fw");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -1244,7 +1237,7 @@ static QDF_STATUS send_action_frame_patterns_cmd_tlv(wmi_unified_t wmi_handle,
 	err = wmi_unified_cmd_send(wmi_handle, buf,
 				   len, WMI_WOW_SET_ACTION_WAKE_UP_CMDID);
 	if (err) {
-		wmi_err("Failed to send ap_ps_egap cmd %d", err);
+		wmi_err("Failed to send ap_ps_egap cmd");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -1567,7 +1560,7 @@ static QDF_STATUS send_enable_disable_packet_filter_cmd_tlv(
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_PACKET_FILTER_ENABLE_CMDID);
 	if (ret) {
-		wmi_err("Failed to send packet filter wmi cmd to fw %d", ret);
+		wmi_err("Failed to send packet filter wmi cmd to fw");
 		wmi_buf_free(buf);
 	}
 
@@ -1645,7 +1638,7 @@ static QDF_STATUS send_config_packet_filter_cmd_tlv(wmi_unified_t wmi_handle,
 	err = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_PACKET_FILTER_CONFIG_CMDID);
 	if (err) {
-		wmi_err("Failed to send pkt_filter cmd %d", err);
+		wmi_err("Failed to send pkt_filter cmd");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -1702,7 +1695,7 @@ static QDF_STATUS send_wow_delete_pattern_cmd_tlv(wmi_unified_t wmi_handle,
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_WOW_DEL_WAKE_PATTERN_CMDID);
 	if (ret) {
-		wmi_err("Failed to delete wow ptrn from fw %d", ret);
+		wmi_err("Failed to delete wow ptrn from fw");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -1860,7 +1853,7 @@ static QDF_STATUS send_wow_timer_pattern_cmd_tlv(wmi_unified_t wmi_handle,
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				WMI_WOW_ADD_WAKE_PATTERN_CMDID);
 	if (ret) {
-		wmi_err("Failed to send wake timer pattern to fw %d", ret);
+		wmi_err("Failed to send wake timer pattern to fw");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -1908,7 +1901,7 @@ static QDF_STATUS send_enable_ext_wow_cmd_tlv(wmi_unified_t wmi_handle,
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_EXTWOW_ENABLE_CMDID);
 	if (ret) {
-		wmi_err("Failed to set EXTWOW Enable %d", ret);
+		wmi_err("Failed to set EXTWOW Enable");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -1990,7 +1983,7 @@ static QDF_STATUS send_set_app_type2_params_in_fw_cmd_tlv(wmi_unified_t wmi_hand
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_EXTWOW_SET_APP_TYPE2_PARAMS_CMDID);
 	if (ret) {
-		wmi_err("Failed to set APP TYPE2 PARAMS %d", ret);
+		wmi_err("Failed to set APP TYPE2 PARAMS");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -2047,7 +2040,7 @@ static QDF_STATUS send_app_type1_params_in_fw_cmd_tlv(wmi_unified_t wmi_handle,
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_EXTWOW_SET_APP_TYPE1_PARAMS_CMDID);
 	if (ret) {
-		wmi_err("Failed to set APP TYPE1 PARAMS %d", ret);
+		wmi_err("Failed to set APP TYPE1 PARAMS");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}

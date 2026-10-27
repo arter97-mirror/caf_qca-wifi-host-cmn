@@ -55,6 +55,21 @@ wlan_cfg80211_vdev_mlme_get_param_ssid(struct wlan_objmgr_vdev *vdev,
 int
 wlan_cfg80211_vdev_mlme_get_trans_bssid(struct wlan_objmgr_vdev *vdev,
 					uint8_t *addr);
+
+/**
+ * wlan_cfg80211_vdev_mlme_set_param() - cfg80211 MLME API to fill common
+ * parameters of vdev_mlme object
+ * @vdev: pointer to vdev object
+ * @param_id: param id for which the value should be set
+ * @mlme_cfg: structure of a union to set the parameter
+ *
+ * Return: void
+ */
+void
+wlan_cfg80211_vdev_mlme_set_param(struct wlan_objmgr_vdev *vdev,
+				  enum wlan_mlme_cfg_id param_id,
+				  struct wlan_vdev_mgr_cfg mlme_cfg);
+
 /**
  * wlan_cfg80211_vdev_mlme_get_param() - cfg80211 MLME API to get common
  * parameters of vdev_mlme object

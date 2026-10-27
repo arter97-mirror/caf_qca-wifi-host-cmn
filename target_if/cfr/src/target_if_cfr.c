@@ -208,6 +208,7 @@ os_timer_func(lut_ageout_timer_task)
 	struct wlan_objmgr_pdev *pdev = NULL;
 	struct look_up_table *lut = NULL;
 	uint64_t diff, cur_tstamp;
+	uint8_t srng_id = 0;
 
 	OS_GET_TIMER_ARG(pcfr, struct pdev_cfr*);
 
@@ -239,11 +240,9 @@ os_timer_func(lut_ageout_timer_task)
 		if (lut->dbr_recv && !lut->tx_recv) {
 			diff = cur_tstamp - lut->dbr_tstamp;
 			if (diff > LUT_AGE_THRESHOLD) {
-				target_if_dbr_buf_release(
-						pdev, DBR_MODULE_CFR,
-						lut->dbr_address,
-						i,
-						pcfr->rcc_param.srng_id);
+				target_if_dbr_buf_release(pdev, DBR_MODULE_CFR,
+							  lut->dbr_address,
+							  i, srng_id);
 				pcfr->flush_timeout_dbr_cnt++;
 				release_lut_entry(pdev, lut);
 			}
@@ -255,85 +254,6 @@ os_timer_func(lut_ageout_timer_task)
 	if (pcfr->lut_timer_init)
 		qdf_timer_mod(&pcfr->lut_age_timer, LUT_AGE_TIMER);
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
-}
-
-os_timer_func(cfr_report_interval_timer_task)
-{
-	struct pdev_cfr *pcfr = NULL;
-	struct wlan_objmgr_pdev *pdev = NULL;
-
-	OS_GET_TIMER_ARG(pcfr, struct pdev_cfr*);
-
-	if (!pcfr) {
-		cfr_err("pdev object for CFR is null");
-		return;
-	}
-
-	pdev = pcfr->pdev_obj;
-	if (!pdev) {
-		cfr_err("pdev is null");
-		return;
-	}
-
-	if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_CFR_ID)
-	    != QDF_STATUS_SUCCESS) {
-		cfr_err("failed to get pdev reference");
-		return;
-	}
-
-	if (pcfr->nl_cb.cfr_nl_cb_report_interval)
-		pcfr->nl_cb.cfr_nl_cb_report_interval(pcfr->nl_cb.vdev_id);
-
-	if (pcfr->report_interval_timer_init && pcfr->report_interval) {
-		qdf_timer_mod(&pcfr->report_interval_timer,
-			      pcfr->report_interval);
-	}
-
-	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
-}
-
-/**
- * target_if_cfr_start_report_interval_timer() - Start timer to send last report
- * entries
- * @pdev: pointer to pdev object
- *
- * Return: None
- */
-void target_if_cfr_start_report_interval_timer(struct wlan_objmgr_pdev *pdev)
-{
-	struct pdev_cfr *pcfr;
-
-	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev,
-						     WLAN_UMAC_COMP_CFR);
-	if (!pcfr) {
-		cfr_err("pdev object for CFR is null");
-		return;
-	}
-
-	if (pcfr->report_interval_timer_init)
-		qdf_timer_mod(&pcfr->report_interval_timer,
-			      pcfr->report_interval);
-}
-
-/**
- * target_if_cfr_stop_report_interval_timer() - Stop timer to send last report
- * entries
- * @pdev: pointer to pdev object
- *
- * Return: None
- */
-void target_if_cfr_stop_report_interval_timer(struct wlan_objmgr_pdev *pdev)
-{
-	struct pdev_cfr *pcfr;
-
-	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev, WLAN_UMAC_COMP_CFR);
-	if (!pcfr) {
-		cfr_err("pdev object for CFR is null");
-		return;
-	}
-
-	if (pcfr->report_interval_timer_init)
-		qdf_timer_stop(&pcfr->report_interval_timer);
 }
 
 /**
@@ -372,7 +292,7 @@ void cfr_free_pending_dbr_events(struct wlan_objmgr_pdev *pdev)
 		    (lut->dbr_tstamp < pcfr->last_success_tstamp)) {
 			target_if_dbr_buf_release(pdev, DBR_MODULE_CFR,
 						  lut->dbr_address,
-						  i, pcfr->rcc_param.srng_id);
+						  i, 0);
 			pcfr->flush_dbr_cnt++;
 			release_lut_entry(pdev, lut);
 		}
@@ -393,11 +313,6 @@ void target_if_cfr_start_lut_age_timer(struct wlan_objmgr_pdev *pdev)
 
 	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev,
 						     WLAN_UMAC_COMP_CFR);
-	if (!pcfr) {
-		cfr_err("pdev object for CFR is null");
-		return;
-	}
-
 	if (pcfr->lut_timer_init)
 		qdf_timer_mod(&pcfr->lut_age_timer, LUT_AGE_TIMER);
 }
@@ -414,11 +329,6 @@ void target_if_cfr_stop_lut_age_timer(struct wlan_objmgr_pdev *pdev)
 	struct pdev_cfr *pcfr;
 
 	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev, WLAN_UMAC_COMP_CFR);
-	if (!pcfr) {
-		cfr_err("pdev object for CFR is null");
-		return;
-	}
-
 	if (pcfr->lut_timer_init)
 		qdf_timer_stop(&pcfr->lut_age_timer);
 }
@@ -505,7 +415,6 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 			 target_type == TARGET_TYPE_PEACH ||
 			 target_type == TARGET_TYPE_WCN6450 ||
 			 target_type == TARGET_TYPE_WCN7750 ||
-			 target_type == TARGET_TYPE_WCN8750 ||
 			 target_type == TARGET_TYPE_QCC2072 ||
 			 target_type == TARGET_TYPE_FIG)
 			hdr->cmn.cfr_metadata_version = CFR_META_VERSION_7;
@@ -547,8 +456,6 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_COLOGNE;
 		else if (target_type == TARGET_TYPE_FIG)
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_FIG;
-		else if (target_type == TARGET_TYPE_WCN8750)
-			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_KASAI;
 		else
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_CYP;
 	}
@@ -631,8 +538,6 @@ static QDF_STATUS target_if_cfr_init_target(struct wlan_objmgr_psoc *psoc,
 		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_COLOGNE;
 	else if (target == TARGET_TYPE_FIG)
 		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_FIG;
-	else if (target == TARGET_TYPE_WCN8750)
-		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_KASAI;
 	return status;
 }
 
@@ -677,7 +582,6 @@ target_if_cfr_init_pdev(struct wlan_objmgr_psoc *psoc,
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_WCN6450 ||
 	    target_type == TARGET_TYPE_WCN7750 ||
-	    target_type == TARGET_TYPE_WCN8750 ||
 	    target_type == TARGET_TYPE_QCC2072 ||
 	    target_type == TARGET_TYPE_FIG) {
 		status = target_if_cfr_init_target(psoc,
@@ -708,7 +612,6 @@ target_if_cfr_deinit_pdev(struct wlan_objmgr_psoc *psoc,
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_WCN6450 ||
 	    target_type == TARGET_TYPE_WCN7750 ||
-	    target_type == TARGET_TYPE_WCN8750 ||
 	    target_type == TARGET_TYPE_QCC2072 ||
 	    target_type == TARGET_TYPE_FIG) {
 		status = target_if_cfr_deinit_target(psoc, pdev);
@@ -903,32 +806,11 @@ static uint8_t target_if_cfr_get_pdev_id(struct wlan_objmgr_pdev *pdev)
 }
 #endif /* QCA_WIFI_QCA6490 || QCA_WIFI_KIWI */
 
-static enum
-wlan_phymode target_if_cfr_get_rx_phy_mode(int32_t freq)
-{
-	enum reg_wifi_band cur_band;
-
-	cur_band = wlan_reg_freq_to_band(freq);
-
-	switch (cur_band) {
-	case REG_BAND_2G:
-		return WLAN_PHYMODE_11NG_HT20;
-	case REG_BAND_5G:
-		return WLAN_PHYMODE_11NA_HT20;
-	case REG_BAND_6G:
-		return WLAN_PHYMODE_11AXA_HE20;
-	default:
-		cfr_err("Invalid band %d", cur_band);
-		return WLAN_PHYMODE_11NA_HT20;
-	}
-}
-
 QDF_STATUS target_if_cfr_config_rcc(struct wlan_objmgr_pdev *pdev,
 				    struct cfr_rcc_param *rcc_info)
 {
 	QDF_STATUS status;
 	struct wmi_unified *pdev_wmi_handle = NULL;
-	int32_t chan_freq;
 
 	pdev_wmi_handle = lmac_get_pdev_wmi_handle(pdev);
 	if (!pdev_wmi_handle) {
@@ -938,13 +820,7 @@ QDF_STATUS target_if_cfr_config_rcc(struct wlan_objmgr_pdev *pdev,
 
 	rcc_info->pdev_id = target_if_cfr_get_pdev_id(pdev);
 	rcc_info->num_grp_tlvs =
-		count_set_bits(&rcc_info->modified_in_curr_session[0]);
-
-	chan_freq = rcc_info->unassoc_channel_mhz;
-	if (chan_freq) {
-		rcc_info->unassoc_phy_mode =
-			target_if_cfr_get_rx_phy_mode(chan_freq);
-	}
+		count_set_bits(rcc_info->modified_in_curr_session);
 
 	status = wmi_unified_send_cfr_rcc_cmd(pdev_wmi_handle, rcc_info);
 	return status;
@@ -1031,13 +907,7 @@ static void target_if_enh_cfr_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_cfr_rx_tlv_process;
 	tx_ops->cfr_tx_ops.cfr_update_global_cfg =
 		target_if_cfr_update_global_cfg;
-
 	target_if_enh_cfr_add_ops(tx_ops);
-
-	tx_ops->cfr_tx_ops.cfr_start_report_interval_timer =
-		target_if_cfr_start_report_interval_timer;
-	tx_ops->cfr_tx_ops.cfr_stop_report_interval_timer =
-		target_if_cfr_stop_report_interval_timer;
 }
 #else
 static void target_if_enh_cfr_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
@@ -1074,3 +944,78 @@ void target_if_cfr_set_cfr_support(struct wlan_objmgr_psoc *psoc,
 		rx_ops->cfr_rx_ops.cfr_support_set(psoc, value);
 }
 
+QDF_STATUS
+target_if_cfr_set_capture_count_support(struct wlan_objmgr_psoc *psoc,
+					uint8_t value)
+{
+	struct wlan_lmac_if_rx_ops *rx_ops;
+
+	rx_ops = wlan_psoc_get_lmac_if_rxops(psoc);
+	if (!rx_ops) {
+		cfr_err("rx_ops is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (rx_ops->cfr_rx_ops.cfr_capture_count_support_set)
+		return rx_ops->cfr_rx_ops.cfr_capture_count_support_set(
+						psoc, value);
+
+	return QDF_STATUS_E_INVAL;
+}
+
+QDF_STATUS
+target_if_cfr_set_mo_marking_support(struct wlan_objmgr_psoc *psoc,
+				     uint8_t value)
+{
+	struct wlan_lmac_if_rx_ops *rx_ops;
+
+	rx_ops = wlan_psoc_get_lmac_if_rxops(psoc);
+	if (!rx_ops) {
+		cfr_err("rx_ops is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (rx_ops->cfr_rx_ops.cfr_mo_marking_support_set)
+		return rx_ops->cfr_rx_ops.cfr_mo_marking_support_set(
+						psoc, value);
+
+	return QDF_STATUS_E_INVAL;
+}
+
+QDF_STATUS
+target_if_cfr_set_aoa_for_rcc_support(struct wlan_objmgr_psoc *psoc,
+				      uint8_t value)
+{
+	struct wlan_lmac_if_rx_ops *rx_ops;
+
+	rx_ops = wlan_psoc_get_lmac_if_rxops(psoc);
+	if (!rx_ops) {
+		cfr_err("rx_ops is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (rx_ops->cfr_rx_ops.cfr_aoa_for_rcc_support_set)
+		return rx_ops->cfr_rx_ops.cfr_aoa_for_rcc_support_set(
+						psoc, value);
+
+	return QDF_STATUS_E_INVAL;
+}
+
+void target_if_cfr_info_send(struct wlan_objmgr_pdev *pdev, void *head,
+			     size_t hlen, void *data, size_t dlen, void *tail,
+			     size_t tlen)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_rx_ops *rx_ops;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+
+	rx_ops = wlan_psoc_get_lmac_if_rxops(psoc);
+	if (!rx_ops) {
+		cfr_err("rx_ops is NULL");
+		return;
+	}
+	if (rx_ops->cfr_rx_ops.cfr_info_send)
+		rx_ops->cfr_rx_ops.cfr_info_send(pdev, head, hlen, data, dlen,
+						 tail, tlen);
+}

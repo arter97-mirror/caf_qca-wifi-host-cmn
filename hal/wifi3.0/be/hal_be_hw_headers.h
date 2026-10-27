@@ -25,18 +25,11 @@
 #include "receive_rssi_info.h"
 #include "buffer_addr_info.h"
 
-#ifdef CONFIG_BORON
-#include "tqm2sw_completion_ring.h"
-#else
-#include <reo_descriptor_threshold_reached_status.h>
-#include <reo_flush_queue.h>
 #include "wbm2sw_completion_ring_tx.h"
-#endif
 #include "wbm2sw_completion_ring_rx.h"
 
 #if defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_WCN7750) || \
-	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_FIG) || \
-	defined(QCA_WIFI_WCN8750)
+	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_FIG)
 #include "msmhwioreg.h"
 #endif
 #include "phyrx_common_user_info.h"
@@ -149,6 +142,8 @@ defined(WLAN_PKT_CAPTURE_RX_2_0)
 /* WIFITRIGGER_RESPONSE_TX_DONE_E */
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
 
+#include <reo_descriptor_threshold_reached_status.h>
+#include <reo_flush_queue.h>
 #ifdef REO_SHARED_QREF_TABLE_EN
 #include "rx_reo_queue_reference.h"
 #endif

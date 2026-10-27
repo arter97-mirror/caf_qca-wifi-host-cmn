@@ -26,7 +26,6 @@
 
 /**
  * osif_nl_to_crypto_auth_type() - populate auth type for crypto
- * @vdev: VDEV object; used to query EPPKE allowed state for debug logging
  * @auth_type: NL auth_type
  *
  * set the crypto auth type for corresponding auth type received
@@ -35,8 +34,7 @@
  * Return: crypto auth type
  */
 wlan_crypto_auth_mode
-osif_nl_to_crypto_auth_type(struct wlan_objmgr_vdev *vdev,
-			    enum nl80211_auth_type auth_type);
+osif_nl_to_crypto_auth_type(enum nl80211_auth_type auth_type);
 
 /**
  * osif_nl_to_crypto_akm_type() - populate akm type for crypto
@@ -72,9 +70,6 @@ osif_crypto_to_nl_suites(wlan_crypto_key_mgmt crypto_akm_type);
  * Return: crypto cipher type
  */
 enum wlan_crypto_cipher_type osif_nl_to_crypto_cipher_type(u32 cipher);
-
-uint32_t
-osif_crypto_cipher_to_nl_suites(enum wlan_crypto_cipher_type cipher);
 
 /**
  * osif_nl_to_crypto_cipher_len() - return the cipher length

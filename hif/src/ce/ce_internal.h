@@ -174,6 +174,12 @@ struct CE_state {
 	CE_recv_cb recv_cb;
 	void *recv_context;
 
+	/* misc_cbs - are any callbacks besides send and recv enabled? */
+	uint8_t misc_cbs;
+
+	CE_watermark_cb watermark_cb;
+	void *wm_context;
+
 #ifdef CUSTOM_CB_SCHEDULER_SUPPORT
 	qdf_atomic_t custom_cb_pending;
 	void (*custom_cb)(void *arg);
@@ -223,7 +229,6 @@ struct CE_state {
 	qdf_time_t last_dequeue_time;
 #endif
 	uint32_t ce_wrt_idx_offset;
-	bool service_dl;
 };
 
 /* Descriptor rings must be aligned to this boundary */
@@ -715,8 +720,7 @@ int hif_get_wake_ce_id(struct hif_softc *scn, uint8_t *ce_id);
  */
 int hif_get_fw_diag_ce_id(struct hif_softc *scn, uint8_t *ce_id);
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
-	defined(RECORD_DP_CE_EVTS)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
 
 #ifndef HIF_CE_HISTORY_MAX
 #if defined(CONFIG_SLUB_DEBUG_ON)
@@ -749,7 +753,7 @@ struct hif_ce_desc_event {
 	enum hif_ce_event_type type;
 	uint64_t time;
 	int cpu_id;
-#if defined(HELIUMPLUS) || defined(QCA_WIFI_WCN6450)
+#ifdef HELIUMPLUS
 	union ce_desc descriptor;
 #else
 	uint32_t current_hp;
@@ -774,9 +778,7 @@ struct hif_ce_desc_event {
 };
 #else
 struct hif_ce_desc_event;
-#endif /* defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||
-	* defined(RECORD_DP_CE_EVTS)
-	*/
+#endif /*#if defined(HIF_CONFIG_SLUB_DEBUG_ON)||defined(HIF_CE_DEBUG_DATA_BUF)*/
 
 /**
  * get_next_record_index() - get the next record index
@@ -792,8 +794,7 @@ struct hif_ce_desc_event;
  */
 int get_next_record_index(qdf_atomic_t *table_index, int array_size);
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
-	defined(RECORD_DP_CE_EVTS)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
 /**
  * hif_record_ce_srng_desc_event() - Record data pointed by the CE descriptor
  * @scn: structure detailing a ce event
@@ -836,7 +837,7 @@ static inline
 void hif_clear_ce_desc_debug_data(struct hif_ce_desc_event *event)
 {
 }
-#endif /* HIF_CONFIG_SLUB_DEBUG_ON || HIF_CE_DEBUG_DATA_BUF||RECORD_DP_CE_EVTS*/
+#endif /* HIF_CONFIG_SLUB_DEBUG_ON || HIF_CE_DEBUG_DATA_BUF */
 
 #ifdef HIF_CE_DEBUG_DATA_BUF
 /**
@@ -912,32 +913,6 @@ void hif_ce_desc_record_rx_paddr(struct hif_softc *scn,
 {
 }
 #endif /* HIF_RECORD_PADDR */
-
-#if defined(HIF_CE_TX_DESC_DATA_DEBUG)
-/**
- * hif_ce_tx_desc_data_record() - record CE3 tx completion debug data
- * @scn: hif_softc
- * @dma_addr: dma address reaped from the CE3 source descriptor
- * @nbuf: skb posted to CE3 for tx
- *
- * Records the dma address, the physical address it resolves to, the
- * first 8 bytes of skb->data, and separately the first 8 bytes read
- * from the VA derived from that physical address, into a dedicated
- * circular history independent of hif_ce_desc_event.
- *
- * Return: none
- */
-void hif_ce_tx_desc_data_record(struct hif_softc *scn,
-				qdf_dma_addr_t dma_addr,
-				qdf_nbuf_t nbuf);
-#else
-static inline
-void hif_ce_tx_desc_data_record(struct hif_softc *scn,
-				qdf_dma_addr_t dma_addr,
-				qdf_nbuf_t nbuf)
-{
-}
-#endif /* HIF_CE_TX_DESC_DATA_DEBUG */
 
 static inline int ce_ring_try_aquire_lock(struct CE_handle *handle)
 {

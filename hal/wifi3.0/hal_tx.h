@@ -27,9 +27,6 @@
 #include "wcss_version.h"
 #include "hal_hw_headers.h"
 #include "hal_tx_hw_defines.h"
-#ifdef FEATURE_DAL_DP_SUPPORT
-#include "dal_vndr_hal_api.h"
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #define HAL_WBM_RELEASE_RING_2_BUFFER_TYPE    0
 #define HAL_WBM_RELEASE_RING_2_DESC_TYPE      1
@@ -104,13 +101,8 @@ do {                                            \
 
 #define NUM_OF_DWORDS_TX_MSDU_EXTENSION 18
 
-#ifdef CONFIG_BORON
-#define HAL_TX_DESC_LEN_DWORDS (NUM_OF_DWORDS_TCL_ASSIST_CMD)
-#define HAL_TX_DESC_LEN_BYTES  (NUM_OF_DWORDS_TCL_ASSIST_CMD * 4)
-#else
 #define HAL_TX_DESC_LEN_DWORDS (NUM_OF_DWORDS_TCL_DATA_CMD)
 #define HAL_TX_DESC_LEN_BYTES  (NUM_OF_DWORDS_TCL_DATA_CMD * 4)
-#endif
 #define HAL_TX_EXTENSION_DESC_LEN_DWORDS (NUM_OF_DWORDS_TX_MSDU_EXTENSION)
 #define HAL_TX_EXTENSION_DESC_LEN_BYTES (NUM_OF_DWORDS_TX_MSDU_EXTENSION * 4)
 
@@ -162,7 +154,7 @@ enum hal_tx_comp_rel_src {
  * on wbm_release_ring DWORDs 2,3 ,4 and 5for software based completions
  * (Exception frames and TQM bypass frames)
  */
-#if defined(CONFIG_BERYLLIUM) || defined(CONFIG_LITHIUM) || defined(CONFIG_BORON)
+#if defined(CONFIG_BERYLLIUM) || defined(CONFIG_LITHIUM)
 #define HAL_TX_COMP_HTT_STATUS_OFFSET 8
 #else
 #define HAL_TX_COMP_HTT_STATUS_OFFSET 0 /* Rhine */
@@ -247,9 +239,7 @@ enum hal_tx_comp_rel_src {
  *       <enum 2     1_6_us_sgi > HE related GI
  *       <enum 3     3_2_us_sgi > HE
  * @mcs: Transmit MCS Rate
- * @unequal_modulation: unequal modulation information for transmission
  * @ofdma: Set when the transmission was an OFDMA transmission
- * @reserved_bn: reserved
  * @tones_in_ru: The number of tones in the RU used.
  * @reserved5: reserved
  * @tsf: Lower 32 bits of the TSF
@@ -279,22 +269,14 @@ struct hal_tx_completion_status {
 		 stbc:1,
 		 ldpc:1,
 		 sgi:2,
-#ifdef CONFIG_BORON
-		 mcs:5,
-		 unequal_modulation:3,
-		 ofdma:1,
-		 reserved_bn:4,
-		 tones_in_ru:4,
-#else
 		 mcs:4,
 		 ofdma:1,
 		 tones_in_ru:12,
-#endif
-#ifdef TX_NSS_STATS_SUPPORT
+	#ifdef TX_NSS_STATS_SUPPORT
 		 tx_nss:3;
-#else
+	#else
 		 reserved5:3;
-#endif
+	#endif
 	uint32_t tsf;
 	uint32_t peer_id:16,
 		 tid:8,
@@ -509,21 +491,6 @@ static inline void hal_tx_ext_desc_set_ip_id(void *desc,
 	HAL_SET_FLD(desc, HAL_TX_MSDU_EXTENSION, IP_IDENTIFICATION) |=
 		((HAL_TX_SM(HAL_TX_MSDU_EXTENSION, IP_IDENTIFICATION, id)));
 }
-
-/**
- * hal_tx_ext_desc_set_udp_len() - Set UDP length field
- * @desc: Handle to Tx MSDU Extension Descriptor
- * @udp_len: UDP length field for the msdu, if uso is enabled
- *
- * Return: none
- */
-static inline void hal_tx_ext_desc_set_udp_len(void *desc,
-					       uint16_t udp_len)
-{
-	HAL_SET_FLD(desc, HAL_TX_MSDU_EXTENSION, UDP_LENGTH) |=
-		((HAL_TX_SM(HAL_TX_MSDU_EXTENSION, UDP_LENGTH, udp_len)));
-}
-
 /**
  * hal_tx_ext_desc_set_buffer() - Set Buffer Pointer and Length for a fragment
  * @desc: Handle to Tx MSDU Extension Descriptor
@@ -704,14 +671,6 @@ static inline uint32_t hal_tx_comp_get_buffer_type(void *hal_desc)
 		HAL_TX_COMP_BUFFER_OR_DESC_TYPE_LSB;
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-static inline uint32_t
-hal_tx_comp_get_buffer_source(hal_soc_handle_t hal_soc_hdl,
-			      void *hal_desc)
-{
-	return dal_vndr_hal_tx_comp_get_buffer_source_generic(hal_desc);
-}
-#else
 #ifdef QCA_WIFI_KIWI
 /**
  * hal_tx_comp_get_buffer_source() - Get buffer release source value
@@ -738,7 +697,6 @@ hal_tx_comp_get_buffer_source(hal_soc_handle_t hal_soc_hdl,
 	return HAL_WBM2SW_RELEASE_SRC_GET(hal_desc);
 }
 #endif
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /**
  * hal_tx_comp_get_release_reason() - TQM Release reason
@@ -776,7 +734,6 @@ static inline uint16_t hal_tx_comp_get_peer_id(void *hal_desc)
 		HAL_TX_COMP_SW_PEER_ID_LSB;
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
 /**
  * hal_tx_comp_get_tx_status() - Get tx transmission status()
  * @hal_desc: completion ring descriptor pointer
@@ -787,11 +744,6 @@ static inline uint16_t hal_tx_comp_get_peer_id(void *hal_desc)
  */
 static inline uint8_t hal_tx_comp_get_tx_status(void *hal_desc)
 {
-	return dal_vndr_hal_tx_comp_get_tx_status_generic(hal_desc);
-}
-#else
-static inline uint8_t hal_tx_comp_get_tx_status(void *hal_desc)
-{
 	uint32_t comp_desc =
 		*(uint32_t *)(((uint8_t *)hal_desc) +
 			       HAL_TX_COMP_TQM_RELEASE_REASON_OFFSET);
@@ -799,7 +751,6 @@ static inline uint8_t hal_tx_comp_get_tx_status(void *hal_desc)
 	return (comp_desc & HAL_TX_COMP_TQM_RELEASE_REASON_MASK) >>
 		HAL_TX_COMP_TQM_RELEASE_REASON_LSB;
 }
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /**
  * hal_tx_comp_desc_sync() - collect hardware descriptor contents
@@ -844,7 +795,7 @@ static inline void hal_dump_comp_desc(void *hw_desc)
 
 	for (i = 0; i < HAL_TX_COMPLETION_DESC_LEN_DWORDS; i++) {
 		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_FATAL,
-			  "DWORD[%u] = 0x%x", i, comp->desc[i]);
+			  "DWORD[i] = 0x%x", comp->desc[i]);
 	}
 }
 

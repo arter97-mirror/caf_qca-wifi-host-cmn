@@ -72,39 +72,6 @@ static int hif_rxthread_napi_poll(struct napi_struct *napi, int budget)
 	return 0;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
-/**
- * hif_rx_thread_napi_get_netdev_ptr() - Get dummy netdev pointer
- * @napii: qca_napi_info pointer
- *
- * Return: dummy netdev pointer
- */
-static inline struct net_device *
-hif_rx_thread_napi_get_netdev_ptr(struct qca_napi_info *napii)
-{
-	return napii->rx_thread_netdev;
-}
-
-static inline void
-hif_rx_thread_napi_set_netdev_ptr(struct qca_napi_info *napii,
-				  struct net_device *nd)
-{
-	napii->rx_thread_netdev = nd;
-}
-#else
-static inline struct net_device *
-hif_rx_thread_napi_get_netdev_ptr(struct qca_napi_info *napii)
-{
-	return &napii->rx_thread_netdev;
-}
-
-static inline void
-hif_rx_thread_napi_set_netdev_ptr(struct qca_napi_info *napii,
-				  struct net_device *nd)
-{
-}
-#endif
-
 /**
  * hif_init_rx_thread_napi() - Initialize dummy Rx_thread NAPI
  * @napii: Handle to napi_info holding rx_thread napi
@@ -113,11 +80,10 @@ hif_rx_thread_napi_set_netdev_ptr(struct qca_napi_info *napii,
  */
 static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
 {
-	struct net_device *nd = hif_rx_thread_napi_get_netdev_ptr(napii);
+	struct qdf_net_if *nd = (struct qdf_net_if *)&napii->rx_thread_netdev;
 
-	qdf_net_if_create_dummy_if((struct qdf_net_if **)&nd);
-	hif_rx_thread_napi_set_netdev_ptr(napii, nd);
-	qdf_netif_napi_add(nd, &napii->rx_thread_napi,
+	qdf_net_if_create_dummy_if(nd);
+	qdf_netif_napi_add(&napii->rx_thread_netdev, &napii->rx_thread_napi,
 			   hif_rxthread_napi_poll, 64);
 	qdf_napi_enable(&napii->rx_thread_napi);
 }
@@ -130,12 +96,7 @@ static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
  */
 static void hif_deinit_rx_thread_napi(struct qca_napi_info *napii)
 {
-	struct net_device *nd = hif_rx_thread_napi_get_netdev_ptr(napii);
-
-	qdf_napi_disable(&napii->rx_thread_napi);
 	qdf_netif_napi_del(&napii->rx_thread_napi);
-	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)nd);
-	hif_rx_thread_napi_set_netdev_ptr(napii, NULL);
 }
 #else /* RECEIVE_OFFLOAD */
 static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
@@ -143,39 +104,6 @@ static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
 }
 
 static void hif_deinit_rx_thread_napi(struct qca_napi_info *napii)
-{
-}
-#endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
-/**
- * hif_napi_get_dummy_netdev_ptr() - Get dummy netdev pointer
- * @napii: qca_napi_info pointer
- *
- * Return: dummy netdev pointer
- */
-static inline struct net_device *
-hif_napi_get_dummy_netdev_ptr(struct qca_napi_info *napii)
-{
-	return napii->netdev;
-}
-
-static inline void
-hif_napi_set_dummy_netdev_ptr(struct qca_napi_info *napii,
-			      struct net_device *nd)
-{
-	napii->netdev = nd;
-}
-#else
-static inline struct net_device *
-hif_napi_get_dummy_netdev_ptr(struct qca_napi_info *napii)
-{
-	return &napii->netdev;
-}
-
-static inline void
-hif_napi_set_dummy_netdev_ptr(struct qca_napi_info *napii,
-			      struct net_device *nd)
 {
 }
 #endif
@@ -212,7 +140,6 @@ int hif_napi_create(struct hif_opaque_softc   *hif_ctx,
 	struct CE_state      *ce_state;
 	struct hif_softc *hif = HIF_GET_SOFTC(hif_ctx);
 	int    rc = 0;
-	struct net_device *dummy_netdev;
 
 	NAPI_DEBUG("-->(budget=%d, scale=%d)",
 		   budget, scale);
@@ -275,24 +202,22 @@ int hif_napi_create(struct hif_opaque_softc   *hif_ctx,
 		if (napii->irq < 0)
 			hif_warn("bad IRQ value for CE %d: %d", i, napii->irq);
 
-		dummy_netdev = hif_napi_get_dummy_netdev_ptr(napii);
-		qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_netdev);
-		hif_napi_set_dummy_netdev_ptr(napii, dummy_netdev);
+		qdf_net_if_create_dummy_if((struct qdf_net_if *)&napii->netdev);
 
 		NAPI_DEBUG("adding napi=%pK to netdev=%pK (poll=%pK, bdgt=%d)",
-			   &napii->napi, dummy_netdev, poll, budget);
-		qdf_netif_napi_add(dummy_netdev, &napii->napi,
+			   &(napii->napi), &(napii->netdev), poll, budget);
+		qdf_netif_napi_add(&(napii->netdev), &(napii->napi),
 				   poll, budget);
 
 		NAPI_DEBUG("after napi_add");
 		NAPI_DEBUG("napi=0x%pK, netdev=0x%pK",
-			   &napii->napi, dummy_netdev);
+			   &(napii->napi), &(napii->netdev));
 		NAPI_DEBUG("napi.dev_list.prev=0x%pK, next=0x%pK",
 			   napii->napi.dev_list.prev,
 			   napii->napi.dev_list.next);
 		NAPI_DEBUG("dev.napi_list.prev=0x%pK, next=0x%pK",
-			   dummy_netdev->napi_list.prev,
-			   dummy_netdev->napi_list.next);
+			   napii->netdev.napi_list.prev,
+			   napii->netdev.napi_list.next);
 
 		hif_init_rx_thread_napi(napii);
 		napii->lro_ctx = qdf_lro_init();
@@ -412,7 +337,6 @@ int hif_napi_destroy(struct hif_opaque_softc *hif_ctx,
 	uint8_t ce = NAPI_ID2PIPE(id);
 	int rc = 0;
 	struct hif_softc *hif = HIF_GET_SOFTC(hif_ctx);
-	struct net_device *dummy_nd;
 
 	NAPI_DEBUG("-->(id=%d, force=%d)", id, force);
 
@@ -449,20 +373,18 @@ int hif_napi_destroy(struct hif_opaque_softc *hif_ctx,
 			}
 		}
 		if (0 == rc) {
-			dummy_nd = hif_napi_get_dummy_netdev_ptr(napii);
 			NAPI_DEBUG("before napi_del");
 			NAPI_DEBUG("napi.dlist.prv=0x%pK, next=0x%pK",
 				  napii->napi.dev_list.prev,
 				  napii->napi.dev_list.next);
 			NAPI_DEBUG("dev.napi_l.prv=0x%pK, next=0x%pK",
-				   dummy_nd->napi_list.prev,
-				   dummy_nd->napi_list.next);
+				   napii->netdev.napi_list.prev,
+				   napii->netdev.napi_list.next);
 
 			qdf_lro_deinit(napii->lro_ctx);
 			qdf_netif_napi_del(&(napii->napi));
 			hif_deinit_rx_thread_napi(napii);
-			qdf_net_if_destroy_dummy_if((struct qdf_net_if *)dummy_nd);
-			hif_napi_set_dummy_netdev_ptr(napii, NULL);
+
 			napid->ce_map &= ~(0x01 << ce);
 			napid->napis[ce] = NULL;
 			napii->scale  = 0;
@@ -852,8 +774,7 @@ inline void hif_napi_enable_irq(struct hif_opaque_softc *hif, int id)
 	hif_irq_enable(scn, NAPI_ID2PIPE(id));
 }
 
-#if (defined(QCA_WIFI_WCN6450) || defined(HELIUMPLUS)) && \
-	defined(HIF_LATENCY_PROFILE_ENABLE)
+#if defined(QCA_WIFI_WCN6450) && defined(HIF_LATENCY_PROFILE_ENABLE)
 /*
  * hif_napi_latency_profile_start() - update the schedule start timestamp
  *
@@ -964,7 +885,7 @@ hif_print_napi_latency_stats(struct qca_napi_info *napii, int ce_id)
 }
 #endif
 
-#if defined(QCA_WIFI_WCN6450) || defined(HELIUMPLUS)
+#ifdef QCA_WIFI_WCN6450
 #ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
 /**
  * hif_napi_update_service_start_time() - Update NAPI poll start time
@@ -1163,7 +1084,7 @@ static inline void
 hif_napi_fill_poll_time_histogram(struct qca_napi_info *napi_info)
 {
 }
-#endif /* defined(QCA_WIFI_WCN6450) || defined(HELIUMPLUS) */
+#endif
 
 /**
  * hif_napi_schedule() - schedules napi, updates stats
@@ -1499,7 +1420,7 @@ void hif_napi_stats(struct qca_napi_data *napid)
 	qdf_debug("NAPI CPU TABLE");
 	qdf_debug("lilclhead=%d, bigclhead=%d",
 		  napid->lilcl_head, napid->bigcl_head);
-	for (i = 0; i < QDF_MAX_AVAILABLE_CPU; i++) {
+	for (i = 0; i < NR_CPUS; i++) {
 		qdf_debug("CPU[%02d]: state:%d crid=%02d clid=%02d crmk:0x%0lx thmk:0x%0lx frq:%d napi = 0x%08x lnk:%d",
 			  i,
 			  cpu[i].state, cpu[i].core_id, cpu[i].cluster_id,
@@ -1566,7 +1487,7 @@ static int hnc_link_clusters(struct qca_napi_data *napid)
 	do {
 		more = 0;
 		it++; curcl = -1;
-		for (i = 0; i < QDF_MAX_AVAILABLE_CPU; i++) {
+		for (i = 0; i < NR_CPUS; i++) {
 			cl = cpus[i].cluster_id;
 			NAPI_DEBUG("Processing cpu[%d], cluster=%d\n",
 				   i, cl);
@@ -1644,7 +1565,7 @@ static void hnc_cpu_online_cb(void *context, uint32_t cpu)
 	struct hif_softc *hif = context;
 	struct qca_napi_data *napid = &hif->napi_data;
 
-	if (cpu >= QDF_MAX_AVAILABLE_CPU)
+	if (cpu >= NR_CPUS)
 		return;
 
 	NAPI_DEBUG("-->%s(act=online, cpu=%u)", __func__, cpu);
@@ -1671,7 +1592,7 @@ static void hnc_cpu_before_offline_cb(void *context, uint32_t cpu)
 	struct hif_softc *hif = context;
 	struct qca_napi_data *napid = &hif->napi_data;
 
-	if (cpu >= QDF_MAX_AVAILABLE_CPU)
+	if (cpu >= NR_CPUS)
 		return;
 
 	NAPI_DEBUG("-->%s(act=before_offline, cpu=%u)", __func__, cpu);
@@ -1823,7 +1744,7 @@ lab_err_hotplug:
 	hnc_tput_hook(0);
 	hnc_hotplug_unregister(HIF_GET_SOFTC(hif));
 lab_err_topology:
-	memset(napid->napi_cpu, 0, sizeof(napid->napi_cpu));
+	memset(napid->napi_cpu, 0, sizeof(struct qca_napi_cpu) * NR_CPUS);
 lab_rss_init:
 	NAPI_DEBUG("<-- [rc=%d]", rc);
 	return rc;
@@ -1852,7 +1773,7 @@ int hif_napi_cpu_deinit(struct hif_opaque_softc *hif)
 	hnc_hotplug_unregister(HIF_GET_SOFTC(hif));
 
 	/* clear the topology table */
-	memset(napid->napi_cpu, 0, sizeof(napid->napi_cpu));
+	memset(napid->napi_cpu, 0, sizeof(struct qca_napi_cpu) * NR_CPUS);
 
 	NAPI_DEBUG("<--%s[rc=%d]", __func__, rc);
 
@@ -2021,7 +1942,7 @@ int hif_napi_cpu_migrate(struct qca_napi_data *napid, int cpu, int action)
 		else
 			napis = cpup[cpu].napis;
 		/* then clear the napi bitmap on each CPU */
-		for (i = 0; i < QDF_MAX_AVAILABLE_CPU; i++)
+		for (i = 0; i < NR_CPUS; i++)
 			cpup[i].napis = 0;
 		/* then for each of the NAPIs to disperse: */
 		for (i = 0; i < CE_COUNT_MAX; i++)

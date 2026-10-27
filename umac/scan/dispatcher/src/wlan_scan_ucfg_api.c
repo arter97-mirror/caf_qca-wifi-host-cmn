@@ -35,8 +35,10 @@
 #ifdef WLAN_POWER_MANAGEMENT_OFFLOAD
 #include <wlan_pmo_obj_mgmt_api.h>
 #endif
+#ifdef WLAN_POLICY_MGR_ENABLE
 #include <wlan_dfs_utils_api.h>
 #include <wlan_policy_mgr_api.h>
+#endif
 #include "cfg_ucfg_api.h"
 #include "wlan_extscan_api.h"
 
@@ -572,25 +574,13 @@ ucfg_scan_cancel_sync(struct scan_cancel_request *req)
 	bool cancel_vdev = false, cancel_pdev = false;
 	struct wlan_objmgr_vdev *vdev;
 	struct wlan_objmgr_pdev *pdev;
-	uint32_t poll_interval_ms;
-	uint32_t max_wait_iterations;
+	uint32_t max_wait_iterations = SCM_CANCEL_SCAN_WAIT_ITERATION;
 
 	if (!req || !req->vdev) {
 		scm_err("req or vdev within req is NULL");
 		if (req)
 			qdf_mem_free(req);
 		return QDF_STATUS_E_NULL_VALUE;
-	}
-
-	poll_interval_ms = req->wait_poll_interval_ms ?
-			   req->wait_poll_interval_ms :
-			   SCM_CANCEL_SCAN_WAIT_TIME;
-	if (req->max_wait_time_ms) {
-		max_wait_iterations = req->max_wait_time_ms / poll_interval_ms;
-		if (!max_wait_iterations)
-			max_wait_iterations = 1;
-	} else {
-		max_wait_iterations = SCM_CANCEL_SCAN_WAIT_ITERATION;
 	}
 
 	if (req->cancel_req.req_type == WLAN_SCAN_CANCEL_PDEV_ALL)
@@ -609,14 +599,14 @@ ucfg_scan_cancel_sync(struct scan_cancel_request *req)
 		while ((wlan_get_pdev_status(pdev) !=
 		     SCAN_NOT_IN_PROGRESS) && max_wait_iterations) {
 			scm_debug("wait for all pdev scan to get complete");
-			qdf_sleep(poll_interval_ms);
+			qdf_sleep(SCM_CANCEL_SCAN_WAIT_TIME);
 			max_wait_iterations--;
 		}
 	} else if (cancel_vdev) {
 		while ((wlan_get_vdev_status(vdev) !=
 		     SCAN_NOT_IN_PROGRESS) && max_wait_iterations) {
 			scm_debug("wait for all vdev scan to get complete");
-			qdf_sleep(poll_interval_ms);
+			qdf_sleep(SCM_CANCEL_SCAN_WAIT_TIME);
 			max_wait_iterations--;
 		}
 	}
@@ -840,10 +830,6 @@ wlan_scan_global_init(struct wlan_objmgr_psoc *psoc,
 	scan_obj->scan_def.last_scan_ageout_time =
 		cfg_get(psoc, CFG_LAST_SCAN_AGEOUT_TIME);
 	scan_obj->aux_mac_support = false;
-	scan_obj->scan_def.scan_cache_report_max_time_in_sec =
-		cfg_get(psoc, CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC);
-	scan_obj->scan_def.p2p_scan_dwell_time_en_on_single_chan =
-		cfg_get(psoc, CFG_P2P_SCAN_EN_DWELL_TIME);
 
 	/* init scan id seed */
 	qdf_atomic_init(&scan_obj->scan_ids);
@@ -1554,20 +1540,6 @@ bool ucfg_scan_wake_lock_in_user_scan(struct wlan_objmgr_psoc *psoc)
 		return false;
 
 	return scan_obj->scan_def.use_wake_lock_in_user_scan;
-}
-
-uint64_t
-ucfg_scan_get_scan_cache_report_max_time_in_sec(struct wlan_objmgr_psoc *psoc)
-{
-	struct wlan_scan_obj *scan_obj;
-
-	scan_obj = wlan_psoc_get_scan_obj(psoc);
-	if (!scan_obj) {
-		scm_err("NULL scan obj");
-		return cfg_default(CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC);
-	}
-
-	return scan_obj->scan_def.scan_cache_report_max_time_in_sec;
 }
 
 bool ucfg_scan_is_connected_scan_enabled(struct wlan_objmgr_psoc *psoc)

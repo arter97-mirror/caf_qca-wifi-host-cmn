@@ -1112,9 +1112,10 @@ static inline uint32_t
 hal_rx_hw_desc_get_ppduid_get_7750(void *rx_tlv_hdr,
 				    void *rxdma_dst_ring_desc)
 {
-	struct reo_entrance_ring *reo_ent_desc =
-					(struct reo_entrance_ring *)rxdma_dst_ring_desc;
-	return reo_ent_desc->phy_ppdu_id;
+	struct rx_pkt_tlvs *rx_pkt_tlvs =
+					(struct rx_pkt_tlvs *)rx_tlv_hdr;
+
+	return HAL_RX_TLV_PHY_PPDU_ID_GET(rx_pkt_tlvs);
 }
 
 /**
@@ -2389,39 +2390,6 @@ void hal_srng_dst_hw_init_7750(struct hal_soc *hal_soc,
 	hal_srng_dst_hw_init_generic(hal_soc, srng, idle_check, idx);
 }
 
-static void
-hal_rx_flow_cmem_update_reo_dst_ind_wcn7750(struct hal_soc *hal_soc,
-					    uint32_t cmem_ba,
-					    uint32_t flow_idx,
-					    uint8_t reo_dest_ind)
-{
-	uint32_t fse_offset;
-	uint32_t value;
-
-	fse_offset = cmem_ba + (flow_idx * HAL_RX_FST_ENTRY_SIZE);
-	value = HAL_CMEM_READ(hal_soc,
-			      fse_offset + HAL_OFFSET(RX_FLOW_SEARCH_ENTRY,
-						      L4_PROTOCOL));
-	value &= ~RX_FLOW_SEARCH_ENTRY_REO_DESTINATION_INDICATION_MASK;
-	value |= HAL_SET_FLD_SM(RX_FLOW_SEARCH_ENTRY,
-				REO_DESTINATION_INDICATION, reo_dest_ind);
-	HAL_CMEM_WRITE(hal_soc, fse_offset + HAL_OFFSET(RX_FLOW_SEARCH_ENTRY,
-							L4_PROTOCOL), value);
-}
-
-#ifdef DRIVER_PASSTHRU_MODE
-static inline void hal_hw_attach_passthru_ops(struct hal_soc *hal_soc)
-{
-	hal_soc->ops->hal_rx_tlv_get_rssi = hal_rx_tlv_get_rssi_be;
-	hal_soc->ops->hal_rx_tlv_get_ppdu_start_ts =
-					hal_rx_tlv_get_ppdu_start_ts_be;
-}
-#else
-static inline void hal_hw_attach_passthru_ops(struct hal_soc *hal_soc)
-{
-}
-#endif
-
 static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -2514,8 +2482,6 @@ static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 					hal_rx_desc_is_first_msdu_be;
 	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_get =
 		hal_rx_tlv_l3_hdr_padding_get_be;
-	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set =
-		hal_rx_tlv_l3_hdr_padding_set_be;
 	hal_soc->ops->hal_rx_encryption_info_valid =
 					hal_rx_encryption_info_valid_be;
 	hal_soc->ops->hal_rx_print_pn = hal_rx_print_pn_be;
@@ -2692,7 +2658,7 @@ static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_get_tsf_time = hal_get_tsf_time_7750;
 	hal_soc->ops->hal_rx_reo_ent_get_src_link_id =
 					hal_rx_reo_ent_get_src_link_id_7750;
-#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_DAL_DP_SUPPORT)
+#ifdef FEATURE_DIRECT_LINK
 	hal_soc->ops->hal_srng_set_msi_config = hal_srng_set_msi_config;
 #endif
 	hal_soc->ops->hal_rx_en_mcast_fp_data_filter =
@@ -2707,9 +2673,6 @@ static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_txmon_status_get_num_users =
 				hal_txmon_status_get_num_users_generic_be;
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
-	hal_soc->ops->hal_rx_flow_cmem_update_reo_dst_ind =
-				hal_rx_flow_cmem_update_reo_dst_ind_wcn7750;
-	hal_hw_attach_passthru_ops(hal_soc);
 };
 
 struct hal_hw_srng_config hw_srng_table_7750[] = {
@@ -3013,23 +2976,19 @@ struct hal_hw_srng_config hw_srng_table_7750[] = {
 	},
 	{ /* RXDMA_BUF */
 		.start_ring_id = HAL_SRNG_WMAC1_SW2RXDMA0_BUF0,
-#if defined(IPA_OFFLOAD) && (defined(FEATURE_DIRECT_LINK) || \
-				defined(FEATURE_WIFI_TRANSPORT)) && \
+#if defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK) && \
 	defined(FEATURE_MGMT_RX_OVER_SRNG)
 		.max_rings = 5,
-#elif (defined(IPA_OFFLOAD) && (defined(FEATURE_DIRECT_LINK) || \
-			defined(FEATURE_WIFI_TRANSPORT))) || \
-	((defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)) && \
-			 defined(FEATURE_MGMT_RX_OVER_SRNG)) || \
+#elif (defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK)) || \
+	(defined(FEATURE_DIRECT_LINK) && defined(FEATURE_MGMT_RX_OVER_SRNG)) || \
 	(defined(IPA_OFFLOAD) && defined(FEATURE_MGMT_RX_OVER_SRNG))
 		.max_rings = 4,
 #elif defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK) || \
-	defined(FEATURE_MGMT_RX_OVER_SRNG) || defined(FEATURE_WIFI_TRANSPORT)
+	defined(FEATURE_MGMT_RX_OVER_SRNG)
 		.max_rings = 3,
 #else
 		.max_rings = 2,
 #endif
-
 		.entry_size = sizeof(struct wbm_buffer_ring) >> 2,
 		.lmac_ring = TRUE,
 		.ring_dir = HAL_SRNG_SRC_RING,
@@ -3144,7 +3103,6 @@ struct hal_hw_srng_config hw_srng_table_7750[] = {
 	{ /* TX_MONITOR_DST */ 0},
 	{ /* SW2RXDMA_NEW */ 0},
 	{ /* SW2RXDMA_LINK_RELEASE */ 0},
-	{ /* TQM2SW_RELEASE */ 0},
 };
 
 /**

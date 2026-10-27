@@ -129,25 +129,9 @@ struct peer_cp_stats {
 /**
  * struct cp_stats_cfg_params - define CP stats INI configuration parameters
  * @chipset_stats_enable: CP stats enable chipset stats logging from ini config
- * @is_cp_stats_logging_enabled: Indicates whether chipset statistics debug
- * logging is enabled via the INI configuration
- * @chipset_stats_push_rbs_delay_val_ms : User delay in ms
- * @chipset_stats_push_rbs_delay_interval : Represent after how many RB node
- *					    User delay is applicable
- * @bcn_rssi_history_report_enable: Enable/disable beacon rssi history report
- * @snr_stats_report_enable: Enable/disable IPI SNR distribution stats report
- * @is_enhanced_stats_support: enhanced_stats_support is supported or not
  */
 struct cp_stats_cfg_params {
 	bool chipset_stats_enable;
-	bool is_cp_stats_logging_enabled;
-	size_t chipset_stats_push_rbs_delay_val_ms;
-	size_t chipset_stats_push_rbs_delay_interval;
-	bool bcn_rssi_history_report_enable;
-#ifdef FEATURE_SNR_STATS
-	bool snr_stats_report_enable;
-#endif /* FEATURE_SNR_STATS */
-	bool is_enhanced_stats_support;
 };
 
 /**

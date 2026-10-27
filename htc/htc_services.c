@@ -29,6 +29,17 @@ unsigned int htc_credit_flow = 1;
 #define DEBUG_CREDIT 0
 #endif
 
+/* HTC credit flow global disable */
+void htc_global_credit_flow_disable(void)
+{
+	htc_credit_flow = 0;
+}
+
+/* HTC credit flow global enable */
+void htc_global_credit_flow_enable(void)
+{
+	htc_credit_flow = 1;
+}
 
 #ifdef HIF_SDIO
 
@@ -390,6 +401,18 @@ QDF_STATUS htc_connect_service(HTC_HANDLE HTCHandle,
 }
 qdf_export_symbol(htc_connect_service);
 
+void htc_set_credit_distribution(HTC_HANDLE HTCHandle,
+				 void *pCreditDistContext,
+				 HTC_CREDIT_DIST_CALLBACK CreditDistFunc,
+				 HTC_CREDIT_INIT_CALLBACK CreditInitFunc,
+				 HTC_SERVICE_ID ServicePriorityOrder[],
+				 int ListLength)
+{
+	/* NOT Supported, this transport does not use a credit based flow
+	 * control mechanism
+	 */
+
+}
 
 void htc_fw_event_handler(void *context, QDF_STATUS status)
 {

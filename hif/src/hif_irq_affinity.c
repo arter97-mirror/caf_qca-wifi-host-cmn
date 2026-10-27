@@ -395,7 +395,7 @@ int hif_exec_cpu_migrate(struct qca_napi_data *napid, int cpu, int action)
 		else
 			napis = cpup[cpu].napis;
 		/* then clear the napi bitmap on each CPU */
-		for (i = 0; i < QDF_MAX_AVAILABLE_CPU; i++)
+		for (i = 0; i < NR_CPUS; i++)
 			cpup[i].napis = 0;
 		/* then for each of the NAPIs to disperse: */
 		for (i = 0; i < HIF_MAX_GROUP; i++)

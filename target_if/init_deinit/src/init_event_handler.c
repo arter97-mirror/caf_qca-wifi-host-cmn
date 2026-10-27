@@ -48,8 +48,6 @@
 #include <target_if_scan.h>
 #include "cdp_txrx_ctrl.h"
 #include "wlan_ipa_obj_mgmt_api.h"
-#include "wlan_action_oui_main.h"
-#include "wlan_mlme_api.h"
 
 static void init_deinit_set_send_init_cmd(struct wlan_objmgr_psoc *psoc,
 					  struct target_psoc_info *tgt_hdl)
@@ -261,7 +259,6 @@ static int init_deinit_service_ready_event_handler(ol_scn_t scn_handle,
 	wmi_legacy_service_ready_callback legacy_callback;
 	struct wmi_unified *wmi_handle;
 	QDF_STATUS ret_val;
-	uint32_t disable_4way_hs_offload;
 
 	if (!scn_handle) {
 		target_if_err("scn handle NULL in service ready handler");
@@ -414,21 +411,6 @@ static int init_deinit_service_ready_event_handler(ol_scn_t scn_handle,
 
 	init_deinit_update_roam_stats_cap(wmi_handle, psoc);
 
-	wlan_mlme_get_4way_hs_offload(psoc, &disable_4way_hs_offload);
-	if (disable_4way_hs_offload == 1 &&
-	    wmi_service_enabled(wmi_handle,
-				wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable)) {
-		wlan_psoc_nif_fw_ext2_cap_set(psoc,
-					      WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE);
-	}
-
-	if (wmi_service_enabled(wmi_handle,
-				wmi_service_skip_pmk_match_delete_support)) {
-		wlan_psoc_nif_fw_ext2_cap_set(psoc,
-					      WLAN_ROAM_SKIP_PMK_MATCH_DELETE_SUPPORT);
-		target_if_debug("FW supports skip PMK match-delete for OKC roam");
-	}
-
 	init_deinit_update_wifi_pos_caps(wmi_handle, psoc);
 	init_deinit_update_tdls_caps(wmi_handle, psoc);
 
@@ -495,9 +477,6 @@ static int init_deinit_service_ready_event_handler(ol_scn_t scn_handle,
 	if (wmi_service_enabled(wmi_handle, wmi_service_vdev_delete_all_peer))
 		wlan_psoc_nif_fw_ext2_cap_set(psoc,
 					      WLAN_VDEV_DELETE_ALL_PEER_SUPPORT);
-	if (wmi_service_enabled(wmi_handle, wmi_service_delete_all_peer_bitmap_support))
-		wlan_psoc_nif_fw_ext2_cap_set(psoc,
-					      WLAN_VDEV_DELETE_ALL_PEER_SUPPORT_BITMAP);
 
 	init_deinit_update_rssi_dbm_conv_support(wmi_handle, psoc);
 
@@ -552,8 +531,6 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 	cdp_config_param_type val;
 	QDF_STATUS status;
 	bool opt_power = false;
-	int num_aux_dev_caps = 0;
-	int idx = 0;
 
 	if (!scn_handle) {
 		target_if_err("scn handle NULL in service ready ext2 handler");
@@ -617,13 +594,6 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 		goto exit;
 	}
 
-	err_code = init_deinit_populate_power_boost_cap_ext2(wmi_handle, event,
-							     info);
-	if (err_code) {
-		target_if_err("failed to populate power boost cap ext2");
-		goto exit;
-	}
-
 	err_code = init_deinit_populate_mac_phy_cap_ext2(wmi_handle, event,
 							 info);
 	if (err_code) {
@@ -666,11 +636,6 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 	if (err_code)
 		target_if_debug("failed to populate sap_coex_capability ext2");
 
-	err_code = init_deinit_populate_rtt_measurement_caps(psoc, wmi_handle,
-							     event);
-	if (err_code)
-		target_if_debug("failed to populate RTT measurement caps");
-
 	if (info->service_ext2_param.num_aux_dev_caps) {
 		err_code = init_deinit_populate_aux_dev_cap_ext2(psoc,
 								 wmi_handle,
@@ -678,18 +643,9 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 		if (err_code) {
 			target_if_debug("failed to populate aux_dev cap ext2");
 		} else {
-			num_aux_dev_caps =
-				info->service_ext2_param.num_aux_dev_caps;
 			/* Intersect FW optimize power caps with the INI val */
-			for (idx = 0; idx < num_aux_dev_caps; idx++) {
-				if (info->aux_dev_caps[idx].hw_mode_id <=
-				     WMI_HW_MODE_AUX_EMLSR_SPLIT) {
-					opt_power |= WLAN_OPTIMIZE_POWER &
-						info->aux_dev_caps[idx].supported_modes_bitmap;
-					if (opt_power)
-						break;
-				}
-			}
+			opt_power = WLAN_OPTIMIZE_POWER &
+				info->aux_dev_caps[0].supported_modes_bitmap;
 			target_if_debug("FW optimize power: %d", opt_power);
 			info->wlan_res_cfg.enable_optimize_power &= opt_power;
 		}
@@ -717,17 +673,6 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 		info->wlan_res_cfg.is_full_bw_nol_supported = true;
 	}
 
-	if (wlan_action_oui_v2_enabled(psoc)) {
-		target_if_debug("action oui v2 is enabled");
-		info->wlan_res_cfg.is_action_oui_v2_enabled = true;
-	}
-
-	if (wmi_service_enabled(wmi_handle, wmi_service_support_wow_ole_dal)) {
-		target_if_debug("FW supports DAL D3 WoW");
-		cdp_soc_set_param(wlan_psoc_get_dp_handle(psoc),
-				  DP_SOC_PARAM_DAL_D3_WOW_SUPPORT, 1);
-	}
-
 	target_if_wifi_radar_support_enable(psoc, tgt_hdl, event);
 
 	val.cdp_fw_support_ml_mon = info->service_ext2_param.fw_support_ml_mon;
@@ -742,14 +687,6 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 					 CDP_VDEV_TX_NSS_SUPPORT, val);
 	if (QDF_IS_STATUS_ERROR(status))
 		target_if_err("Failed to set tx_vdev_nss_support");
-
-	val.cdp_passthru_ampdu_support =
-		wmi_service_enabled(wmi_handle,
-				    wmi_service_passthru_vdev_ampdu_ra_support);
-	status = cdp_txrx_set_psoc_param(wlan_psoc_get_dp_handle(psoc),
-					 CDP_CFG_PASSTHRU_AMPDU_SUPPORT, val);
-	if (QDF_IS_STATUS_ERROR(status))
-		target_if_err("Failed to set passthru ampdu support");
 
 	wlan_ipa_set_fw_cap_opt_dp_ctrl(
 			psoc, info->service_ext2_param.fw_support_opt_dp_ctrl);
@@ -1620,7 +1557,7 @@ QDF_STATUS init_deinit_register_tgt_psoc_ev_handlers(
 
 	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
 	if (!tgt_hdl) {
-		target_if_err("target_psoc_info null in register wmi handler");
+		target_if_err("target_psoc_info null in register wmi hadler");
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -1659,3 +1596,4 @@ QDF_STATUS init_deinit_register_tgt_psoc_ev_handlers(
 
 	return retval;
 }
+

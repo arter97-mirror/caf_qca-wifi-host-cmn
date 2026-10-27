@@ -28,6 +28,16 @@
 #include <qdf_status.h>
 #include <qdf_nbuf.h>
 
+/* Number of pools supported per module */
+#define WBUFF_MAX_POOLS 16
+#define WBUFF_MAX_POOL_ID WBUFF_MAX_POOLS
+
+enum wbuff_module_id {
+	WBUFF_MODULE_WMI_TX,
+	WBUFF_MODULE_CE_RX,
+	WBUFF_MAX_MODULES,
+};
+
 /**
  * struct wbuff_alloc_request - allocation structure for registering each
  * pool for wbuff module.
@@ -103,14 +113,11 @@ wbuff_buff_get(struct wbuff_mod_handle *hdl, uint8_t pool_id, uint32_t len,
 /**
  * wbuff_buff_put() - put the buffer back to wbuff pool
  * @buf: pointer to network buffer
- * @func_name: function from which buffer is returned
- * @line_num: line number in the file
  *
  * Return: NULL if success (buffer consumed)
  *         @buf if failure (buffer not consumed)
  */
-qdf_nbuf_t wbuff_buff_put(qdf_nbuf_t buf, const char *func_name,
-			  uint32_t line_num);
+qdf_nbuf_t wbuff_buff_put(qdf_nbuf_t buf);
 
 #else
 
@@ -144,7 +151,7 @@ wbuff_buff_get(struct wbuff_mod_handle *hdl, uint8_t pool_id, uint32_t len,
 }
 
 static inline qdf_nbuf_t
-wbuff_buff_put(qdf_nbuf_t buf, const char *func_name, uint32_t line_num)
+wbuff_buff_put(qdf_nbuf_t buf)
 {
 	return buf;
 }

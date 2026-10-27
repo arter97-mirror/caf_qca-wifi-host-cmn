@@ -160,39 +160,6 @@ static inline int __qdf_topology_physical_package_id(unsigned int cpu)
 }
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
-/**
- * __qdf_topology_cluster_cpumask() - API to retrieve the
- * cpumask corresponding to a cluster belonging to cpu given
- * @cpu: cpu core
- *
- * This function returns the cluster wise cpumask information for given cpu
- *
- * Return: Cluster wise cpumask of given cpu core
- */
-static inline struct cpumask *__qdf_topology_cluster_cpumask(unsigned int cpu)
-{
-	return topology_cluster_cpumask(cpu);
-}
-#else
-static inline struct cpumask *__qdf_topology_cluster_cpumask(unsigned int cpu)
-{
-	unsigned int cpus;
-	static DEFINE_PER_CPU(struct cpumask, cluster_mask);
-	int cluster_id = __qdf_topology_physical_package_id(cpu);
-
-	qdf_cpumask_clear(per_cpu_ptr(&cluster_mask, cpu));
-
-	__qdf_for_each_possible_cpu(cpus) {
-		if (__qdf_topology_physical_package_id(cpus) == cluster_id)
-			qdf_cpumask_set_cpu(cpus,
-					    per_cpu_ptr(&cluster_mask, cpu));
-	}
-
-	return per_cpu_ptr(&cluster_mask, cpu);
-}
-#endif
-
 /**
  * __qdf_cpumask_subset() - API to check for subset in cpumasks
  * @srcp1: first cpu mask

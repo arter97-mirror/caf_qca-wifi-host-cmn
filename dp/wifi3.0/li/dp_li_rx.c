@@ -181,9 +181,9 @@ dp_rx_intrabss_fwd_li(struct dp_soc *soc,
 
 	if (dp_rx_intrabss_ucast_check_li(soc, nbuf, ta_txrx_peer,
 					  &msdu_metadata, &tx_vdev_id))
-		return dp_rx_intrabss_ucast_fwd(soc, ta_txrx_peer, NULL,
-						tx_vdev_id, rx_tlv_hdr,
-						nbuf, tid_stats, 0);
+		return dp_rx_intrabss_ucast_fwd(soc, ta_txrx_peer, tx_vdev_id,
+						rx_tlv_hdr, nbuf, tid_stats,
+						0);
 
 	return false;
 }
@@ -244,7 +244,7 @@ uint32_t dp_rx_process_li(struct dp_intr *int_ctx,
 	uint32_t peer_ext_stats;
 	uint32_t dsf;
 	uint32_t max_ast;
-	uint64_t qtime = 0;
+	uint64_t current_time = 0;
 	uint16_t buf_size;
 
 	DP_HIST_INIT();
@@ -264,7 +264,7 @@ uint32_t dp_rx_process_li(struct dp_intr *int_ctx,
 	dp_runtime_pm_mark_last_busy(soc);
 
 more_data:
-	/* reset local variables here to be reused in the function */
+	/* reset local variables here to be re-used in the function */
 	nbuf_head = NULL;
 	nbuf_tail = NULL;
 	deliver_list_head = NULL;
@@ -288,7 +288,7 @@ more_data:
 	rx_pdev = NULL;
 	tid_stats = NULL;
 
-	dp_pkt_get_timestamp(&qtime);
+	dp_pkt_get_timestamp(&current_time);
 
 	if (qdf_unlikely(dp_rx_srng_access_start(int_ctx, soc, hal_ring_hdl))) {
 		/*
@@ -564,7 +564,7 @@ done:
 		next = nbuf->next;
 		dp_rx_prefetch_nbuf_data(nbuf, next);
 
-		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(NULL, nbuf))) {
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
 			nbuf = next;
 			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
 			continue;
@@ -722,7 +722,7 @@ done:
 			qdf_nbuf_pull_head(nbuf, soc->rx_pkt_tlv_size);
 		} else if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
 			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
-			nbuf = dp_rx_sg_create(soc, nbuf, true);
+			nbuf = dp_rx_sg_create(soc, nbuf);
 			next = nbuf->next;
 
 			if (qdf_nbuf_is_raw_frame(nbuf)) {
@@ -906,7 +906,7 @@ done:
 		dp_rx_update_stats(soc, nbuf);
 
 		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
-				     qtime, nbuf);
+				     current_time, nbuf);
 
 		DP_RX_LIST_APPEND(deliver_list_head,
 				  deliver_list_tail,
@@ -1448,7 +1448,8 @@ dp_rx_null_q_desc_handle_li(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	if (qdf_nbuf_is_frag(nbuf))
 		qdf_nbuf_pull_head(nbuf, soc->rx_pkt_tlv_size);
 	else
-		dp_rx_skip_tlvs(soc, nbuf, msdu_metadata.l3_hdr_pad);
+		qdf_nbuf_pull_head(nbuf, (msdu_metadata.l3_hdr_pad +
+				   soc->rx_pkt_tlv_size));
 
 	DP_STATS_INC_PKT(vdev, rx_i.null_q_desc_pkt, 1, qdf_nbuf_len(nbuf));
 
@@ -1479,7 +1480,7 @@ dp_rx_null_q_desc_handle_li(struct dp_soc *soc, qdf_nbuf_t nbuf,
 
 	/*
 	 * In qwrap mode if the received packet matches with any of the vdev
-	 * mac addresses, drop it. Do not receive multicast packets originated
+	 * mac addresses, drop it. Donot receive multicast packets originated
 	 * from any proxysta.
 	 */
 	if (check_qwrap_multicast_loopback(vdev, nbuf)) {
@@ -1577,7 +1578,7 @@ dp_rx_null_q_desc_handle_li(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	if (qdf_unlikely(vdev->rx_decap_type == htt_cmn_pkt_type_raw)) {
 		qdf_nbuf_set_raw_frame(nbuf, 1);
 		qdf_nbuf_set_next(nbuf, NULL);
-		dp_rx_deliver_raw(vdev, nbuf, txrx_peer, 0, rx_tlv_hdr);
+		dp_rx_deliver_raw(vdev, nbuf, txrx_peer, 0);
 	} else {
 		enh_flag = vdev->pdev->enhanced_stats_en;
 		qdf_nbuf_set_next(nbuf, NULL);
@@ -1639,42 +1640,3 @@ drop_nbuf:
 	dp_rx_nbuf_free(nbuf);
 	return QDF_STATUS_E_FAILURE;
 }
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * dp_dal_rx_process_nbuf_list_li() - Dummy implementation for LI
- * @soc: DP SOC handle
- * @nbuf_list: Network buffer list
- * @reo_ring_num: REO ring number
- *
- * Return: QDF_STATUS_E_NOSUPPORT (dummy implementation)
- */
-QDF_STATUS dp_dal_rx_process_nbuf_list_li(struct dp_soc *soc,
-					  qdf_nbuf_t nbuf_list,
-					  uint8_t reo_ring_num)
-{
-	/* Dummy implementation for LI architecture */
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-/**
- * dp_rx_validate_and_fetch_rx_desc_li() - LI-specific RX descriptor validation
- * @soc: DP SOC context
- * @ring_desc: HAL ring descriptor
- * @ring_id: Ring ID
- *
- * This function performs LI-specific validation and fetches the RX descriptor.
- * It includes all validation steps from error checking to descriptor sanity
- * and error handling with descriptor cleanup.
- *
- * Return: Pointer to rx_desc on success, NULL on failure
- */
-struct dp_rx_desc *
-dp_rx_validate_and_fetch_rx_desc_li(struct dp_soc *soc,
-				    hal_ring_desc_t ring_desc,
-				    uint8_t ring_id)
-{
-	/* Dummy implementation for LI architecture */
-	return NULL;
-}
-#endif /* FEATURE_DAL_DP_SUPPORT */

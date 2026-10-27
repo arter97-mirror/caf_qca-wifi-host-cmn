@@ -123,13 +123,10 @@ enum scan_mode_6ghz {
  * <ini>
  * gEnableDFSChnlScan - Enable/Disable scan on DFS channels
  * @Min: 0
- * @Max: 2
+ * @Max: 1
  * @Default: 1
  *
  * This ini is used to enable/disable scan on DFS channels.
- * 0 - Disable DFS channel scan
- * 1 - Enable DFS channel scan
- * 2 - Enable DFS channel scan including low-span scans
  *
  * Related: Scan
  *
@@ -137,10 +134,9 @@ enum scan_mode_6ghz {
  *
  * </ini>
  */
-#define CFG_ENABLE_DFS_SCAN CFG_INI_UINT( \
+#define CFG_ENABLE_DFS_SCAN CFG_INI_BOOL( \
 				"gEnableDFSChnlScan", \
-				0, 2, 1, \
-				CFG_VALUE_OR_DEFAULT, \
+				true, \
 				"enable dfs scan")
 
 /*
@@ -1230,17 +1226,6 @@ enum scan_mode_6ghz {
 			0, \
 			CFG_VALUE_OR_DEFAULT, \
 			"p2p scan burst duration")
-
-/*
- * <ini>
- * p2p_scan_dwell_time_en_on_single_chan - Enable/Disable Enhance
- * dwell times for Single channel P2P scan.
- */
-#define CFG_P2P_SCAN_EN_DWELL_TIME CFG_INI_BOOL( \
-		"p2p_scan_dwell_time_en_on_single_chan", \
-		0, \
-		"P2P scan dwell time enhanced for Single channel")
-
 /*
  * <ini>
  * go_scan_burst_duration - Burst duration in case of split scan when GO is
@@ -1338,31 +1323,6 @@ enum scan_mode_6ghz {
 
 /*
  * <ini>
- * scan_cache_report_max_time_in_sec - Set max time for scan cache report
- * @Min: 0
- * @Max: 180
- * @Default: 60
- *
- * This ini is used to configure Max time for scan cache report
- *
- * Related: None
- *
- * Supported Feature: STA
- *
- * Usage: Internal/External
- *
- * </ini>
- */
-#define CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC CFG_INI_UINT( \
-			"scan_cache_report_max_time_in_sec", \
-			0, \
-			180, \
-			60, \
-			CFG_VALUE_OR_DEFAULT, \
-			"max_scan_cache_report_time_in_sec")
-
-/*
- * <ini>
  * gEnableSNRMonitoring - Enables SNR Monitoring
  * @Min: 0
  * @Max: 1
@@ -1425,8 +1385,8 @@ enum scan_mode_6ghz {
  * <ini>
  * scan_mode_6ghz_duty_cycle - 6ghz Scan mode duty cycle
  * @Min: 0
- * @Max: 10
- * @Default: 2
+ * @Max: 0xFFFF
+ * @Default: 4
  *
  * Configure the 6Ghz scan mode duty cycle
  * 0 - No full scan needed, all scans are optimized
@@ -1448,8 +1408,8 @@ enum scan_mode_6ghz {
 #define CFG_6GHZ_SCAN_MODE_DUTY_CYCLE CFG_INI_UINT( \
 			"scan_mode_6ghz_duty_cycle", \
 			0, \
-			10, \
-			2, \
+			0xFFFF, \
+			4, \
 			CFG_VALUE_OR_DEFAULT, \
 			"6ghz scan mode duty cycle")
 
@@ -1565,7 +1525,5 @@ enum scan_mode_6ghz {
 	CFG(CFG_SCAN_ALLOW_BSS_WITH_CORRUPTED_IE) \
 	CFG(CFG_SKIP_6GHZ_AND_INDOOR_FREQ_SCAN) \
 	CFG_SCAN_PNO \
-	CFG(CFG_LAST_SCAN_AGEOUT_TIME) \
-	CFG(CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC) \
-	CFG(CFG_P2P_SCAN_EN_DWELL_TIME)
+	CFG(CFG_LAST_SCAN_AGEOUT_TIME)
 #endif /* __CONFIG_SCAN_H */

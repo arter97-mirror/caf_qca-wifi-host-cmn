@@ -22,23 +22,19 @@
 
 #include <qdf_types.h>
 /* HW headers */
-
-#ifndef CONFIG_BORON
 #include <reo_descriptor_threshold_reached_status.h>
-#include <reo_flush_cache.h>
-#include <reo_flush_cache_status.h>
 #include <reo_flush_queue.h>
-#include <reo_flush_queue_status.h>
-#include <reo_flush_timeout_list.h>
 #include <reo_flush_timeout_list_status.h>
-#include <reo_get_queue_stats.h>
-#include <reo_get_queue_stats_status.h>
 #include <reo_unblock_cache.h>
+#include <reo_flush_cache.h>
+#include <reo_flush_queue_status.h>
+#include <reo_get_queue_stats.h>
 #include <reo_unblock_cache_status.h>
+#include <reo_flush_cache_status.h>
+#include <reo_flush_timeout_list.h>
+#include <reo_get_queue_stats_status.h>
 #include <reo_update_rx_reo_queue.h>
 #include <reo_update_rx_reo_queue_status.h>
-#endif /* !CONFIG_BORON */
-
 #include <tlv_tag_def.h>
 
 /* SW headers */

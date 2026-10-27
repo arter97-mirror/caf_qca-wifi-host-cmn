@@ -29,8 +29,6 @@
 #include <wlan_reg_afc.h>
 #endif
 
-#include "qdf_list.h"
-
 #ifdef CONFIG_BAND_6GHZ
 #define REG_MAX_CHANNELS_PER_OPERATING_CLASS        70
 /*
@@ -78,9 +76,6 @@
 #define REGULATORY_PHYMODE_NO11AX    BIT(5)
 #ifdef WLAN_FEATURE_11BE
 #define REGULATORY_PHYMODE_NO11BE    BIT(6)
-#endif
-#ifdef WLAN_FEATURE_11BN
-#define REGULATORY_PHYMODE_NO11BN    BIT(7)
 #endif
 
 #define BW_5_MHZ      5
@@ -539,6 +534,7 @@ enum channel_enum {
 #define BAND_5GHZ_START_CHANNEL MIN_5GHZ_CHANNEL
 #endif /* CONFIG_49GHZ_CHAN */
 
+#ifdef DISABLE_UNII_SHARED_BANDS
 	MIN_UNII_1_BAND_CHANNEL = CHAN_ENUM_5180,
 	MAX_UNII_1_BAND_CHANNEL = CHAN_ENUM_5240,
 	NUM_UNII_1_BAND_CHANNELS = (MAX_UNII_1_BAND_CHANNEL -
@@ -548,6 +544,7 @@ enum channel_enum {
 	MAX_UNII_2A_BAND_CHANNEL = CHAN_ENUM_5320,
 	NUM_UNII_2A_BAND_CHANNELS = (MAX_UNII_2A_BAND_CHANNEL -
 				     MIN_UNII_2A_BAND_CHANNEL + 1),
+#endif
 
 #ifdef CONFIG_BAND_6GHZ
 	MIN_6GHZ_CHANNEL = CHAN_ENUM_5935,
@@ -584,7 +581,6 @@ enum channel_state {
  * @REG_STANDARD_POWER_AP: Standard Power AP
  * @REG_VERY_LOW_POWER_AP: Very low power AP
  * @REG_INDOOR_ENABLED_AP: Indoor Enabled AP
- * @REG_GEO_FENCED_VARIABLE_POWER_AP: Geo-fenced Variable Power AP
  * @REG_CURRENT_MAX_AP_TYPE: current maximum, used to determine array size
  * @REG_MAX_SUPP_AP_TYPE: Current maximum AP power typer supported in the IEEE
  * standard.
@@ -598,9 +594,6 @@ enum reg_6g_ap_type {
 	REG_VERY_LOW_POWER_AP = 2,
 #ifdef CONFIG_REG_CLIENT
 	REG_INDOOR_ENABLED_AP = 3,
-#ifdef WLAN_FEATURE_GVP
-	REG_GEO_FENCED_VARIABLE_POWER_AP = 4,
-#endif
 #endif
 	REG_CURRENT_MAX_AP_TYPE,
 	REG_MAX_SUPP_AP_TYPE = REG_CURRENT_MAX_AP_TYPE - 1,
@@ -639,35 +632,22 @@ typedef enum {
 	REGDOMAIN_COUNT
 } v_REGDOMAIN_t;
 
-/*
- * NB: not using kernel-doc comment marker since kernel-doc doesn't
- *     properly handle the conditional compilation
+/**
  * enum ctl_value - CTL value
  * @CTL_FCC: CTL FCC
  * @CTL_MKK: CTL MKK
  * @CTL_ETSI: CTL ETSI
- * @CTL_KOR: CTL KOR (0x50; on WLAN_REG_AUTO platforms remapped to CTL_FCC)
- * @CTL_CHN: CTL CHINA (0x60; on WLAN_REG_AUTO platforms remapped to CTL_ETSI)
+ * @CTL_KOR: CTL KOR
+ * @CTL_CHN: CTL CHINA
  * @CTL_USER_DEF: CTL USER_DEF
  * @CTL_NONE: CTL NONE
- *
- * On WLAN_REG_AUTO platforms, Korea (KOR) follows FCC regulations and
- * China (CHN) follows ETSI regulations for simplified compliance.
- * CTL_KOR and CTL_CHN are aliased to CTL_FCC and CTL_ETSI respectively.
- * Code using switch statements or direct comparisons should account for
- * this aliasing.
  */
 enum ctl_value {
 	CTL_FCC = 0x10,
 	CTL_ETSI = 0x30,
 	CTL_MKK = 0x40,
-#if defined(WLAN_REG_AUTO)
-	CTL_KOR = CTL_FCC,
-	CTL_CHN = CTL_ETSI,
-#else
 	CTL_KOR = 0x50,
 	CTL_CHN = 0x60,
-#endif
 	CTL_USER_DEF = 0x70,
 	CTL_NONE = 0xff
 };
@@ -891,7 +871,7 @@ struct reg_stop_11d_scan_req {
 };
 
 /**
- * struct reg_11d_new_country: regulatory 11d new country code
+ * struct reg_11d_new_country: regulatory 11d new coutry code
  * @alpha2: new 11d alpha2
  */
 struct reg_11d_new_country {
@@ -1009,48 +989,55 @@ struct get_usable_chan_req_params {
 
 /**
  * struct regulatory_channel
+ * @center_freq: center frequency
+ * @chan_num: channel number
+ * @state: channel state
+ * @chan_flags: channel flags
+ * @tx_power: TX powers
+ * @min_bw: min bandwidth
+ * @max_bw: max bandwidth
+ * @ant_gain: antenna gain
  * @nol_chan: whether channel is nol
  * @nol_history: Set NOL-History when STA vap detects RADAR.
+ * @is_chan_hop_blocked: Whether channel is blocked for ACS hopping.
+ * @ht40intol_flags: Contains Flags to indicate whether the 40PLUS/40MINUS
+ *                   version of the channel is blocked by ACS due to
+ *                   intolerance.
+ * @psd_flag: is PSD channel or not
+ * @psd_eirp: PSD power level
  * @is_static_punctured: is static punctured
  * @opclass_chan_disable: Whether the channel is disabled/enabled by a user
  *                        command. The command provides an opclass and a
  *                        subset of the channels belonging to that opclass
  *                        as inputs and expects the driver to disable/enable
  *                        the channels in the subset.
- * @psd_flag: is PSD channel or not
- * @chan_num: channel number
- * @min_bw: min bandwidth
- * @max_bw: max bandwidth
- * @psd_eirp: PSD power level
- * @tx_power: TX powers
- * @chan_flags: channel flags
- * @center_freq: center frequency
- * @state: channel state
  * @power_type: channel power type
  */
 struct regulatory_channel {
+	qdf_freq_t center_freq;
+	uint8_t chan_num;
+	enum channel_state state;
+	uint32_t chan_flags;
+	int32_t tx_power;
+	uint16_t min_bw;
+	uint16_t max_bw;
+	uint8_t ant_gain;
 	bool nol_chan;
 	bool nol_history;
-#ifdef CONFIG_REG_CLIENT
-	bool is_static_punctured;
-#else
-	bool opclass_chan_disable;
+#ifdef CONFIG_HOST_FIND_CHAN
+	bool is_chan_hop_blocked;
+	uint8_t ht40intol_flags;
 #endif
 #ifdef CONFIG_BAND_6GHZ
 	bool psd_flag;
-#endif
-	uint8_t chan_num;
-	uint16_t min_bw;
-	uint16_t max_bw;
-#ifdef CONFIG_BAND_6GHZ
 	uint16_t psd_eirp;
 #endif
-	int32_t tx_power;
-	uint32_t chan_flags;
-	qdf_freq_t center_freq;
-	enum channel_state state;
 #ifdef CONFIG_REG_CLIENT
+	uint8_t is_static_punctured;
 	enum reg_6g_ap_type power_type;
+#endif
+#ifndef CONFIG_REG_CLIENT
+	bool opclass_chan_disable;
 #endif
 };
 
@@ -1642,8 +1629,6 @@ enum restart_beaconing_on_ch_avoid_rule {
  * @is_afc_reg_noaction: Whether no action to AFC power event
  * @sta_sap_scc_on_indoor_channel: Value of sap+sta scc on indoor support
  * @p2p_indoor_ch_support: Allow P2P GO in indoor channels
- * @enable_social_channels_on_2g_disable: Enable 2.4 GHz social channels
- * (2412/2437/2462) for P2P/NAN discovery when 2.4 GHz band is disabled
  */
 struct reg_config_vars {
 	uint32_t enable_11d_support;
@@ -1670,7 +1655,6 @@ struct reg_config_vars {
 #endif
 	bool sta_sap_scc_on_indoor_channel;
 	bool p2p_indoor_ch_support;
-	bool enable_social_channels_on_2g_disable;
 };
 
 /**
@@ -1835,16 +1819,6 @@ struct ch_avoid_ind_type {
 };
 
 /**
- * struct gvp_op_ctrl
- * @gvp_op_start: GVP operation start or stop
- * @device_op_mode: device opmode that runs GVP operation
- */
-struct gvp_op_ctrl {
-	bool gvp_op_start;
-	enum QDF_OPMODE device_op_mode;
-};
-
-/**
  * struct unsafe_ch_list
  * @chan_cnt: no.of channels
  * @chan_freq_list: channel frequency list
@@ -1931,7 +1905,6 @@ struct reg_ctl_params {
  * @REG_PHYMODE_11AC: 802.11ac phymode
  * @REG_PHYMODE_11AX: 802.11ax phymode
  * @REG_PHYMODE_11BE: 802.11be phymode
- * @REG_PHYMODE_11BN: 802.11bn phymode
  * @REG_PHYMODE_MAX: placeholder for future phymodes
  */
 enum reg_phymode {
@@ -1944,9 +1917,6 @@ enum reg_phymode {
 	REG_PHYMODE_11AX,
 #ifdef WLAN_FEATURE_11BE
 	REG_PHYMODE_11BE,
-#endif
-#ifdef WLAN_FEATURE_11BN
-	REG_PHYMODE_11BN,
 #endif
 	REG_PHYMODE_MAX,
 };
@@ -2470,117 +2440,4 @@ struct r2p_table_update_status_obj {
 	uint32_t pdev_id;
 	uint32_t status;
 };
-
-/**
- * enum reg_host_pdev_power_boost_event_status - power boost status
- * @REG_HOST_POWER_BOOST_START_INFERENCE: Start inference
- * @REG_HOST_POWER_BOOST_ABORT: Abort
- * @REG_HOST_POWER_BOOST_COMPLETE: Inference complete
- *
- * This enum is 1:1 mapping to enum wmi_pdev_power_boost_event_type
- */
-enum reg_host_pdev_power_boost_event_status {
-	REG_HOST_POWER_BOOST_START_INFERENCE = 0,
-	REG_HOST_POWER_BOOST_ABORT           = 1,
-	REG_HOST_POWER_BOOST_COMPLETE        = 2,
-};
-
-/**
- * enum reg_host_tx_pb_inference_stage - Inference stage
- * @REG_HOST_TX_PB_INFERENCE_FIRST_PASS: 1st pass
- * @REG_HOST_TX_PB_INFERENCE_SECOND_PASS: 2nd pass
- * @REG_HOST_TX_PB_INFERENCE_THIRD_PASS: 3rd pass
- * @REG_HOST_TX_PB_INFERENCE_FOURTH_PASS: 4th pass
- *
- * This enum is 1:1 mapping to enum wmi_pdev_power_boost_inferencing_stage
- */
-enum reg_host_tx_pb_inference_stage {
-	REG_HOST_TX_PB_INFERENCE_FIRST_PASS  = 0,
-	REG_HOST_TX_PB_INFERENCE_SECOND_PASS = 1,
-	REG_HOST_TX_PB_INFERENCE_THIRD_PASS  = 2,
-	REG_HOST_TX_PB_INFERENCE_FOURTH_PASS = 3,
-};
-
-/**
- * enum reg_host_pdev_power_boost_cmd_status - power boost command status
- * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_READY: App ready status
- * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ESTIMATED_DATA: Power boost inference
- * result
- * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ABORT: Abort power boost inference
- */
-enum reg_host_pdev_power_boost_cmd_status {
-	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_READY = 0,
-	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ESTIMATED_DATA,
-	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ABORT,
-};
-
-/**
- * struct reg_pdev_pb_dma_buf - Power boost DMA buffer struct for WMI
- *
- * @paddr_aligned_lo: Physical address lower 32-bits
- * @paddr_aligned_hi: Physical address high 32-bits
- * @size: DMA buffer size for power boost
- */
-struct reg_pdev_pb_dma_buf {
-	uint32_t paddr_aligned_lo;
-	uint32_t paddr_aligned_hi;
-	uint32_t size;
-};
-
-/**
- * struct reg_txpb_cmn_params - Power boost common params
- * @node: List entry element
- * @pdev_id: PDEV ID
- * @status: status
- * @inference_stage: Power Boost inference Stage
- * @mcs: MCS of the Power Boost samples collected
- * @bandwidth: Bandwidth of the Power Boost samples collected
- * @temperature_degreeC: Temperature in Celsius
- * @primary_chan_mhz: Primary channel frequency
- * @center_freq1: Center frequency 1
- * @center_freq2: Center frequency 2
- * @phy_mode: PHY mode
- * @req_id: Request id
- */
-struct reg_txpb_cmn_params {
-	qdf_list_node_t node;
-	uint32_t pdev_id;
-	uint32_t status;
-	enum reg_host_tx_pb_inference_stage inference_stage;
-	uint32_t mcs;
-	uint32_t bandwidth;
-	int32_t  temperature_degreeC;
-	uint32_t primary_chan_mhz;
-	uint32_t center_freq1;
-	uint32_t center_freq2;
-	uint32_t phy_mode;
-	uint32_t req_id;
-};
-
-/**
- * struct reg_txpb_evt_params - Power boost event params
- * @cmn_params: These are the common params applicable to event and command
- * @tx_pwr: ANN packet tx_power
- * @tx_chain_idx: Tx chain index on which ANN packet sent
- * @iq_sample_buf_size: IQ sample size
- */
-struct reg_txpb_evt_params {
-	struct reg_txpb_cmn_params cmn_params;
-	int32_t  tx_pwr;
-	uint32_t tx_chain_idx;
-	uint32_t iq_sample_buf_size;
-};
-
-/**
- * struct reg_txpb_cmd_params - Power boost cmd params
- * @cmn_params: These are the common params applicable to event and command
- * @tx_evm: Tx Error Vector Magnitude
- * @mask_margin: Mask margin
- */
-struct reg_txpb_cmd_params {
-	struct reg_txpb_cmn_params cmn_params;
-	int32_t  tx_evm;
-	int32_t  mask_margin;
-};
-
 #endif

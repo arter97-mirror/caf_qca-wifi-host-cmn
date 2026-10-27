@@ -106,16 +106,6 @@ if_mgr_ap_csa_complete(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS if_mgr_ap_csa_start(struct wlan_objmgr_vdev *vdev,
 			       struct if_mgr_event_data *event_data);
 
-/**
- * if_mgr_ap_channel_selected() - Handler to process channel selection
- * completion of SAP/GO
- * @vdev: Pointer to vdev object
- * @event_data: Interface manager event data
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS if_mgr_ap_channel_selected(struct wlan_objmgr_vdev *vdev,
-				      struct if_mgr_event_data *event_data);
 #if defined WLAN_MBSS
 /**
  * if_mgr_ap_start_acs() - ACS start event handler

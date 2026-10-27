@@ -23,6 +23,8 @@
 #include "qdf_lock.h"
 #include "qdf_mem.h"
 #include "qdf_nbuf.h"
+#include "tcl_data_cmd.h"
+//#include "mac_tcl_reg_seq_hwioreg.h"
 #include "phyrx_rssi_legacy.h"
 #include "rx_msdu_start.h"
 #include "tlv_tag_def.h"
@@ -63,6 +65,14 @@
 
 #define HAL_REO_R0_CONFIG(soc, reg_val, reo_params)		\
 	do { \
+		reg_val &= \
+			~(HWIO_REO_R0_GENERAL_ENABLE_AGING_LIST_ENABLE_BMSK |\
+			HWIO_REO_R0_GENERAL_ENABLE_AGING_FLUSH_ENABLE_BMSK); \
+		reg_val |= \
+			HAL_SM(HWIO_REO_R0_GENERAL_ENABLE, \
+			       AGING_LIST_ENABLE, 1) |\
+			HAL_SM(HWIO_REO_R0_GENERAL_ENABLE, \
+			       AGING_FLUSH_ENABLE, 1);\
 		HAL_REG_WRITE((soc), \
 			      HWIO_REO_R0_GENERAL_ENABLE_ADDR(	\
 			      REO_REG_REG_BASE), \
@@ -86,22 +96,6 @@
 			      (reg_val)); \
 	} while (0)
 
-#define HAL_REO_RBM_DEST_RING_CTRL_IX_0_CONFIG(soc, reg_val, reo_dest_ring) \
-	do { \
-		reg_val = \
-			HAL_REG_READ((soc), \
-				     HWIO_REO_R0_RBM_DESTINATION_RING_CTRL_IX_0_ADDR( \
-				     REO_REG_REG_BASE)); \
-		reg_val &= \
-			~(HWIO_REO_R0_RBM_DESTINATION_RING_CTRL_IX_0_RBM_RING_MAPPING_6_BMSK); \
-		reg_val |= \
-			HAL_SM(HWIO_REO_R0_RBM_DESTINATION_RING_CTRL_IX_0, \
-			       RBM_RING_MAPPING_6, reo_dest_ring); \
-		HAL_REG_WRITE((soc), \
-			      HWIO_REO_R0_RBM_DESTINATION_RING_CTRL_IX_0_ADDR( \
-			      REO_REG_REG_BASE), (reg_val)); \
-	} while (0)
-
 #define HAL_RX_MSDU_DESC_INFO_GET(msdu_details_ptr) \
 	((struct rx_msdu_desc_info *) \
 	_OFFSET_TO_BYTE_PTR(msdu_details_ptr, \
@@ -120,9 +114,9 @@ RX_MSDU_DETAILS_RX_MSDU_DESC_INFO_DETAILS_RESERVED_0A_OFFSET))
 #define PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS_CHAN_CAPTURE_STATUS_MSB 2
 
 #define HAL_GET_RX_LOCATION_INFO_CHAN_CAPTURE_STATUS(rx_tlv) \
-	((HAL_RX_GET_64((rx_tlv), \
-			PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS, \
-			RTT_CFR_STATUS) & \
+	((HAL_RX_GET((rx_tlv), \
+		     PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS, \
+		     RTT_CFR_STATUS) & \
 	  PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS_CHAN_CAPTURE_STATUS_BMASK) >> \
 	 PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS_CHAN_CAPTURE_STATUS_LSB)
 
@@ -133,15 +127,13 @@ void hal_rx_get_bb_info_fig(void *rx_tlv,
 	struct hal_rx_ppdu_info *ppdu_info  = ppdu_info_hdl;
 
 	ppdu_info->cfr_info.bb_captured_channel =
-		HAL_RX_GET_64(rx_tlv, RXPCU_PPDU_END_INFO,
-			      BB_CAPTURED_CHANNEL);
+		HAL_RX_GET(rx_tlv, RXPCU_PPDU_END_INFO, BB_CAPTURED_CHANNEL);
 
 	ppdu_info->cfr_info.bb_captured_timeout =
-		HAL_RX_GET_64(rx_tlv, RXPCU_PPDU_END_INFO,
-			      BB_CAPTURED_TIMEOUT);
+		HAL_RX_GET(rx_tlv, RXPCU_PPDU_END_INFO, BB_CAPTURED_TIMEOUT);
 
 	ppdu_info->cfr_info.bb_captured_reason =
-		HAL_RX_GET_64(rx_tlv, RXPCU_PPDU_END_INFO, BB_CAPTURED_REASON);
+		HAL_RX_GET(rx_tlv, RXPCU_PPDU_END_INFO, BB_CAPTURED_REASON);
 }
 
 static inline
@@ -151,44 +143,44 @@ void hal_rx_get_rtt_info_fig(void *rx_tlv,
 	struct hal_rx_ppdu_info *ppdu_info  = ppdu_info_hdl;
 
 	ppdu_info->cfr_info.rx_location_info_valid =
-		HAL_RX_GET_64(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      RX_LOCATION_INFO_VALID);
+		HAL_RX_GET(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   RX_LOCATION_INFO_VALID);
 
 	ppdu_info->cfr_info.rtt_che_buffer_pointer_low32 =
-		HAL_RX_GET_64(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      RTT_CHE_BUFFER_POINTER_LOW32);
+		HAL_RX_GET(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   RTT_CHE_BUFFER_POINTER_LOW32);
 
 	ppdu_info->cfr_info.rtt_che_buffer_pointer_high8 =
-		HAL_RX_GET_64(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      RTT_CHE_BUFFER_POINTER_HIGH8);
+		HAL_RX_GET(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   RTT_CHE_BUFFER_POINTER_HIGH8);
 
 	ppdu_info->cfr_info.chan_capture_status =
 		HAL_GET_RX_LOCATION_INFO_CHAN_CAPTURE_STATUS(rx_tlv);
 
 	ppdu_info->cfr_info.rx_start_ts =
-		HAL_RX_GET_64(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      RX_START_TS);
+		HAL_RX_GET(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   RX_START_TS);
 
 	ppdu_info->cfr_info.rtt_cfo_measurement = (int16_t)
-		HAL_RX_GET_64(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      RTT_CFO_MEASUREMENT);
+		HAL_RX_GET(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   RTT_CFO_MEASUREMENT);
 
 	ppdu_info->cfr_info.agc_gain_info0 =
-		HAL_RX_GET_64(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      GAIN_CHAIN0);
+		HAL_RX_GET(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   GAIN_CHAIN0);
 
 	ppdu_info->cfr_info.agc_gain_info0 |=
-		(((uint32_t)HAL_RX_GET_64(rx_tlv,
+		(((uint32_t)HAL_RX_GET(rx_tlv,
 			    PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
 			    GAIN_CHAIN1)) << 16);
 
 	ppdu_info->cfr_info.agc_gain_info1 =
-		HAL_RX_GET_64(rx_tlv,
-			      PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      GAIN_CHAIN2);
+		HAL_RX_GET(rx_tlv,
+			   PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   GAIN_CHAIN2);
 
 	ppdu_info->cfr_info.agc_gain_info1 |=
-		(((uint32_t)HAL_RX_GET_64(rx_tlv,
+		(((uint32_t)HAL_RX_GET(rx_tlv,
 			    PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
 			    GAIN_CHAIN3)) << 16);
 
@@ -196,12 +188,12 @@ void hal_rx_get_rtt_info_fig(void *rx_tlv,
 	ppdu_info->cfr_info.agc_gain_info3 = 0;
 
 	ppdu_info->cfr_info.mcs_rate =
-		HAL_RX_GET_64(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      RTT_MCS_RATE);
+		HAL_RX_GET(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   RTT_MCS_RATE);
 
 	ppdu_info->cfr_info.gi_type =
-		HAL_RX_GET_64(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
-			      RTT_GI_TYPE);
+		HAL_RX_GET(rx_tlv, PHYRX_LOCATION_RX_LOCATION_INFO_DETAILS,
+			   RTT_GI_TYPE);
 }
 #endif
 #endif

@@ -180,7 +180,7 @@ struct ast_del_ctxt {
  *
  * This API checks whether the peer is WDS_EXT peer or not
  *
- * Return: true in the wds_ext peer else false
+ * Return: true in the wds_ext peer else flase
  */
 static inline bool dp_peer_is_wds_ext_peer(struct dp_txrx_peer *peer)
 {
@@ -574,8 +574,6 @@ dp_pdev_iterate_peer_lock_safe(struct dp_pdev *pdev,
 	qdf_spin_lock_bh(&pdev->vdev_list_lock);
 	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
 		num_peers[i] = vdev->num_peers;
-		if (!num_peers[i])
-			continue;
 		peer_array[i] = qdf_mem_malloc(num_peers[i] *
 					       sizeof(struct dp_peer *));
 		if (!peer_array[i])
@@ -741,77 +739,6 @@ QDF_STATUS dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 void dp_rx_peer_unmap_handler(struct dp_soc *soc, uint16_t peer_id,
 			      uint8_t vdev_id, uint8_t *peer_mac_addr,
 			      uint8_t is_wds, uint32_t free_wds_count);
-
-#ifdef CONFIG_BORON
-/**
- * dp_vdev_check_n_set_tx_classify_idx() - check and set tx pkt classify info
- * @soc: dp soc
- * @vdev_id: vdev id
- * @peer_classify_info_idx: peer classify info idx
- * @peer_id: peer id
- *
- * Return
- */
-void dp_vdev_check_n_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
-					 uint8_t peer_classify_info_idx,
-					 uint16_t peer_id);
-
-/**
- * dp_vdev_set_tx_classify_idx() - set tx pkt classify info
- * @soc: dp soc
- * @vdev_id: vdev id
- * @peer_classify_info_idx: peer classify info idx
- *
- * Return
- */
-void dp_vdev_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
-				 uint8_t peer_classify_info_idx);
-#else
-static inline
-void dp_vdev_check_n_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
-					 uint8_t peer_classify_info_idx,
-					 uint16_t peer_id)
-{
-}
-
-static inline
-void dp_vdev_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
-				 uint8_t peer_classify_info_idx)
-{
-}
-#endif
-
-/**
- * dp_peer_set_tx_classify_idx() - DP set peer Tx flow queue index
- * @soc: generic soc handle
- * @peer_id: peer_id from firmware
- * @vdev_id: vdev ID
- * @peer_classify_info_idx: peer flow queue index
- *
- * Return: none
- */
-QDF_STATUS dp_peer_set_tx_classify_idx(struct dp_soc *soc, uint16_t peer_id,
-				       uint8_t vdev_id,
-				       uint8_t peer_classify_info_idx);
-
-#ifdef CONFIG_BORON
-/**
- * dp_peer_set_classify_idx() - set peer Tx flow queue index
- * @soc: generic soc handle
- * @peer: dp peer
- * @vdev: vdev
- *
- * Return: none
- */
-void dp_peer_set_classify_idx(struct dp_soc *soc, struct dp_peer *peer,
-			      struct dp_vdev *vdev);
-#else
-static inline
-void dp_peer_set_classify_idx(struct dp_soc *soc, struct dp_peer *peer,
-			      struct dp_vdev *vdev)
-{
-}
-#endif
 
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(DP_MLO_LINK_STATS_SUPPORT)
 /**
@@ -1163,7 +1090,6 @@ dp_peer_update_inactive_time(struct dp_pdev *pdev, uint32_t tag_type,
 			     uint32_t *tag_buf);
 
 #ifndef QCA_MULTIPASS_SUPPORT
-static inline
 /**
  * dp_peer_set_vlan_id() - set vlan_id for this peer
  * @cdp_soc: soc handle
@@ -1173,9 +1099,26 @@ static inline
  *
  * Return: void
  */
+static inline
 void dp_peer_set_vlan_id(struct cdp_soc_t *cdp_soc,
 			 uint8_t vdev_id, uint8_t *peer_mac,
 			 uint16_t vlan_id)
+{
+}
+
+/**
+ * dp_peer_set_hw_accel_flag() - set HW accel flag for this peer
+ * @cdp_soc: soc handle
+ * @vdev_id: id of vdev object
+ * @peer_mac: mac address
+ * @en: Enable or disable value
+ *
+ * Return: void
+ */
+static inline
+void dp_peer_set_hw_accel_flag(struct cdp_soc_t *cdp_soc,
+			       uint8_t vdev_id, uint8_t *peer_mac,
+			       bool en)
 {
 }
 
@@ -1220,6 +1163,9 @@ void dp_peer_multipass_list_remove(struct dp_peer *peer)
 void dp_peer_set_vlan_id(struct cdp_soc_t *cdp_soc,
 			 uint8_t vdev_id, uint8_t *peer_mac,
 			 uint16_t vlan_id);
+void dp_peer_set_hw_accel_flag(struct cdp_soc_t *cdp_soc,
+			       uint8_t vdev_id, uint8_t *peer_mac,
+			       bool en);
 QDF_STATUS dp_set_vlan_groupkey(struct cdp_soc_t *soc, uint8_t vdev_id,
 				uint16_t vlan_id, uint16_t group_key);
 void dp_peer_multipass_list_init(struct dp_vdev *vdev);
@@ -1810,13 +1756,8 @@ void dp_link_peer_add_mld_peer(struct dp_peer *link_peer,
 			       struct dp_peer *mld_peer)
 {
 	/* increase mld_peer ref_cnt */
-	if (QDF_STATUS_SUCCESS ==
-	    dp_peer_get_ref(NULL, mld_peer, DP_MOD_ID_CDP)) {
-		link_peer->mld_peer = mld_peer;
-		return;
-	}
-
-	link_peer->mld_peer = NULL;
+	dp_peer_get_ref(NULL, mld_peer, DP_MOD_ID_CDP);
+	link_peer->mld_peer = mld_peer;
 }
 
 /**
@@ -2115,7 +2056,7 @@ struct dp_peer *dp_peer_get_tgt_peer_hash_find(struct dp_soc *soc,
 			ta_peer = peer;
 		}
 	} else {
-		dp_peer_info("fail to find peer:" QDF_MAC_ADDR_FMT " vdev_id: %u",
+		dp_peer_err("fail to find peer:" QDF_MAC_ADDR_FMT " vdev_id: %u",
 			    QDF_MAC_ADDR_REF(peer_mac), vdev_id);
 	}
 
@@ -2314,36 +2255,6 @@ struct dp_txrx_peer *dp_get_txrx_peer(struct dp_peer *peer)
 {
 	return IS_MLO_DP_LINK_PEER(peer) ?
 				peer->mld_peer->txrx_peer : peer->txrx_peer;
-}
-
-/**
- * dp_txrx_peer_lock() - Get Txrx Peer Lock
- * @peer: Peer handle
- *
- * Return: None
- */
-static inline void
-dp_txrx_peer_lock(struct dp_peer *peer)
-{
-	if (IS_MLO_DP_LINK_PEER(peer))
-		qdf_spin_lock(&peer->mld_peer->txrx_peer_lock);
-	else
-		qdf_spin_lock(&peer->txrx_peer_lock);
-}
-
-/**
- * dp_txrx_peer_unlock() - Release Txrx Peer Lock
- * @peer: Peer handle
- *
- * Return: None
- */
-static inline void
-dp_txrx_peer_unlock(struct dp_peer *peer)
-{
-	if (IS_MLO_DP_LINK_PEER(peer))
-		qdf_spin_unlock(&peer->mld_peer->txrx_peer_lock);
-	else
-		qdf_spin_unlock(&peer->txrx_peer_lock);
 }
 
 /**
@@ -2578,30 +2489,6 @@ struct dp_txrx_peer *dp_get_txrx_peer(struct dp_peer *peer)
 	return peer->txrx_peer;
 }
 
-/**
- * dp_txrx_peer_lock() - Get Txrx Peer Lock
- * @peer: Peer handle
- *
- * Return: None
- */
-static inline void
-dp_txrx_peer_lock(struct dp_peer *peer)
-{
-	qdf_spin_lock(&peer->txrx_peer_lock);
-}
-
-/**
- * dp_txrx_peer_unlock() - Release Txrx Peer Lock
- * @peer: Peer handle
- *
- * Return: None
- */
-static inline void
-dp_txrx_peer_unlock(struct dp_peer *peer)
-{
-	qdf_spin_unlock(&peer->txrx_peer_lock);
-}
-
 static inline
 bool dp_peer_is_primary_link_peer(struct dp_peer *peer)
 {
@@ -2706,37 +2593,6 @@ void dp_peer_rx_bufq_resources_deinit(struct dp_txrx_peer *txrx_peer)
 #endif
 
 /**
- * dp_peer_assert_inactive_state() - assert valid peer state for INACTIVE
- *                                   transition based on FEATURE_AST
- * @peer: DP peer
- * @state: new state (DP_PEER_STATE_INACTIVE)
- * @peer_state: current peer state
- *
- * Return: None
- */
-#ifdef FEATURE_AST
-static inline void
-dp_peer_assert_inactive_state(struct dp_peer *peer,
-			      enum dp_peer_state state,
-			      uint8_t peer_state)
-{
-	DP_PEER_STATE_ASSERT
-		(peer, state,
-		 (peer_state == DP_PEER_STATE_LOGICAL_DELETE));
-}
-#else
-static inline void
-dp_peer_assert_inactive_state(struct dp_peer *peer,
-			      enum dp_peer_state state,
-			      uint8_t peer_state)
-{
-	DP_PEER_STATE_ASSERT
-		(peer, state,
-		 (peer_state == DP_PEER_STATE_ACTIVE));
-}
-#endif /* FEATURE_AST */
-
-/**
  * dp_peer_update_state() - update dp peer state
  *
  * @soc: core DP soc context
@@ -2779,7 +2635,9 @@ dp_peer_update_state(struct dp_soc *soc,
 				(peer, state,
 				 (peer_state == DP_PEER_STATE_ACTIVE));
 		else
-			dp_peer_assert_inactive_state(peer, state, peer_state);
+			DP_PEER_STATE_ASSERT
+				(peer, state,
+				 (peer_state == DP_PEER_STATE_LOGICAL_DELETE));
 		break;
 
 	case DP_PEER_STATE_FREED:
@@ -2795,8 +2653,8 @@ dp_peer_update_state(struct dp_soc *soc,
 
 	default:
 		qdf_spin_unlock_bh(&peer->peer_state_lock);
-		dp_info("Invalid peer state %u for peer " QDF_MAC_ADDR_FMT,
-			state, QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+		dp_alert("Invalid peer state %u for peer " QDF_MAC_ADDR_FMT,
+			 state, QDF_MAC_ADDR_REF(peer->mac_addr.raw));
 		return;
 	}
 	peer->peer_state = state;
@@ -2936,22 +2794,4 @@ dp_peer_update_wds(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 }
 #endif /* FEATURE_WDS_AST_LEARNING */
 
-#ifdef DP_PEER_EXTENDED_API
-/**
- * dp_peer_set_bw() - Set bandwidth and mpdu retry count threshold for peer
- * @soc: DP soc handle
- * @txrx_peer: Core txrx_peer handle
- * @set_bw: enum of bandwidth to be set for this peer connection
- *
- * Return: None
- */
-void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
-		    enum cdp_peer_bw set_bw);
-#else
-static inline
-void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
-		    enum cdp_peer_bw set_bw)
-{
-}
-#endif
 #endif /* _DP_PEER_H_ */

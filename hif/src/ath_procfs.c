@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2013-2014, 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -85,80 +84,6 @@ static void *get_hif_hdl_from_file(struct file *file)
 	return (void *)scn;
 }
 
-/**
- * ath_procfs_wmi_diag_read() - Read FW registers via WMI
- * @scn: HIF context
- * @pos: encoded position (memtype in bits [59:52], offset in bits [31:0])
- * @buf: output buffer
- * @count: number of bytes to read
- *
- * Invokes hdd callback athdiag_read_write to read target registers
- * over WMI
- *
- * Return: 0 or other error codes.
- */
-static int ath_procfs_wmi_diag_read(struct hif_softc *scn, loff_t pos,
-				    uint8_t *buf, size_t count)
-{
-	struct hif_driver_state_callbacks *cbk =
-			hif_get_callbacks_handle(scn);
-	uint32_t memtype;
-	uint32_t offset;
-
-	if (!cbk || !cbk->athdiag_read_write)
-		return -EOPNOTSUPP;
-
-	if (hif_get_conparam(scn) != QDF_GLOBAL_FTM_MODE) {
-		hif_debug("ath diag read via WMI: not supported in this mode");
-		return 0;
-	}
-
-	memtype = (uint32_t)(((uint64_t)pos >> 52) & 0xff);
-	offset  = (uint32_t)((uint64_t)pos & 0xffffffff);
-
-	hif_debug("ath diag read via WMI: offset 0x%x memtype 0x%x datalen %zu",
-		  offset, memtype, count);
-
-	return cbk->athdiag_read_write(offset, memtype, count, buf, false);
-}
-
-/**
- * ath_procfs_wmi_diag_write() - Write FW registers via WMI
- * @scn: HIF context
- * @pos: encoded position (memtype in bits [59:52], offset in bits [31:0])
- * @buf: input buffer
- * @count: number of bytes to write
- *
- * Invokes hdd callback athdiag_read_write to write target registers
- * over WMI
- *
- * Return: 0 or other error codes.
- */
-static int ath_procfs_wmi_diag_write(struct hif_softc *scn, loff_t pos,
-				     uint8_t *buf, size_t count)
-{
-	struct hif_driver_state_callbacks *cbk =
-			hif_get_callbacks_handle(scn);
-	uint32_t memtype;
-	uint32_t offset;
-
-	if (!cbk || !cbk->athdiag_read_write)
-		return -EOPNOTSUPP;
-
-	if (hif_get_conparam(scn) != QDF_GLOBAL_FTM_MODE) {
-		hif_debug("ath diag write via WMI: not supported in this mode");
-		return 0;
-	}
-
-	memtype = (uint32_t)(((uint64_t)pos >> 52) & 0xff);
-	offset  = (uint32_t)((uint64_t)pos & 0xffffffff);
-
-	hif_debug("ath diag write via WMI: offset 0x%x memtype 0x%x datalen %zu",
-		  offset, memtype, count);
-
-	return cbk->athdiag_read_write(offset, memtype, count, buf, true);
-}
-
 static ssize_t ath_procfs_diag_read_legacy(struct file *file,
 					   char __user *buf,
 					   size_t count, loff_t *pos)
@@ -186,16 +111,27 @@ static ssize_t ath_procfs_diag_read_legacy(struct file *file,
 	    ((tgt_info->target_type == TARGET_TYPE_QCA6290) ||
 	     (tgt_info->target_type == TARGET_TYPE_QCA6390) ||
 	     (tgt_info->target_type == TARGET_TYPE_QCA6490) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCA8074) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCA8074V2) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCA9574) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCN9000) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCN9224) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCN6122) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCN9160) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCN6432) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCA5424) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCA5018) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCA5332) ||
+	     (tgt_info->target_type == TARGET_TYPE_QCA6018) ||
 	     (tgt_info->target_type == TARGET_TYPE_QCN7605) ||
 	     (tgt_info->target_type == TARGET_TYPE_KIWI) ||
 	     (tgt_info->target_type == TARGET_TYPE_MANGO) ||
 	     (tgt_info->target_type == TARGET_TYPE_PEACH) ||
 	     (tgt_info->target_type == TARGET_TYPE_QCC2072) ||
 	     (tgt_info->target_type == TARGET_TYPE_FIG))) ||
-	   (scn->bus_type ==  QDF_BUS_TYPE_IPCI &&
-	    ((tgt_info->target_type == TARGET_TYPE_QCA6750) ||
-	     (tgt_info->target_type == TARGET_TYPE_WCN8750) ||
-	     (tgt_info->target_type == TARGET_TYPE_WCN7750))) ||
+	    (scn->bus_type ==  QDF_BUS_TYPE_IPCI &&
+	     (tgt_info->target_type == TARGET_TYPE_QCA6750 ||
+	      tgt_info->target_type == TARGET_TYPE_WCN7750)) ||
 	    ((scn->bus_type ==  QDF_BUS_TYPE_USB) &&
 	     (tgt_info->target_type == TARGET_TYPE_QCN7605))) {
 		memtype = ((uint32_t)(*pos) & 0xff000000) >> 24;
@@ -207,10 +143,6 @@ static ssize_t ath_procfs_diag_read_legacy(struct file *file,
 				      (uint8_t *)read_buffer);
 		goto out;
 	}
-
-	rv = ath_procfs_wmi_diag_read(scn, *pos, read_buffer, count);
-	if (rv != -EOPNOTSUPP)
-		goto out;
 
 	if ((count == 4) && ((((uint32_t) (*pos)) & 3) == 0)) {
 		/* reading a word? */
@@ -270,6 +202,18 @@ static ssize_t ath_procfs_diag_write_legacy(struct file *file,
 	     ((tgt_info->target_type == TARGET_TYPE_QCA6290) ||
 	      (tgt_info->target_type == TARGET_TYPE_QCA6390) ||
 	      (tgt_info->target_type == TARGET_TYPE_QCA6490) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCA8074) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCA8074V2) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCA9574) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCN9000) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCN9224) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCN6122) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCN9160) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCN6432) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCA5424) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCA5018) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCA5332) ||
+	      (tgt_info->target_type == TARGET_TYPE_QCA6018) ||
 	      (tgt_info->target_type == TARGET_TYPE_QCN7605) ||
 	      (tgt_info->target_type == TARGET_TYPE_KIWI) ||
 	      (tgt_info->target_type == TARGET_TYPE_MANGO) ||
@@ -278,8 +222,7 @@ static ssize_t ath_procfs_diag_write_legacy(struct file *file,
 	      (tgt_info->target_type == TARGET_TYPE_FIG))) ||
 	    (scn->bus_type ==  QDF_BUS_TYPE_IPCI &&
 	     ((tgt_info->target_type == TARGET_TYPE_QCA6750) ||
-	      (tgt_info->target_type == TARGET_TYPE_WCN8750) ||
-	      (tgt_info->target_type == TARGET_TYPE_WCN7750))) ||
+	     (tgt_info->target_type == TARGET_TYPE_WCN7750))) ||
 	    ((scn->bus_type ==  QDF_BUS_TYPE_USB) &&
 	     (tgt_info->target_type == TARGET_TYPE_QCN7605))) {
 		memtype = ((uint32_t)(*pos) & 0xff000000) >> 24;
@@ -291,10 +234,6 @@ static ssize_t ath_procfs_diag_write_legacy(struct file *file,
 				      (uint8_t *)write_buffer);
 		goto out;
 	}
-
-	rv = ath_procfs_wmi_diag_write(scn, *pos, write_buffer, count);
-	if (rv != -EOPNOTSUPP)
-		goto out;
 
 	if ((count == 4) && ((((uint32_t) (*pos)) & 3) == 0)) {
 		/* reading a word? */
@@ -432,11 +371,9 @@ static ssize_t ath_procfs_diag_read_ext(struct file *file, char __user *buf,
 		case TARGET_TYPE_PEACH:
 		case TARGET_TYPE_MANGO:
 		case TARGET_TYPE_WCN7750:
-		case TARGET_TYPE_WCN8750:
 		case TARGET_TYPE_WCN6450:
 		case TARGET_TYPE_QCC2072:
 		case TARGET_TYPE_FIG:
-		case TARGET_TYPE_QCN7605:
 			if (op_type == OP_TYPE_EXT_DIRECT)
 				rv = ath_procfs_direct_read(scn,
 							    offset,
@@ -516,11 +453,9 @@ static ssize_t ath_procfs_diag_write_ext(struct file *file,
 		case TARGET_TYPE_MANGO:
 		case TARGET_TYPE_PEACH:
 		case TARGET_TYPE_WCN7750:
-		case TARGET_TYPE_WCN8750:
 		case TARGET_TYPE_WCN6450:
 		case TARGET_TYPE_QCC2072:
 		case TARGET_TYPE_FIG:
-		case TARGET_TYPE_QCN7605:
 			if (op_type == OP_TYPE_EXT_DIRECT)
 				rv = ath_procfs_direct_write(scn,
 							     offset,

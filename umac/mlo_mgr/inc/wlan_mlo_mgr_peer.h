@@ -27,7 +27,7 @@
 #define WLAN_NUM_TWO_LINK_PSOC  2
 
 /**
- * mlo_peer_create - Initiate peer create on secondary link(s)
+ * mlo_peer_create - Initiatiate peer create on secondary link(s)
  * by posting a message
  *
  * @vdev: pointer to vdev

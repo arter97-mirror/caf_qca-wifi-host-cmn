@@ -20,6 +20,7 @@
 
 #ifndef _WLAN_COEX_PUBLIC_STRUCTS_H_
 #define _WLAN_COEX_PUBLIC_STRUCTS_H_
+
 #ifdef WLAN_FEATURE_DBAM_CONFIG
 #define WLAN_SET_DBAM_CONFIG_TIMEOUT 5000
 
@@ -38,7 +39,7 @@ enum coex_dbam_config_mode {
 
 /**
  * enum coex_dbam_comp_status - dbam config response
- * @COEX_DBAM_COMP_SUCCESS: FW enabled/disabled DBAM mode successfully
+ * @COEX_DBAM_COMP_SUCCESS: FW enabled/disabled DBAM mode succssfully
  * @COEX_DBAM_COMP_NOT_SUPPORT: DBAM mode is not supported
  * @COEX_DBAM_COMP_FAIL: FW failed to enable/disable DBAM mode
  */
@@ -67,38 +68,4 @@ struct coex_dbam_config_resp {
 };
 
 #endif
-
-/**
- * enum coex_btc_chain_mode - btc chain mode definitions
- * @WLAN_COEX_BTC_CHAIN_MODE_SHARED: chains of BT and WLAN 2.4 GHz are shared.
- * @WLAN_COEX_BTC_CHAIN_MODE_FDD: chains of BT and WLAN 2.4 GHz are
- * separated, FDD mode.
- * @WLAN_COEX_BTC_CHAIN_MODE_HYBRID: chains of BT and WLAN 2.4 GHz are
- * separated, hybrid mode.
- * @WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED: chain mode is not set.
- */
-enum coex_btc_chain_mode {
-	WLAN_COEX_BTC_CHAIN_MODE_SHARED = 0,
-	WLAN_COEX_BTC_CHAIN_MODE_FDD,
-	WLAN_COEX_BTC_CHAIN_MODE_HYBRID,
-	WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED = 0xFF,
-};
-
-/**
- * enum wlan_coex_n79_event - N79 vdev lifecycle events
- * @WLAN_COEX_N79_STA_CONNECT: 5GHz STA connected (initial, roam, post-CSA)
- * @WLAN_COEX_N79_STA_DISCONNECT: STA disconnected
- * @WLAN_COEX_N79_SAP_START: 5GHz SAP/P2P-GO BSS started
- * @WLAN_COEX_N79_SAP_STOP: SAP/P2P-GO BSS stopped
- * @WLAN_COEX_N79_NAN_START: NAN discovery/data vdev enabled on 5GHz
- * @WLAN_COEX_N79_NAN_STOP: NAN vdev disabled
- */
-enum wlan_coex_n79_event {
-	WLAN_COEX_N79_STA_CONNECT,
-	WLAN_COEX_N79_STA_DISCONNECT,
-	WLAN_COEX_N79_SAP_START,
-	WLAN_COEX_N79_SAP_STOP,
-	WLAN_COEX_N79_NAN_START,
-	WLAN_COEX_N79_NAN_STOP,
-};
 #endif

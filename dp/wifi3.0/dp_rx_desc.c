@@ -188,6 +188,8 @@ static void dp_rx_desc_nbuf_cleanup(struct dp_soc *soc,
 	while (nbuf) {
 		next = nbuf->next;
 
+		if (!is_mon_pool)
+			dp_audio_smmu_unmap(soc, nbuf, buf_size);
 		if (dp_ipa_handle_rx_buf_smmu_mapping(
 						soc, nbuf, buf_size,
 						false, __func__,

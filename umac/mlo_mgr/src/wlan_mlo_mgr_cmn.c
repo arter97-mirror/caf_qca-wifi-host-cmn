@@ -30,7 +30,6 @@
 #include <wlan_cfg.h>
 #include "wlan_utility.h"
 #include "wlan_mlo_link_recfg.h"
-#include "wlan_smd_roam.h"
 
 void mlo_get_link_information(struct qdf_mac_addr *mld_addr,
 			      struct mlo_link_info *info)
@@ -273,20 +272,6 @@ void mlo_mlme_peer_delete(struct wlan_objmgr_peer *peer)
 		return;
 
 	mlo_ctx->mlme_ops->mlo_mlme_ext_peer_delete(peer);
-}
-
-QDF_STATUS mlo_mlme_get_cb_mode_for_freq(uint8_t vdev_id, qdf_freq_t freq,
-					 uint8_t *cb_mode)
-{
-	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
-
-	if (!mlo_ctx || !mlo_ctx->mlme_ops ||
-	    !mlo_ctx->mlme_ops->mlo_mlme_ext_get_cb_mode_for_freq)
-		return QDF_STATUS_E_FAILURE;
-
-	return mlo_ctx->mlme_ops->mlo_mlme_ext_get_cb_mode_for_freq(vdev_id,
-								    freq,
-								    cb_mode);
 }
 
 void mlo_mlme_peer_assoc_resp(struct wlan_objmgr_peer *peer)
@@ -723,23 +708,15 @@ mlo_link_set_active(struct wlan_objmgr_psoc *psoc,
 	}
 
 	if (req->ctx.validate_set_mlo_link_cb) {
-		/*
-		 * Skip the connectivity validator for the SMD roam DEL_LINK
-		 * path. Vdevs are intentionally disconnected/repurposed at
-		 * this point; blocking on "not connected" state would cause
-		 * a spurious abort of the whole roam sequence.
-		 */
-		if (!param->control_flags.set_link_for_smd_recfg) {
-			status = req->ctx.validate_set_mlo_link_cb(psoc, param);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				qdf_mem_zero(&rsp_evt, sizeof(rsp_evt));
-				rsp_evt.status = status;
-				if (req->ctx.set_mlo_link_cb)
-					req->ctx.set_mlo_link_cb(req->ctx.vdev,
-								 req->ctx.cb_arg,
-								 &rsp_evt);
-				return status;
-			}
+		status = req->ctx.validate_set_mlo_link_cb(psoc, param);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			qdf_mem_zero(&rsp_evt, sizeof(rsp_evt));
+			rsp_evt.status = status;
+			if (req->ctx.set_mlo_link_cb)
+				req->ctx.set_mlo_link_cb(req->ctx.vdev,
+							 req->ctx.cb_arg,
+							 &rsp_evt);
+			return status;
 		}
 	}
 
@@ -823,8 +800,7 @@ mlo_link_set_resp_link_recfg_handler(struct wlan_objmgr_psoc *psoc,
 
 	if (!wlan_serialization_get_active_cmd(psoc,
 					       wlan_vdev_get_id(vdev),
-					       WLAN_SER_CMD_LINK_RECFG) &&
-	    !smd_roam_in_progress(recfg_ctx))
+					       WLAN_SER_CMD_LINK_RECFG))
 		return;
 
 	mlo_dev_lock_acquire(mlo_dev_ctx);
@@ -1035,8 +1011,7 @@ QDF_STATUS mlo_ser_set_link_req(struct mlo_link_set_active_req *req)
 
 	vdev = req->ctx.vdev;
 	if (req->param.control_flags.set_link_for_recfg) {
-		if (!req->param.control_flags.set_link_for_smd_recfg &&
-		    !wlan_serialization_get_active_cmd(
+		if (!wlan_serialization_get_active_cmd(
 				wlan_vdev_get_psoc(vdev),
 				wlan_vdev_get_id(vdev),
 				WLAN_SER_CMD_LINK_RECFG)) {
@@ -1103,6 +1078,20 @@ void mlo_mlme_handle_sta_csa_param(struct wlan_objmgr_vdev *vdev,
 	mlo_ctx->mlme_ops->mlo_mlme_ext_handle_sta_csa_param(vdev, csa_param);
 }
 
+#ifdef WLAN_POLICY_MGR_ENABLE
+static bool mlo_get_vdev_is_force_inactive(struct wlan_objmgr_psoc *psoc,
+					   uint8_t vdev_id)
+{
+	return policy_mgr_vdev_is_force_inactive(psoc, vdev_id);
+}
+#else
+static inline bool mlo_get_vdev_is_force_inactive(struct wlan_objmgr_psoc *psoc,
+						  uint8_t vdev_id)
+{
+	return false;
+}
+#endif
+
 QDF_STATUS
 mlo_get_mlstats_vdev_params(struct wlan_objmgr_psoc *psoc,
 			    struct mlo_stats_vdev_params *info,
@@ -1112,6 +1101,7 @@ mlo_get_mlstats_vdev_params(struct wlan_objmgr_psoc *psoc,
 	struct wlan_objmgr_vdev *vdev;
 	int i;
 	uint16_t ml_vdev_cnt = 0;
+	uint16_t ml_active_vdev_cnt = 0;
 
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
 						    WLAN_MLO_MGR_ID);
@@ -1123,9 +1113,17 @@ mlo_get_mlstats_vdev_params(struct wlan_objmgr_psoc *psoc,
 	mlo_get_ml_vdev_list(vdev, &ml_vdev_cnt, ml_vdev_list);
 	for (i = 0; i < ml_vdev_cnt; i++) {
 		info->ml_vdev_id[i] = wlan_vdev_get_id(ml_vdev_list[i]);
+		if (mlo_get_vdev_is_force_inactive(psoc, info->ml_vdev_id[i])) {
+			mlo_nofl_debug_rl("Ignore stats on inactive link vdev %d",
+					  info->ml_vdev_id[i]);
+			mlo_release_vdev_ref(ml_vdev_list[i]);
+			continue;
+		}
+
+		ml_active_vdev_cnt++;
 		mlo_release_vdev_ref(ml_vdev_list[i]);
 	}
-	info->ml_vdev_count = ml_vdev_cnt;
+	info->ml_vdev_count = ml_active_vdev_cnt;
 	mlo_release_vdev_ref(vdev);
 
 	return QDF_STATUS_SUCCESS;
@@ -1137,46 +1135,16 @@ static void ml_extract_link_state(struct wlan_objmgr_psoc *psoc,
 	QDF_STATUS status;
 	get_ml_link_state_cb resp_cb = NULL;
 	void *context = NULL;
-	uint8_t vdev_id, i;
-	struct wlan_objmgr_vdev *vdev;
-	struct mlo_link_switch_params params = {0};
-	struct mlo_mgr_context *g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
-
-	if (!g_mlo_ctx) {
-		mlo_err("Global MLO context NULL");
-		return;
-	}
+	uint8_t vdev_id;
 
 	vdev_id = event->vdev_id;
-	status = mlo_get_link_state_context(psoc, &resp_cb, &context, vdev_id);
+
+	status = mlo_get_link_state_context(psoc,
+					    &resp_cb, &context, vdev_id);
+
 	if (QDF_IS_STATUS_ERROR(status))
 		return;
 
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
-						    WLAN_MLO_MGR_ID);
-	if (!vdev) {
-		mlo_err("Failed to get VDEV %d", vdev_id);
-		goto exit;
-	}
-
-	if (!vdev->mlo_dev_ctx) {
-		mlo_err("MLD context NULL for vdev %d", vdev_id);
-		goto ref_rel;
-	}
-
-	for (i = 0; i < event->num_mlo_vdev_link_info; i++)
-		if (event->link_info[i].link_status)
-			params.active_link_bitmap |=
-				BIT(event->link_info[i].link_id);
-
-	mlo_mgr_update_links_current_active_state(psoc, g_mlo_ctx,
-						  vdev->mlo_dev_ctx,
-						  &params, false);
-
-ref_rel:
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-
-exit:
 	if (resp_cb)
 		resp_cb(event, context);
 }

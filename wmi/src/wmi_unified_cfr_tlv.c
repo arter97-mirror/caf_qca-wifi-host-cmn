@@ -75,12 +75,6 @@ extract_cfr_peer_tx_event_param_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		WMI_CFR_MCS_GET(peer_tx_event_ev->mcs_gi_info);
 	peer_tx_event->gi_type =
 		WMI_CFR_GI_TYPE_GET(peer_tx_event_ev->mcs_gi_info);
-	if (peer_tx_event_ev->status &
-	    WMI_PEER_CFR_CAPTURE_EVT_STATUS_FRAME_SEQ_VALID) {
-		peer_tx_event->seq_num  =
-			WMI_CFR_FRAME_SEQ_NUM_GET(
-				peer_tx_event_ev->frame_seq_ctrl);
-	}
 
 	chain_phase_ev = param_buf->phase_param;
 	if (chain_phase_ev) {
@@ -152,44 +146,11 @@ static void populate_wmi_cfr_param(uint8_t grp_id, struct cfr_rcc_param *rcc,
 	param->data_subtype_filter = tgt_cfg->data_subtype_filter;
 }
 
-static QDF_STATUS
-extract_cfr_capture_filter_event_tlv(wmi_unified_t wmi_handle,
-				     void *evt_buf,
-				     struct cfr_capture_filter_param *param)
-{
-	WMI_CFR_CAPTURE_FILTER_RESP_EVENTID_param_tlvs *param_buf;
-	wmi_cfr_capture_filter_resp_event_fixed_param *resp_event;
-
-	param_buf = (WMI_CFR_CAPTURE_FILTER_RESP_EVENTID_param_tlvs *)evt_buf;
-	if (!param_buf) {
-		wmi_err("Invalid CFR capture filter response buffer");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	resp_event = param_buf->fixed_param;
-	if (!resp_event) {
-		wmi_err("CFR capture filter response event is NULL");
-		return QDF_STATUS_E_NULL_VALUE;
-	}
-
-	param->status = resp_event->status;
-	param->pdev_id = wmi_handle->ops->convert_target_pdev_id_to_host(
-				wmi_handle, resp_event->pdev_id);
-	wmi_debug("Rsp pdev_id %d conv pdev_id %d",
-		  resp_event->pdev_id, param->pdev_id);
-	param->vdev_id = resp_event->vdev_id;
-	WMI_MAC_ADDR_TO_CHAR_ARRAY(&resp_event->mac_addr, param->mac_addr);
-	param->request = resp_event->request;
-
-	return QDF_STATUS_SUCCESS;
-}
-
 static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 				       struct cfr_rcc_param *rcc)
 {
 	wmi_cfr_capture_filter_cmd_fixed_param *cmd;
 	wmi_cfr_filter_group_config *param;
-	wmi_cfr_capture_fix_agc_gain_config *agc_gain;
 	uint8_t *buf_ptr, grp_id;
 	wmi_buf_t buf;
 	uint32_t len;
@@ -198,8 +159,6 @@ static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 
 	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE;
 	len += rcc->num_grp_tlvs * sizeof(wmi_cfr_filter_group_config);
-	len += WMI_TLV_HDR_SIZE;
-	len += sizeof(wmi_cfr_capture_fix_agc_gain_config);
 	buf = wmi_buf_alloc(wmi_handle, len);
 
 	if (!buf) {
@@ -246,47 +205,25 @@ static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 					       rcc->en_ta_ra_filter_in_as_fp);
 	WMI_CFR_ALL_PACKET_EN_SET(cmd->filter_type,
 				  rcc->m_all_packet);
-	if (rcc->unassoc_channel_mhz) {
-		WMI_CFR_UNASSOC_CAPTURE_EN_SET(cmd->unassoc_capture_config, 1);
-		cmd->unassoc_channel_mhz = rcc->unassoc_channel_mhz;
-		cmd->unassoc_phy_mode =
-			wmi_host_to_fw_phymode(rcc->unassoc_phy_mode);
-		wmi_debug("RX based unassociated  phy mode %d freq %d",
-			  cmd->unassoc_phy_mode, rcc->unassoc_channel_mhz);
-	}
 
 	/* TLV indicating array of structures to follow */
 	buf_ptr += sizeof(wmi_cfr_capture_filter_cmd_fixed_param);
 
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
 		       rcc->num_grp_tlvs * sizeof(wmi_cfr_filter_group_config));
-	buf_ptr += WMI_TLV_HDR_SIZE;
 
 	if (rcc->num_grp_tlvs) {
+		buf_ptr += WMI_TLV_HDR_SIZE;
 		param = (wmi_cfr_filter_group_config *)buf_ptr;
 
 		for (grp_id = 0; grp_id < MAX_TA_RA_ENTRIES; grp_id++) {
-			if (qdf_atomic_test_bit(
-					grp_id,
-					rcc->modified_in_curr_session)) {
+			if (qdf_test_bit(grp_id,
+					 &rcc->modified_in_curr_session)) {
 				populate_wmi_cfr_param(grp_id, rcc, param);
 				param++;
 			}
 		}
 	}
-
-	buf_ptr += rcc->num_grp_tlvs * sizeof(wmi_cfr_filter_group_config);
-	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
-		       sizeof(wmi_cfr_capture_fix_agc_gain_config));
-	buf_ptr += WMI_TLV_HDR_SIZE;
-
-	agc_gain = (wmi_cfr_capture_fix_agc_gain_config *)buf_ptr;
-	WMITLV_SET_HDR(&agc_gain->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_cfr_capture_fix_agc_gain_config,
-		       WMITLV_GET_STRUCT_TLVLEN
-		       (wmi_cfr_capture_fix_agc_gain_config));
-	agc_gain->cfr_fix_agc_gain_enable = rcc->agc_gain_fixed;
-
 	status = wmi_unified_cmd_send(wmi_handle, buf, len,
 				      WMI_CFR_CAPTURE_FILTER_CMDID);
 	if (status)
@@ -394,28 +331,15 @@ extract_cfr_enh_phase_fixed_param_tlv
 static QDF_STATUS
 populate_enhanced_aoa_data(uint32_t *dst_array, uint32_t *src_array,
 			   wmi_enhanced_aoa_gain_phase_data_hdr *data_hdr,
-			   uint32_t offset, uint32_t dst_size,
-			   uint32_t src_buf_entries)
+			   uint32_t offset, uint32_t dst_size)
 {
-	uint32_t num_entries = WMI_AOA_NUM_ENTIRES_GET(data_hdr->data_info);
-	uint32_t src_size;
+	uint32_t src_size = WMI_AOA_NUM_ENTIRES_GET(data_hdr->data_info) *
+				sizeof(uint32_t);
 
-	/* offset and num_entries are element counts; src_buf_entries is also
-	 * an element count (num_aoa_data_buf from the TLV array header).
-	 */
-	if (offset > src_buf_entries ||
-	    num_entries > src_buf_entries - offset) {
-		wmi_err("src OOB: offset %u num_entries %u src_buf_entries %u",
-			offset, num_entries, src_buf_entries);
-		return QDF_STATUS_E_RANGE;
-	}
-
-	if (num_entries > dst_size / sizeof(uint32_t)) {
+	if (src_size > dst_size) {
 		wmi_err("the amount of data can not fit in the host array");
 		return QDF_STATUS_E_RANGE;
 	}
-
-	src_size = num_entries * sizeof(uint32_t);
 
 	qdf_mem_copy(dst_array, src_array + offset, src_size);
 
@@ -466,8 +390,7 @@ extract_cfr_enh_phase_data_tlv(wmi_unified_t wmi_handle,
 
 		status = populate_enhanced_aoa_data
 				(dst_array, ev_buf->aoa_data_buf,
-				 data_hdr, offset, param->array_size,
-				 ev_buf->num_aoa_data_buf);
+				 data_hdr, offset, param->array_size);
 		if (status) {
 			wmi_err("error in populating aoa data");
 			return status;
@@ -480,27 +403,6 @@ extract_cfr_enh_phase_data_tlv(wmi_unified_t wmi_handle,
 }
 #endif /* WLAN_RCC_ENHANCED_AOA_SUPPORT */
 #endif /* WLAN_ENH_CFR_ENABLE */
-
-static uint32_t cfr_host_to_wmi_bw_convert(uint32_t host_bw)
-{
-	switch (host_bw) {
-	case CH_WIDTH_20MHZ:
-		return WMI_PEER_CFR_CAPTURE_BW_20MHZ;
-	case CH_WIDTH_40MHZ:
-		return WMI_PEER_CFR_CAPTURE_BW_40MHZ;
-	case CH_WIDTH_80MHZ:
-		return WMI_PEER_CFR_CAPTURE_BW_80MHZ;
-	case CH_WIDTH_160MHZ:
-		return WMI_PEER_CFR_CAPTURE_BW_160MHZ;
-	case CH_WIDTH_80P80MHZ:
-		return WMI_PEER_CFR_CAPTURE_BW_80_80MHZ;
-	case CH_WIDTH_320MHZ:
-		return WMI_PEER_CFR_CAPTURE_BW_320MHZ;
-	default:
-		wmi_err("Invalid host CFR bandwidth: %d", host_bw);
-		return WMI_PEER_CFR_CAPTURE_BW_20MHZ;
-	}
-}
 
 static QDF_STATUS send_peer_cfr_capture_cmd_tlv(wmi_unified_t wmi_handle,
 						struct peer_cfr_params *param)
@@ -526,7 +428,7 @@ static QDF_STATUS send_peer_cfr_capture_cmd_tlv(wmi_unified_t wmi_handle,
 	cmd->request = param->request;
 	cmd->vdev_id = param->vdev_id;
 	cmd->periodicity = param->periodicity;
-	cmd->bandwidth = cfr_host_to_wmi_bw_convert(param->bandwidth);
+	cmd->bandwidth = param->bandwidth;
 	cmd->capture_method = param->capture_method;
 
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
@@ -545,9 +447,6 @@ static inline void wmi_enh_cfr_attach_tlv(wmi_unified_t wmi_handle)
 	struct wmi_ops *ops = wmi_handle->ops;
 
 	ops->send_cfr_rcc_cmd = send_cfr_rcc_cmd_tlv;
-	ops->extract_cfr_capture_filter_resp =
-		extract_cfr_capture_filter_event_tlv;
-	ops->extract_cfr_phase_param = extract_cfr_phase_param_tlv;
 }
 #else
 static inline void wmi_enh_cfr_attach_tlv(wmi_unified_t wmi_handle)
@@ -575,6 +474,7 @@ void wmi_cfr_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_peer_cfr_capture_cmd = send_peer_cfr_capture_cmd_tlv;
 	ops->extract_cfr_peer_tx_event_param =
 		extract_cfr_peer_tx_event_param_tlv;
+	ops->extract_cfr_phase_param = extract_cfr_phase_param_tlv;
 	wmi_cfr_attach_enh_aoa_tlv(ops);
 	wmi_enh_cfr_attach_tlv(wmi_handle);
 }

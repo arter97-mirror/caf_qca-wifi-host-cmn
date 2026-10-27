@@ -60,9 +60,6 @@
 #define mgmttxrx_nofl_debug(params...) \
 	QDF_TRACE_DEBUG_NO_FL(QDF_MODULE_ID_MGMT_TXRX, params)
 
-#define MAX_LINK_RECFG_CMD_ALLOWED 15
-
-#define WLAN_MAX_ML_RECFG_LINK 15
 /**
  * mgmt_txrx_frame_hex_dump() - Print the type and dump the rx tx frame
  * @frame_data: The base address of the mgmt frame data to be logged.
@@ -139,7 +136,6 @@ enum mgmt_subtype {
  * @ACTION_CATEGORY_CMMG: CMMG Action frame
  * @ACTION_CATEGORY_GLK: GLK Action frame
  * @ACTION_CATEGORY_PROTECTED_EHT: Protected EHT Action frame
- * @ACTION_CATEGORY_PROTECTED_UHR: Protected UHR Action Frame
  * @ACTION_CATEGORY_VENDOR_SPECIFIC_PROTECTED: vendor specific protected
  *                                             action category
  * @ACTION_CATEGORY_VENDOR_SPECIFIC: vendor specific action category
@@ -176,7 +172,6 @@ enum mgmt_action_category {
 	ACTION_CATEGORY_CMMG = 28,
 	ACTION_CATEGORY_GLK = 29,
 	ACTION_CATEGORY_PROTECTED_EHT = 37,
-	ACTION_CATEGORY_PROTECTED_UHR = 43,
 	ACTION_CATEGORY_VENDOR_SPECIFIC_PROTECTED = 126,
 	ACTION_CATEGORY_VENDOR_SPECIFIC = 127,
 };
@@ -569,34 +564,6 @@ enum eht_actioncode {
 	EHT_LINK_RECONFIG_RESPONSE = 12,
 };
 
-#ifdef WLAN_FEATURE_11BN_SMD
-/**
- * enum uhr_actioncode - Protected UHR action frames
- * @UHR_LINK_RECONFIG_REQUEST: Link Reconfiguration Request action Frame
- * @UHR_LINK_RECONFIG_RESPONSE: Link Reconfiguration Response action Frame
- * @UHR_LINK_RECONFIG_NOTIFY: Link Reconfiguration Notify action Frame
- */
-enum uhr_actioncode {
-	UHR_LINK_RECONFIG_REQUEST = 0,
-	UHR_LINK_RECONFIG_RESPONSE = 1,
-	UHR_LINK_RECONFIG_NOTIFY = 2,
-};
-
-/**
- * enum uhr_typecode - UHR type code values
- * @UHR_TYPECODE_ST_PREPARATION: ST preparation (see 37.15.6)
- * @UHR_TYPECODE_ST_EXECUTION: ST execution (see 37.15.7 and 37.15.8)
- * @UHR_TYPECODE_RESERVED: Reserved
- * @UHR_TYPECODE_OMP_REQUEST: UHR OMP request (see 37.29)
- */
-enum uhr_typecode {
-	UHR_TYPECODE_ST_PREPARATION = 0,
-	UHR_TYPECODE_ST_EXECUTION   = 1,
-	UHR_TYPECODE_RESERVED       = 2,
-	UHR_TYPECODE_OMP_REQUEST    = 3,
-};
-#endif
-
 /**
  * struct action_frm_hdr - action frame header
  * @action_category: action category
@@ -703,7 +670,7 @@ struct action_frm_hdr {
  * @MGMT_ACTION_MESH_MCCA_SETUP_REPLY: mesh mcca setup reply action frame
  * @MGMT_ACTION_MESH_MCCA_ADVERTISEMENT_REQUEST: mesh mcca advertisement req.
  * @MGMT_ACTION_MESH_MCCA_ADVERTISEMENT: mesh mcca advertisement action frame
- * @MGMT_ACTION_MESH_MCCA_TEARDOWN: mesh mcca teardown action frame
+ * @MGMT_ACTION_MESH_MCCA_TEARDOWN: mesh mcca teardown action fram
  * @MGMT_ACTION_MESH_TBTT_ADJUSTMENT_REQUEST: mesh tbtt adjustment req. frame
  * @MGMT_ACTION_MESH_TBTT_ADJUSTMENT_RESPONSE: mesh tbtt adjustment rsp. frame
  * @MGMT_ACTION_SP_MESH_PEERING_OPEN: self protected mesh peering open frame
@@ -750,9 +717,6 @@ struct action_frm_hdr {
  * @MGMT_ACTION_EHT_LINK_RECONFIG_NOTIFY: Link reconfig notify frame
  * @MGMT_ACTION_EHT_LINK_RECONFIG_REQUEST: Link reconfig request frame
  * @MGMT_ACTION_EHT_LINK_RECONFIG_RESPONSE: Link reconfig response frame
- * @MGMT_ACTION_UHR_LINK_RECONFIG_REQUEST: UHR Link reconfig request frame
- * @MGMT_ACTION_UHR_LINK_RECONFIG_RESPONSE: UHR Link reconfig response frame
- * @MGMT_ACTION_UHR_LINK_RECONFIG_NOTIFY: UHR Link reconfig notify frame
  * @MGMT_MAX_FRAME_TYPE:         max. mgmt frame types
  */
 enum mgmt_frame_type {
@@ -896,9 +860,6 @@ enum mgmt_frame_type {
 	MGMT_ACTION_EHT_LINK_RECONFIG_NOTIFY,
 	MGMT_ACTION_EHT_LINK_RECONFIG_REQUEST,
 	MGMT_ACTION_EHT_LINK_RECONFIG_RESPONSE,
-	MGMT_ACTION_UHR_LINK_RECONFIG_REQUEST,
-	MGMT_ACTION_UHR_LINK_RECONFIG_RESPONSE,
-	MGMT_ACTION_UHR_LINK_RECONFIG_NOTIFY,
 	MGMT_MAX_FRAME_TYPE,
 };
 
@@ -964,20 +925,6 @@ struct mgmt_rx_event_ext_params {
 	} u;
 };
 
-/**
- * enum mlo_vdev_pause_type - pause type
- * @MLO_VDEV_PAUSE_TYPE_UNKNOWN: invalid type
- * @MLO_VDEV_PAUSE_TYPE_MLO_LINK: pause by qos null pm = 1 to ap
- * @MLO_VDEV_PAUSE_TYPE_TX: pause tx without qos null
- * @MLO_VDEV_PAUSE_TYPE_TX_DATA: pause data frame without qos null
- */
-enum mlo_vdev_pause_type {
-	MLO_VDEV_PAUSE_TYPE_UNKNOWN = 0,
-	MLO_VDEV_PAUSE_TYPE_MLO_LINK = 1,
-	MLO_VDEV_PAUSE_TYPE_TX = 2,
-	MLO_VDEV_PAUSE_TYPE_TX_DATA = 3,
-};
-
 #ifdef WLAN_FEATURE_11BE_MLO
 #define CU_VDEV_MAP_MASK 0xFFFF
 /*
@@ -1023,47 +970,12 @@ struct mlo_bcast_t2lm_info {
  * struct mlo_vdev_pause - ML vdev pause info
  * @vdev_id: vdev id of vdev to be paused
  * @vdev_pause_duration: vdev pause duration
- * @type: pause type
  */
 struct mlo_vdev_pause {
 	uint16_t vdev_id;
 	uint32_t vdev_pause_duration;
-	enum mlo_vdev_pause_type type;
 };
 #endif
-
-/**
- * struct mlo_link_reconfig_param - MLO reconfig param
- * @link_id: link id
- * @link_addr: link addr
- * @vdev_id: vdev id only in case of add link
- * @bss: BSS pointer
- */
-struct mlo_link_reconfig_param {
-	uint8_t link_id;
-	uint8_t link_addr[QDF_MAC_ADDR_SIZE];
-/** which vdev to repurpose on with del link_id if it's not 0xff **/
-	uint8_t vdev_id;
-	void *bss;
-};
-
-/**
- * struct mlo_link_recfg_user_req_params - MLO reconfig user req param
- * @vdev_id: vdev id on which user command triggered
- * @mld_addr: mld address
- * @add_link: add link array of structures
- * @num_link_add_param: no of add link requested
- * @del_link: delete link array of structures
- * @num_link_del_param: no of delete link requested
- */
-struct mlo_link_recfg_user_req_params {
-	uint8_t vdev_id;
-	uint8_t mld_addr[QDF_MAC_ADDR_SIZE];
-	struct mlo_link_reconfig_param add_link[MAX_LINK_RECFG_CMD_ALLOWED];
-	uint32_t num_link_add_param;
-	struct mlo_link_reconfig_param del_link[MAX_LINK_RECFG_CMD_ALLOWED];
-	uint32_t num_link_del_param;
-};
 
 /**
  * struct mgmt_rx_event_params - host mgmt header params
@@ -1478,28 +1390,6 @@ QDF_STATUS wlan_mgmt_txrx_psoc_enable(struct wlan_objmgr_psoc *psoc);
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_mgmt_txrx_psoc_disable(struct wlan_objmgr_psoc *psoc);
-
-/**
- * wlan_mgmt_txrx_desc_id_allocate() - Allocate a management descriptor ID
- * @pdev: pdev context
- * @vdev_id: vdev ID to store in the descriptor
- * @nbuf: frame buffer to store in the descriptor
- * @desc_id: pointer to store the allocated descriptor ID
- *
- * Return: QDF_STATUS_SUCCESS on success, error code on failure
- */
-QDF_STATUS wlan_mgmt_txrx_desc_id_allocate(struct wlan_objmgr_pdev *pdev,
-					   uint8_t vdev_id, qdf_nbuf_t nbuf,
-					   uint32_t *desc_id);
-
-/**
- * wlan_mgmt_txrx_desc_id_free() - Free a management descriptor ID
- * @pdev: pdev context
- * @desc_id: descriptor ID to free
- * @vdev_id: pointer to receive the vdev_id (optional, can be NULL)
- *
- * Return: QDF_STATUS_SUCCESS on success, error code on failure
- */
-QDF_STATUS wlan_mgmt_txrx_desc_id_free(struct wlan_objmgr_pdev *pdev,
-				       uint32_t desc_id, uint8_t *vdev_id);
 #endif
+
+

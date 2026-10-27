@@ -26,94 +26,8 @@
 #include "if_pci.h"
 #endif
 #include "qdf_ssr_driver_dump.h"
-#include <qdf_tracepoint.h>
 
 static struct hif_exec_context *hif_exec_tasklet_create(void);
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-#define HIF_GRP_ID_INVALID 0xFF
-
-static inline void
-hif_dal_napi_complete_and_dec_counter(struct hif_exec_context *hif_ext_group,
-				      struct hif_softc *scn)
-{
-	if (qdf_atomic_test_bit(0, &hif_ext_group->dal_napi_scheduled)) {
-		qdf_atomic_clear_bit(0, &hif_ext_group->dal_napi_scheduled);
-		qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
-	} else {
-		qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
-	}
-}
-
-/**
- * hif_get_ext_grp_id() - API to get ext group id
- * @hif_ctx: HIF context
- * @cb_ctx: interrupt context
- *
- * Return: group id corresponds to rx/rx ring interrupts
- */
-int hif_get_ext_grp_id(struct hif_opaque_softc *hif_ctx, void *cb_ctx)
-{
-	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
-	struct hif_exec_context *hif_ext_group;
-	int i;
-
-	for (i = 0; i < HIF_MAX_GROUP; i++) {
-		hif_ext_group = hif_state->hif_ext_group[i];
-
-		if (!hif_ext_group)
-			continue;
-
-		if (hif_ext_group->context == cb_ctx)
-			return hif_ext_group->grp_id;
-	}
-
-	return HIF_GRP_ID_INVALID;
-}
-
-/**
- * hif_ext_grp_napi_schedule - Schedule napi for the corresponding ext grp
- * @hif_ctx: HIF context
- * @grp_id: ext group id
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS hif_ext_grp_napi_schedule(struct hif_opaque_softc *hif_ctx,
-				     int grp_id)
-{
-	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
-	struct hif_exec_context *hif_ext_group;
-
-	if (grp_id >= HIF_MAX_GROUP)
-		return QDF_STATUS_E_FAILURE;
-
-	hif_ext_group = hif_state->hif_ext_group[grp_id];
-
-	hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
-			 0, 0, 0, HIF_EVENT_IRQ_TRIGGER);
-	if (!hif_ext_group) {
-		hif_err("hif_ext_group is NULL for grp_id %d", grp_id);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!qdf_atomic_test_and_set_bit(0,
-					 &hif_ext_group->dal_napi_scheduled)) {
-		qdf_atomic_inc(&scn->active_grp_tasklet_cnt);
-		hif_ext_group->sched_ops->schedule(hif_ext_group);
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-#else
-static inline void
-hif_dal_napi_complete_and_dec_counter(struct hif_exec_context *hif_ext_group,
-				      struct hif_softc *scn)
-{
-	qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
-}
-#endif
 
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 struct hif_event_history hif_event_desc_history[HIF_NUM_INT_CONTEXTS];
@@ -232,33 +146,6 @@ hif_hist_skip_event_record(struct hif_event_history *hist_ev,
 	return false;
 }
 
-#ifdef WLAN_TRACEPOINTS
-/**
- * hif_trace_hif_hist_event() - Trace hif event
- *  latency
- * @record: hif record
- *
- * Return: None
- */
-static inline
-void hif_trace_hif_hist_event(struct hif_event_record *record)
-{
-	if (qdf_trace_hif_hist_event_enabled())
-		qdf_trace_hif_hist_event(false,
-					 record->hal_ring_id,
-					 record->hp,
-					 record->tp,
-					 record->cpu_id,
-					 record->timestamp,
-					 record->type);
-}
-#else
-static inline
-void hif_trace_hif_hist_event(struct hif_event_record *record)
-{
-}
-#endif
-
 void hif_hist_record_event(struct hif_opaque_softc *hif_ctx,
 			   struct hif_event_record *event, uint8_t intr_grp_id)
 {
@@ -298,7 +185,6 @@ void hif_hist_record_event(struct hif_opaque_softc *hif_ctx,
 	record->cpu_id = qdf_get_cpu();
 	record->timestamp = hif_get_log_timestamp();
 	record->type = event->type;
-	hif_trace_hif_hist_event(record);
 }
 
 void hif_event_history_init(struct hif_opaque_softc *hif_ctx, uint8_t id)
@@ -320,33 +206,7 @@ void hif_event_history_deinit(struct hif_opaque_softc *hif_ctx, uint8_t id)
 }
 #endif /* WLAN_FEATURE_DP_EVENT_HISTORY */
 
-#ifdef WLAN_DP_NAPI_IPI_REDIRECT
-static void hif_print_napi_redirect_stats(struct HIF_CE_state *hif_state)
-{
-	char buf[HIF_MAX_GROUP * 5 + 1];
-	int i, len = 0;
-	int cpu;
-
-	for (i = 0;
-	     (i < hif_state->hif_num_extgroup && hif_state->hif_ext_group[i]);
-	     i++) {
-		cpu = READ_ONCE(
-			hif_state->hif_ext_group[i]->napi_redirect_cpu);
-
-		len += scnprintf(buf + len, sizeof(buf) - len,
-				 i == 0 ? "%d" : ",%d", cpu);
-	}
-	QDF_TRACE(QDF_MODULE_ID_HIF, QDF_TRACE_LEVEL_INFO_HIGH,
-		  "NAPI redirect_cpu: %s", buf);
-}
-#else
-static inline void
-hif_print_napi_redirect_stats(struct HIF_CE_state *hif_state)
-{
-}
-#endif /* WLAN_DP_NAPI_IPI_REDIRECT */
-
-#if !defined(QCA_WIFI_WCN6450) && !defined(HELIUMPLUS)
+#ifndef QCA_WIFI_WCN6450
 /**
  * hif_print_napi_latency_stats() - print NAPI scheduling latency stats
  * @hif_state: hif context
@@ -496,7 +356,6 @@ void hif_print_napi_stats(struct hif_opaque_softc *hif_ctx)
 	}
 
 	hif_print_napi_latency_stats(hif_state);
-	hif_print_napi_redirect_stats(hif_state);
 }
 
 qdf_export_symbol(hif_print_napi_stats);
@@ -537,11 +396,10 @@ void hif_print_napi_stats(struct hif_opaque_softc *hif_ctx)
 	}
 
 	hif_print_napi_latency_stats(hif_state);
-	hif_print_napi_redirect_stats(hif_state);
 }
 qdf_export_symbol(hif_print_napi_stats);
 #endif /* WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT */
-#endif /* !defined(QCA_WIFI_WCN6450) && !defined(HELIUMPLUS) */
+#endif /* QCA_WIFI_WCN6450 */
 
 #if defined(WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT)
 /**
@@ -809,16 +667,10 @@ hif_exec_update_soft_irq_time(struct hif_exec_context *hif_ext_group)
 	int cpu;
 	uint64_t time;
 
-	/* No need to account soft irq time if the ext group doesn't register
-	 * with any interrupts.
-	 */
-	if (!scn->is_load_balance_enabled ||
-	    !hif_ext_group->numirq)
+	if (!scn->is_load_balance_enabled)
 		return;
 
 	cpu = qdf_get_cpu();
-	if (cpu >= QDF_MAX_AVAILABLE_CPU)
-		return;
 	time = qdf_time_sched_clock() - hif_ext_group->poll_start_time;
 	if (qdf_get_current() != qdf_this_cpu_ksoftirqd())
 		hif_ext_group->total_irq_time[cpu] += time;
@@ -838,14 +690,8 @@ hif_update_irq_handler_start_time(struct hif_exec_context *hif_ext_group)
 {
 	struct hif_softc *scn = HIF_GET_SOFTC(hif_ext_group->hif);
 
-	/* No need to account irq time if the ext group doesn't register
-	 * with any interrupts.
-	 */
-	if (!scn->is_load_balance_enabled ||
-	    !hif_ext_group->numirq)
-		return;
-
-	hif_ext_group->irq_start_time = qdf_time_sched_clock();
+	if (scn->is_load_balance_enabled)
+		hif_ext_group->irq_start_time = qdf_time_sched_clock();
 }
 
 /**
@@ -861,17 +707,11 @@ hif_update_irq_handle_time(struct hif_exec_context *hif_ext_group)
 	uint64_t cur_time;
 	int cpu;
 
-	/* No need to account irq time if the ext group doesn't register
-	 * with any interrupts.
-	 */
-	if (!scn->is_load_balance_enabled ||
-	    !hif_ext_group->numirq)
+	if (!scn->is_load_balance_enabled)
 		return;
 
 	cur_time = qdf_time_sched_clock();
 	cpu = qdf_get_cpu();
-	if (cpu >= QDF_MAX_AVAILABLE_CPU)
-		return;
 	hif_ext_group->total_irq_time[cpu] += cur_time -
 					hif_ext_group->irq_start_time;
 }
@@ -897,9 +737,6 @@ void hif_get_wlan_rx_time_stats(struct hif_opaque_softc *hif_ctx,
 		for (grp = 0; grp < hif_state->hif_num_extgroup; grp++) {
 			hif_ext_group = hif_state->hif_ext_group[grp];
 			if (hif_ext_group) {
-				if (!hif_ext_group->numirq)
-					continue;
-
 				wlan_irq_time[i] +=
 					hif_ext_group->total_irq_time[i];
 				wlan_ksoftirqd_time[i] +=
@@ -926,7 +763,6 @@ void hif_check_and_apply_irq_affinity(struct hif_opaque_softc *hif_ctx,
 	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
 	struct hif_exec_context *hif_ext_group;
 	qdf_cpu_mask cpu_mask;
-	qdf_cpu_mask old_cpu_mask;
 	QDF_STATUS status;
 	int i;
 
@@ -949,22 +785,16 @@ void hif_check_and_apply_irq_affinity(struct hif_opaque_softc *hif_ctx,
 			continue;
 		}
 
-		qdf_cpumask_copy(&old_cpu_mask,
-				 &hif_ext_group->new_cpu_mask[i]);
-		qdf_cpumask_copy(&hif_ext_group->new_cpu_mask[i],
-				 &cpu_mask);
-
 		status = hif_irq_set_affinity_hint(hif_ext_group->os_irq[i],
-						   &hif_ext_group->
-						   new_cpu_mask[i]);
+						   &cpu_mask);
 		if (QDF_IS_STATUS_SUCCESS(status)) {
+			qdf_cpumask_copy(&hif_ext_group->new_cpu_mask[i],
+					 &cpu_mask);
 			qdf_atomic_set(&hif_ext_group->force_napi_complete, -1);
 			hif_debug("Affined IRQ %d to cpu_mask %*pbl",
 				  hif_ext_group->os_irq[i],
 				  qdf_cpumask_pr_args(&hif_ext_group->new_cpu_mask[i]));
 		} else {
-			qdf_cpumask_copy(&hif_ext_group->new_cpu_mask[i],
-					 &old_cpu_mask);
 			hif_err("set affinity failed for IRQ %d",
 				hif_ext_group->os_irq[i]);
 		}
@@ -987,112 +817,6 @@ hif_update_irq_handle_time(struct hif_exec_context *hif_ext_group)
 }
 #endif /* WLAN_DP_LOAD_BALANCE_SUPPORT */
 
-#if defined(WLAN_DP_AFFINITY_OVERRIDE_FEATURE) || \
-	defined(FEATURE_STATIC_IRQ_AFFINITY)
-
-/**
- * hif_set_grp_affinity() - HIF API  to set IRQ affinity
- * @hif_ext_group: hif_ext_group to extract the irq info
- * @irq_cpumask: cpu mask to which irq should be affined
- * @napi_thread_cpumask: cpu mask to which napi thread should be affined
- *
- * This function will set the IRQ affinity based on cpumask and hif ext group
- * handle
- *
- * Return: none
- */
-static inline void hif_set_grp_affinity(struct hif_exec_context *hif_ext_group,
-					qdf_cpu_mask irq_cpumask,
-					qdf_cpu_mask napi_thread_cpumask)
-{
-	struct hif_napi_exec_context *napi_exec_ctx;
-	qdf_napi_struct *napi;
-	QDF_STATUS status;
-	bool is_napi_thread;
-	int i;
-
-	for (i = 0; i < hif_ext_group->numirq; i++) {
-		/* Check if it is a napi thread.
-		 * If yes then set the napi thread cpumask.
-		 */
-		napi_exec_ctx = hif_exec_get_napi(hif_ext_group);
-		napi = &napi_exec_ctx->napi;
-		is_napi_thread = napi->thread ? TRUE : FALSE;
-		if (is_napi_thread) {
-			if (qdf_cpumask_empty(&napi_thread_cpumask))
-				continue;
-			status = qdf_thread_set_cpus_allowed_mask(
-					napi->thread,
-					&napi_thread_cpumask);
-		} else {
-			if (qdf_cpumask_empty(&irq_cpumask))
-				continue;
-			status = hif_irq_set_affinity_hint(
-					hif_ext_group->os_irq[i],
-					&irq_cpumask);
-		}
-		if (QDF_IS_STATUS_SUCCESS(status)) {
-			qdf_cpumask_copy(
-				&hif_ext_group->new_cpu_mask[i],
-				is_napi_thread ? &napi_thread_cpumask :
-						 &irq_cpumask);
-
-			qdf_atomic_set(&hif_ext_group->force_napi_complete, -1);
-			hif_debug("Affined IRQ/NAPI thread %d to cpumask %*pbl is_napi_thread %u",
-				  hif_ext_group->os_irq[i],
-				  qdf_cpumask_pr_args(
-					&hif_ext_group->new_cpu_mask[i]),
-					is_napi_thread);
-		} else {
-			hif_err("set affinity failed for IRQ %d is_napi_thread %u",
-				hif_ext_group->os_irq[i], is_napi_thread);
-		}
-	}
-}
-
-/**
- * hif_set_grp_affinity_cpumaskwise() - Function to affine group interrupts
- * based on cpumask and grp_irq_mask.
- *
- * @hif_ctx: hif context
- * @grp_irq_mask: hif group interrupyt bit mask
- * @irq_cpubitmask: cpu bitmask for irqs
- * @napi_thread_cpubitmask: cpu bitmask for napi threads
- *
- * Return: none
- */
-void hif_set_grp_affinity_cpumaskwise(struct hif_opaque_softc *hif_ctx,
-				      uint32_t grp_irq_mask,
-				      uint32_t irq_cpubitmask,
-				      uint32_t napi_thread_cpubitmask)
-{
-	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
-	struct hif_exec_context *hif_ext_group;
-	qdf_cpu_mask irq_cpu_mask, napi_th_cpu_mask;
-	int i;
-	unsigned int cpus;
-
-	for (i = 0; i < hif_state->hif_num_extgroup; i++) {
-		if (!(grp_irq_mask & BIT(i)))
-			continue;
-
-		hif_ext_group = hif_state->hif_ext_group[i];
-
-		qdf_cpumask_clear(&irq_cpu_mask);
-		qdf_cpumask_clear(&napi_th_cpu_mask);
-		qdf_for_each_possible_cpu(cpus) {
-			if (BIT(cpus) & irq_cpubitmask)
-				qdf_cpumask_set_cpu(cpus, &irq_cpu_mask);
-			if (BIT(cpus) & napi_thread_cpubitmask)
-				qdf_cpumask_set_cpu(cpus, &napi_th_cpu_mask);
-		}
-
-		hif_set_grp_affinity(hif_ext_group,
-				     irq_cpu_mask, napi_th_cpu_mask);
-	}
-}
-#endif
 /**
  * hif_exec_poll() - napi poll
  * @napi: napi struct
@@ -1142,11 +866,9 @@ static int hif_exec_poll(struct napi_struct *napi, int budget)
 		hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
 				 0, 0, 0, HIF_EVENT_BH_COMPLETE);
 		napi_complete(napi);
-		hif_dal_napi_complete_and_dec_counter(hif_ext_group, scn);
+		qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
 		hif_ext_group->irq_enable(hif_ext_group);
 		hif_ext_group->stats[cpu].napi_completes++;
-		hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
-				 0, 0, 0, HIF_EVENT_IRQ_REENABLED);
 	} else {
 		/* if the ext_group supports time based yield, claim full work
 		 * done anyways */
@@ -1168,200 +890,6 @@ static int hif_exec_poll(struct napi_struct *napi, int budget)
 	return work_done;
 }
 
-#ifdef WLAN_DP_NAPI_IPI_REDIRECT
-static void hif_exec_ipi_napi_schedule_cb(void *info);
-
-#define HIF_NAPI_REDIRECT_DRAIN_TIMEOUT_US  10000
-
-static inline void init_redirect_cpu(struct hif_napi_exec_context *ctx)
-{
-	ctx->exec_ctx.napi_redirect_cpu = -1;
-	INIT_CSD(&ctx->napi_redirect_csd, hif_exec_ipi_napi_schedule_cb, ctx);
-	ctx->napi_redirect_ipi_scheduled = 0;
-}
-
-/**
- * drain_redirect_cpu() - stop new NAPI-redirect IPIs and wait for any
- *                        already-in-flight one to finish
- * @ctx: napi exec context about to be disabled/freed
- *
- * Return: void
- */
-static void drain_redirect_cpu(struct hif_napi_exec_context *ctx)
-{
-	int wait_us = 0;
-
-	WRITE_ONCE(ctx->exec_ctx.napi_redirect_cpu, -1);
-
-	/* Pairs with smp_store_release() in hif_exec_ipi_napi_schedule_cb()
-	 * to observe the IPI callback's writes before returning.
-	 */
-	while (smp_load_acquire(&ctx->napi_redirect_ipi_scheduled)) {
-		if (wait_us >= HIF_NAPI_REDIRECT_DRAIN_TIMEOUT_US) {
-			hif_err("grp_id=%d: napi_redirect IPI still pending after %dus",
-				ctx->exec_ctx.grp_id, wait_us);
-			break;
-		}
-		qdf_udelay(10);
-		wait_us += 10;
-	}
-}
-
-/**
- * hif_exec_ipi_napi_schedule_cb() - IPI callback to schedule a NAPI poll on
- *                                   the target CPU
- * @info: pointer to the &struct hif_napi_exec_context for the interrupt group
- *
- * Return: void
- */
-static void hif_exec_ipi_napi_schedule_cb(void *info)
-{
-	struct hif_napi_exec_context *n_ctx = info;
-	struct hif_exec_context *ctx = &n_ctx->exec_ctx;
-
-	ctx->stats[smp_processor_id()].napi_schedules++;
-	napi_schedule(&n_ctx->napi);
-
-	/* Pairs with smp_load_acquire() in drain_redirect_cpu() so it sees
-	 * the napi_schedule() above as complete before proceeding.
-	 */
-	smp_store_release(&n_ctx->napi_redirect_ipi_scheduled, 0);
-}
-
-/**
- * hif_exec_napi_schedule() - schedule the napi exec instance
- * @ctx: a hif_exec_context known to be of napi type
- *
- * smp_call_function_single_async() return values and how they are
- * handled here:
- *   0       - queued for target (or ran synchronously if target is this
- *             CPU); nothing further to do.
- *   -EBUSY  - a previous redirect to this target is still in flight. It
- *             WILL run, and NAPI's own SCHED/MISSED bits guarantee that
- *             run picks up anything that accumulated meanwhile, so this
- *             is treated the same as success. Falling back to a local
- *             napi_schedule() here would win the NAPI_STATE_SCHED race
- *             on this CPU instead of target, silently defeating the
- *             redirect for this round.
- *   -ENXIO  - target is offline/invalid; this call was dropped and will
- *             never run. This is the only case that must fall back to
- *             local scheduling, or the NAPI schedule is lost.
- */
-static void hif_exec_napi_schedule(struct hif_exec_context *ctx)
-{
-	struct hif_napi_exec_context *n_ctx = hif_exec_get_napi(ctx);
-	int target = READ_ONCE(ctx->napi_redirect_cpu);
-	int ret;
-
-	if (target >= 0 &&
-	    smp_processor_id() != target &&
-	    cpu_online(target)) {
-		WRITE_ONCE(n_ctx->napi_redirect_ipi_scheduled, 1);
-
-		ret = smp_call_function_single_async(target,
-						     &n_ctx->napi_redirect_csd);
-		if (!ret || ret == -EBUSY)
-			return;
-
-		WRITE_ONCE(n_ctx->napi_redirect_ipi_scheduled, 0);
-	}
-	/* Local schedule: same CPU as target, target not currently valid,
-	 * or the async queue attempt hit -ENXIO above.
-	 */
-	ctx->stats[smp_processor_id()].napi_schedules++;
-	napi_schedule(&n_ctx->napi);
-}
-
-/**
- * hif_set_napi_redirect_cpu() - Enable/disable IPI-based NAPI poll redirect
- *   for groups specified by TX and/or RX bitmap.
- *
- * When enabled, each group in the combined bitmap is assigned a unique CPU
- * as IPI target, distributing NAPI poll load across cores (round-robin by
- * assignment order).  Groups NOT in the bitmap are left unchanged.  When
- * disabled, all groups in the bitmap are reset to local scheduling
- * (napi_redirect_cpu = -1).
- *
- * Designed to be called from dp_set_tx_irq_affinity() and
- * dp_set_rx_irq_affinity() immediately after hif_set_grp_intr_affinity().
- *
- * @hif_ctx:     HIF handle
- * @tx_grp_bmap: Bitmap of TX completion groups (cdp_get_tx_rings_grp_bitmap).
- *               Pass 0 to skip TX groups.
- * @rx_grp_bmap: Bitmap of RX groups (cdp_get_rx_rings_grp_bitmap).
- *               Pass 0 to skip RX groups.
- * @cpumask:     Optional explicit CPU mask for redirect targets, only used
- *               when @enable is true. If non-zero and it maps to at least
- *               one online CPU, that CPU list is used instead of the perf
- *               cluster. Otherwise falls back to the perf-cluster-derived
- *               list (today's behavior).
- * @enable:      true = assign redirect CPUs; false = clear redirect (set to -1)
- */
-void hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
-			       uint32_t tx_grp_bmap,
-			       uint32_t rx_grp_bmap,
-			       uint32_t cpumask,
-			       bool enable)
-{
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(hif_ctx);
-	uint32_t target_bmap = tx_grp_bmap | rx_grp_bmap;
-	int perf_cpu_list[QDF_MAX_AVAILABLE_CPU], n_perf = 0;
-	int i, cpu, assign_idx = 0;
-
-	if (!target_bmap)
-		return;
-
-	if (enable) {
-		if (cpumask) {
-			for_each_online_cpu(cpu) {
-				if (n_perf >= QDF_MAX_AVAILABLE_CPU)
-					break;
-				if (BIT(cpu) & cpumask)
-					perf_cpu_list[n_perf++] = cpu;
-			}
-		}
-
-		if (!n_perf) {
-			int perf_cluster = hif_get_perf_cluster_bitmap();
-
-			for_each_online_cpu(cpu) {
-				if (n_perf >= QDF_MAX_AVAILABLE_CPU)
-					break;
-				if (BIT(qdf_topology_physical_package_id(cpu)) &
-				    perf_cluster)
-					perf_cpu_list[n_perf++] = cpu;
-			}
-		}
-		if (!n_perf) {
-			hif_warn("%s: no perf cluster CPUs online", __func__);
-			return;
-		}
-	}
-
-	for (i = 0; i < hif_state->hif_num_extgroup; i++) {
-		struct hif_exec_context *grp = hif_state->hif_ext_group[i];
-		int target;
-
-		if (!grp || !(target_bmap & BIT(grp->grp_id)))
-			continue;
-
-		/* Round-robin: successive groups get different perf CPUs */
-		target = enable ? perf_cpu_list[assign_idx++ % n_perf] : -1;
-		WRITE_ONCE(grp->napi_redirect_cpu, target);
-		hif_debug("NAPI grp_id=%d napi_redirect_cpu=%d (tx=%d rx=%d)",
-			  grp->grp_id, target,
-			  !!(tx_grp_bmap & BIT(grp->grp_id)),
-			  !!(rx_grp_bmap & BIT(grp->grp_id)));
-	}
-}
-
-qdf_export_symbol(hif_set_napi_redirect_cpu);
-
-#else  /* !WLAN_DP_NAPI_IPI_REDIRECT */
-
-static inline void init_redirect_cpu(struct hif_napi_exec_context *ctx) {}
-static inline void drain_redirect_cpu(struct hif_napi_exec_context *ctx) {}
-
 /**
  * hif_exec_napi_schedule() - schedule the napi exec instance
  * @ctx: a hif_exec_context known to be of napi type
@@ -1373,41 +901,6 @@ static void hif_exec_napi_schedule(struct hif_exec_context *ctx)
 
 	napi_schedule(&n_ctx->napi);
 }
-
-#endif /* WLAN_DP_NAPI_IPI_REDIRECT */
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
-/**
- * qdf_napi_get_dummy_nd_ptr() - Get dummy netdev pointer
- * @ctx: hif_napi_exec_context pointer
- *
- * Return: dummy netdev pointer
- */
-static inline struct net_device *
-qdf_napi_get_dummy_nd_ptr(struct hif_napi_exec_context *ctx)
-{
-	return ctx->netdev;
-}
-
-static inline void
-qdf_napi_set_dummy_nd_ptr(struct hif_napi_exec_context *ctx,
-			  struct net_device *nd)
-{
-	ctx->netdev = nd;
-}
-#else
-static inline struct net_device *
-qdf_napi_get_dummy_nd_ptr(struct hif_napi_exec_context *ctx)
-{
-	return &ctx->netdev;
-}
-
-static inline void
-qdf_napi_set_dummy_nd_ptr(struct hif_napi_exec_context *ctx,
-			  struct net_device *nd)
-{
-}
-#endif
 
 /**
  * hif_exec_napi_kill() - stop a napi exec context from being rescheduled
@@ -1417,31 +910,17 @@ static void hif_exec_napi_kill(struct hif_exec_context *ctx)
 {
 	struct hif_napi_exec_context *n_ctx = hif_exec_get_napi(ctx);
 	int irq_ind;
-	struct net_device *dummy_nd = qdf_napi_get_dummy_nd_ptr(n_ctx);
 
-	drain_redirect_cpu(n_ctx);
-
-	hif_info("ctx=%pk napi=%pk napi_id=%u state=0x%lx inited=%d",
-		 ctx, &n_ctx->napi, n_ctx->napi.napi_id,
-		 n_ctx->napi.state, qdf_atomic_read(&ctx->inited));
-	if (qdf_atomic_test_and_clear_bit(0, (unsigned long *)&ctx->inited)) {
-		hif_info("calling napi_disable ctx=%pk napi_id=%u",
-			 ctx, n_ctx->napi.napi_id);
+	if (ctx->inited) {
 		qdf_napi_disable(&n_ctx->napi);
-		hif_info("calling napi_del ctx=%pk napi_id=%u state=0x%lx",
-			 ctx, n_ctx->napi.napi_id, n_ctx->napi.state);
-		qdf_netif_napi_del(&n_ctx->napi);
-	} else {
-		hif_info("skipping napi_disable/napi_del ctx=%pk napi_id=%u (inited=0)",
-			 ctx, n_ctx->napi.napi_id);
+		ctx->inited = 0;
 	}
 
 	for (irq_ind = 0; irq_ind < ctx->numirq; irq_ind++)
 		hif_irq_affinity_remove(ctx->os_irq[irq_ind]);
 
 	hif_core_ctl_set_boost(false);
-	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)dummy_nd);
-	qdf_napi_set_dummy_nd_ptr(n_ctx, NULL);
+	qdf_netif_napi_del(&(n_ctx->napi));
 }
 
 struct hif_execution_ops napi_sched_ops = {
@@ -1457,29 +936,18 @@ struct hif_execution_ops napi_sched_ops = {
 static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 {
 	struct hif_napi_exec_context *ctx;
-	struct net_device *dummy_nd;
 
 	ctx = qdf_mem_malloc(sizeof(struct hif_napi_exec_context));
 	if (!ctx)
 		return NULL;
 
 	ctx->exec_ctx.sched_ops = &napi_sched_ops;
-	qdf_atomic_set(&ctx->exec_ctx.inited, 1);
+	ctx->exec_ctx.inited = true;
 	ctx->exec_ctx.scale_bin_shift = scale;
-	init_redirect_cpu(ctx);
-	dummy_nd = qdf_napi_get_dummy_nd_ptr(ctx);
-	qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_nd);
-	if (!dummy_nd) {
-		hif_err("Failed to create dummy netdev for NAPI");
-		qdf_mem_free(ctx);
-		return NULL;
-	}
-	qdf_napi_set_dummy_nd_ptr(ctx, dummy_nd);
-	qdf_netif_napi_add(dummy_nd, &ctx->napi,
-			   hif_exec_poll, QCA_NAPI_BUDGET);
+	qdf_net_if_create_dummy_if((struct qdf_net_if *)&ctx->netdev);
+	qdf_netif_napi_add(&(ctx->netdev), &(ctx->napi), hif_exec_poll,
+			   QCA_NAPI_BUDGET);
 	qdf_napi_enable(&ctx->napi);
-	hif_info("ctx=%pk napi=%pk napi_id=%u state=0x%lx",
-		 ctx, &ctx->napi, ctx->napi.napi_id, ctx->napi.state);
 
 	return &ctx->exec_ctx;
 }
@@ -1489,17 +957,6 @@ static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 	hif_warn("FEATURE_NAPI not defined, making tasklet");
 	return hif_exec_tasklet_create();
 }
-
-static inline void
-hif_update_irq_handler_start_time(struct hif_exec_context *hif_ext_group)
-{
-}
-
-static inline void
-hif_update_irq_handle_time(struct hif_exec_context *hif_ext_group)
-{
-}
-
 #endif
 
 
@@ -1512,10 +969,11 @@ static void hif_exec_tasklet_kill(struct hif_exec_context *ctx)
 	struct hif_tasklet_exec_context *t_ctx = hif_exec_get_tasklet(ctx);
 	int irq_ind;
 
-	if (qdf_atomic_test_and_clear_bit(0, (unsigned long *)&ctx->inited)) {
+	if (ctx->inited) {
 		tasklet_disable(&t_ctx->tasklet);
 		tasklet_kill(&t_ctx->tasklet);
 	}
+	ctx->inited = false;
 
 	for (irq_ind = 0; irq_ind < ctx->numirq; irq_ind++)
 		hif_irq_affinity_remove(ctx->os_irq[irq_ind]);
@@ -1541,7 +999,7 @@ static struct hif_exec_context *hif_exec_tasklet_create(void)
 	tasklet_init(&ctx->tasklet, hif_exec_tasklet_fn,
 		     (unsigned long)ctx);
 
-	qdf_atomic_set(&ctx->exec_ctx.inited, 1);
+	ctx->exec_ctx.inited = true;
 
 	return &ctx->exec_ctx;
 }
@@ -1683,7 +1141,9 @@ irqreturn_t hif_ext_group_interrupt_handler(int irq, void *context)
 	struct hif_softc *scn = HIF_GET_SOFTC(hif_ext_group->hif);
 
 	if (hif_ext_group->irq_requested) {
+#ifdef FEATURE_NAPI
 		hif_update_irq_handler_start_time(hif_ext_group);
+#endif
 		hif_latency_profile_start(hif_ext_group);
 
 		hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
@@ -1713,7 +1173,9 @@ irqreturn_t hif_ext_group_interrupt_handler(int irq, void *context)
 		qdf_atomic_inc(&scn->active_grp_tasklet_cnt);
 
 		hif_ext_group->sched_ops->schedule(hif_ext_group);
+#ifdef FEATURE_NAPI
 		hif_update_irq_handle_time(hif_ext_group);
+#endif
 	}
 
 	return IRQ_HANDLED;
@@ -1730,7 +1192,6 @@ void hif_exec_kill(struct hif_opaque_softc *hif_ctx)
 	int i;
 	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(hif_ctx);
 
-	hif_info("num_extgroup=%d", hif_state->hif_num_extgroup);
 	for (i = 0; i < hif_state->hif_num_extgroup; i++)
 		hif_state->hif_ext_group[i]->sched_ops->kill(
 			hif_state->hif_ext_group[i]);
@@ -1845,8 +1306,6 @@ void hif_exec_destroy(struct hif_exec_context *ctx)
 {
 	struct hif_softc *scn = HIF_GET_SOFTC(ctx->hif);
 
-	hif_info("ctx=%pk inited=%d", ctx, qdf_atomic_read(&ctx->inited));
-
 	if (scn->ext_grp_irq_configured)
 		qdf_spinlock_destroy(&ctx->irq_lock);
 	qdf_mem_free(ctx);
@@ -1869,8 +1328,6 @@ void hif_deregister_exec_group(struct hif_opaque_softc *hif_ctx,
 	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
 	struct hif_exec_context *hif_ext_group;
 	int i;
-
-	hif_info("name=%s", context_name);
 
 	for (i = 0; i < HIF_MAX_GROUP; i++) {
 		hif_ext_group = hif_state->hif_ext_group[i];
@@ -2029,72 +1486,3 @@ QDF_STATUS hif_unregister_umac_reset_handler(struct hif_opaque_softc *hif_scn)
 
 qdf_export_symbol(hif_unregister_umac_reset_handler);
 #endif
-
-#ifdef FEATURE_NAPI
-/**
- * hif_exec_set_threaded_napi() - Enable/disable threaded NAPI for a group
- * @hif_ctx: HIF context
- * @grp_id: Group ID
- * @enable: true to enable threaded NAPI, false to disable
- *
- * This function enables or disables threaded NAPI for the specified
- * execution group if it's of NAPI type.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code on failure
- */
-QDF_STATUS hif_exec_set_threaded_napi(struct hif_opaque_softc *hif_ctx,
-				      uint8_t grp_id, bool enable)
-{
-	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
-	struct hif_exec_context *hif_ext_group;
-	struct hif_napi_exec_context *napi_ctx;
-	struct net_device *netdev;
-
-	if (!hif_ctx) {
-		hif_err("Invalid HIF context");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (grp_id >= hif_state->hif_num_extgroup) {
-		hif_err("Invalid group ID %d, max groups: %d",
-			grp_id, hif_state->hif_num_extgroup);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	hif_ext_group = hif_state->hif_ext_group[grp_id];
-	if (!hif_ext_group) {
-		hif_err("Group %d not found", grp_id);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	/* Check if this is a NAPI execution context */
-	if (hif_ext_group->type != HIF_EXEC_NAPI_TYPE) {
-		hif_debug("Group %d is not NAPI type, skipping", grp_id);
-		return QDF_STATUS_E_NOSUPPORT;
-	}
-
-	/* Get the NAPI context */
-	napi_ctx = hif_exec_get_napi(hif_ext_group);
-	if (!napi_ctx) {
-		hif_err("Failed to get NAPI context for group %d", grp_id);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	/* Get the netdev using existing helper function */
-	netdev = qdf_napi_get_dummy_nd_ptr(napi_ctx);
-	if (!netdev) {
-		hif_err("Invalid netdev for group %d", grp_id);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	/* Enable/disable threaded NAPI */
-	dev_set_threaded(netdev, enable);
-	hif_info("%s threaded NAPI for group %d",
-		 enable ? "Enabled" : "Disabled", grp_id);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-qdf_export_symbol(hif_exec_set_threaded_napi);
-#endif /* FEATURE_NAPI */

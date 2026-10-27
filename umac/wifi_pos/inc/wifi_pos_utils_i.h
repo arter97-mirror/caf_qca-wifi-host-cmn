@@ -218,45 +218,6 @@ typedef void (*wifi_pos_send_rsp_handler)(struct wlan_objmgr_psoc *, uint32_t,
 					  uint32_t, uint8_t *);
 
 /**
- * struct wifi_pos_pmsr_fw_caps - Driver-private copy of firmware-advertised
- *                                RTT/FTM peer measurement capabilities.
- *
- * Populated from the wmi_rtt_peer_meas_capabilities TLV delivered inside
- * WMI_SERVICE_READY_EXT2_EVENTID.  All fields mirror the WMI structure
- * directly; no conversion is applied at parse time.
- *
- * @support_flag: Bit 0 - report AP TSF; Bit 1 - randomize MAC;
- *                Bit 2 - PD (USD ranging) support;
- *                Bit 3 - PD concurrent ISTA/RSTA support;
- *                Bit 4 - PD randomize MAC in connected state
- * @max_peers: Maximum number of peers in a single measurement
- * @pd_max_peers: Bits 15:0 - PD ISTA max peers; Bits 31:16 - PD RSTA max peers
- * @ftm_support_flag: Per-bit FTM feature flags (see
- * wmi_rtt_peer_meas_capabilities)
- * @supported_bw_bitmap: Bitmap of supported channel widths (wmi_channel_width)
- * @supported_preamble_bitmap: Bitmap of supported preambles (WMI_RATE_PREAMBLE)
- * @capabilities: Packed field: bits 7:0 max burst exp, 15:8 max FTMs/burst,
- *                23:16 max Tx antennas, 31:24 max Rx antennas
- * @ranging_11az_parameters: Packed 11az LTF/STS parameters
- * @min_interval_edca_ms: Minimum EDCA ranging interval (ms)
- * @min_interval_ntb_ms: Minimum NTB ranging interval (ms)
- * @valid: Set to true once the TLV has been successfully parsed
- */
-struct wifi_pos_pmsr_fw_caps {
-	uint32_t support_flag;
-	uint32_t max_peers;
-	uint32_t pd_max_peers;
-	uint32_t ftm_support_flag;
-	uint32_t supported_bw_bitmap;
-	uint32_t supported_preamble_bitmap;
-	uint32_t capabilities;
-	uint32_t ranging_11az_parameters;
-	uint32_t min_interval_edca_ms;
-	uint32_t min_interval_ntb_ms;
-	bool valid;
-};
-
-/**
  * struct wifi_pos_legacy_ops  - wifi pos module legacy callbacks
  * @pasn_peer_create_cb: PASN peer create callback
  * @pasn_peer_delete_cb: PASN peer delete callback
@@ -304,8 +265,6 @@ struct wifi_pos_legacy_ops {
  * @oem_6g_support_disable: oem target 6ghz support is disabled if set
  * @enable_rsta_secure_ltf_support: Enable RSTA secure LTF support
  * @enable_rsta_11az_ranging: Enable RSTA 802.11 az secure ranging support
- * @pasn_keys_ctx: Context to hold the keys received from userspace
- * @pasn_usd_delete_ctx: Context for stop_pd USD ranging peer delete completion
  * @wifi_pos_req_handler: function pointer to handle TLV or non-TLV
  * @wifi_pos_send_rsp: function pointer to send msg to userspace APP
  * @wifi_pos_get_phy_mode: function pointer to get wlan phymode for given
@@ -332,9 +291,7 @@ struct wifi_pos_legacy_ops {
  * resp - responder role; init- initiator role
  * @wifi_pos_get_max_fw_phymode_for_channels: function pointer to get max
  *            supported FW phymode for the given channels
- * @pmsr_fw_caps: RTT/FTM peer measurement capabilities advertised by
- * firmware via WMI_SERVICE_READY_EXT2_EVENTID. Populated by the WMI
- * layer; valid flag is set to true once fully parsed.
+ *
  */
 struct wifi_pos_psoc_priv_obj {
 	uint32_t app_pid;
@@ -364,8 +321,6 @@ struct wifi_pos_psoc_priv_obj {
 	bool oem_6g_support_disable;
 	bool enable_rsta_secure_ltf_support;
 	uint32_t enable_rsta_11az_ranging;
-	void *pasn_keys_ctx;
-	void *pasn_usd_delete_ctx;
 	struct wifi_pos_legacy_ops *legacy_ops;
 	QDF_STATUS (*wifi_pos_req_handler)(struct wlan_objmgr_psoc *psoc,
 				    struct wifi_pos_req_msg *req);
@@ -388,7 +343,6 @@ struct wifi_pos_psoc_priv_obj {
 			struct wlan_objmgr_pdev *pdev,
 			struct wifi_pos_channel_power *chan_list,
 			uint16_t wifi_pos_num_chans);
-	struct wifi_pos_pmsr_fw_caps pmsr_fw_caps;
 };
 
 /**

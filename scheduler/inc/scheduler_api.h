@@ -340,6 +340,14 @@ QDF_STATUS scheduler_os_if_mq_handler(struct scheduler_msg *msg);
  */
 QDF_STATUS scheduler_timer_q_mq_handler(struct scheduler_msg *msg);
 
+/**
+ * scheduler_mlme_mq_handler() - top level message queue handler for
+ *                               mlme queue
+ * @msg: pointer to actual message being handled
+ *
+ * Return: QDF status
+ */
+QDF_STATUS scheduler_mlme_mq_handler(struct scheduler_msg *msg);
 
 /**
  * scheduler_scan_mq_handler() - top level message queue handler for
@@ -399,33 +407,4 @@ void scheduler_mc_timer_callback(qdf_mc_timer_t *timer);
  * Return: QDF Status
  */
 QDF_STATUS scheduler_get_queue_size(QDF_MODULE_ID qid, uint32_t *size);
-
-#ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
-/**
- * scheduler_perfd_set_cpumask() - Function to set perf core CPU mask
- * for the scheduler thread.
- *
- * This function sets the perf cores CPU mask for the scheduler
- * thread.
- *
- * Return: void
- */
-void scheduler_perfd_set_cpumask(void);
-
-/**
- * scheduler_perfd_clear_cpumask() - Function to clear the CPU mask
- * for the scheduler thread.
- *
- * This function clears the CPU mask for the scheduler thread.
- *
- * Return: void
- */
-void scheduler_perfd_clear_cpumask(void);
-#else
-static inline
-void scheduler_perfd_set_cpumask(void) {}
-
-static inline
-void scheduler_perfd_clear_cpumask(void) {}
-#endif
 #endif

@@ -33,7 +33,6 @@
 #include "wlan_cfg80211_crypto.h"
 #include <wlan_cfg80211.h>
 #include <wlan_osif_request_manager.h>
-#include "wlan_cm_ucfg_api.h"
 
 void wlan_cfg80211_translate_ml_sta_key(uint8_t key_index,
 					enum wlan_crypto_key_type key_type,
@@ -119,15 +118,12 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 				 enum wlan_crypto_key_type key_type,
 				 const u8 *mac_addr, struct key_params *params,
 				 struct qdf_mac_addr *link_addr,
-				 uint8_t link_id,
-				 bool is_roam_eppke)
+				 uint8_t link_id)
 {
 	struct wlan_crypto_key *crypto_key = NULL;
 	enum wlan_crypto_cipher_type cipher;
 	int cipher_len;
 	QDF_STATUS status;
-	bool is_crypto_key_malloc = false;
-	struct qdf_mac_addr mac_address;
 
 	if (!psoc) {
 		osif_err("psoc is NULL");
@@ -164,40 +160,25 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 	 * update it.
 	 */
 	wlan_crypto_aquire_lock();
-
-	if (is_roam_eppke) {
-		qdf_mem_copy(mac_address.bytes, mac_addr, QDF_MAC_ADDR_SIZE);
-		goto create_key;
-	}
-
 	crypto_key = wlan_crypto_get_ml_sta_link_key(psoc, key_index,
 						     link_addr, link_id);
-create_key:
 	if (!crypto_key) {
 		wlan_crypto_release_lock();
 		crypto_key = qdf_mem_malloc(sizeof(*crypto_key));
 		if (!crypto_key)
 			return -EINVAL;
-		is_crypto_key_malloc = true;
 		wlan_crypto_aquire_lock();
 	}
+
 	wlan_cfg80211_translate_ml_sta_key(key_index, key_type, mac_addr,
 					   params, crypto_key);
 
-	if (!is_roam_eppke)
-		status = wlan_crypto_save_ml_sta_key(psoc, key_index,
-						     crypto_key, link_addr,
-						     link_id);
-	else
-		status = wlan_crypto_save_ml_sta_key(psoc, key_index,
-						     crypto_key, &mac_address,
-						     link_id);
+	status = wlan_crypto_save_ml_sta_key(psoc, key_index, crypto_key,
+					     link_addr, link_id);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		wlan_crypto_release_lock();
 		osif_err("Failed to save key");
-		if (is_crypto_key_malloc)
-			qdf_mem_free(crypto_key);
-
+		qdf_mem_free(crypto_key);
 		return -EINVAL;
 	}
 	wlan_crypto_release_lock();
@@ -213,7 +194,6 @@ int wlan_cfg80211_store_key(struct wlan_objmgr_vdev *vdev, uint8_t key_index,
 	enum wlan_crypto_cipher_type cipher;
 	int cipher_len;
 	QDF_STATUS status;
-	bool is_crypto_key_malloc = false;
 
 	if (!vdev) {
 		osif_err("vdev is NULL");
@@ -256,7 +236,6 @@ int wlan_cfg80211_store_key(struct wlan_objmgr_vdev *vdev, uint8_t key_index,
 		crypto_key = qdf_mem_malloc(sizeof(*crypto_key));
 		if (!crypto_key)
 			return -EINVAL;
-		is_crypto_key_malloc = true;
 		wlan_crypto_aquire_lock();
 	}
 
@@ -267,15 +246,14 @@ int wlan_cfg80211_store_key(struct wlan_objmgr_vdev *vdev, uint8_t key_index,
 	if (QDF_IS_STATUS_ERROR(status)) {
 		wlan_crypto_release_lock();
 		osif_err("Failed to save key");
-		if (is_crypto_key_malloc)
-			qdf_mem_free(crypto_key);
+		qdf_mem_free(crypto_key);
 		return -EINVAL;
 	}
 	wlan_crypto_release_lock();
 	return 0;
 }
 
-#define WLAN_WAIT_TIME_ADD_KEY 300
+#define WLAN_WAIT_TIME_ADD_KEY 100
 
 static void
 wlan_cfg80211_crypto_add_key_cb(void *context,
@@ -307,32 +285,19 @@ int wlan_cfg80211_crypto_add_key(struct wlan_objmgr_vdev *vdev,
 	struct crypto_add_key_result *result;
 	struct wlan_crypto_comp_priv *priv;
 	int ret;
-	bool is_roam_eppke;
 	static const struct osif_request_params params = {
 		.priv_size = sizeof(*result),
 		.timeout_ms = WLAN_WAIT_TIME_ADD_KEY,
 	};
 
-	is_roam_eppke = ucfg_cm_is_vdev_roaming(vdev) &&
-		(wlan_crypto_vdev_has_auth_mode(vdev,
-						BIT(WLAN_CRYPTO_AUTH_EPPKE)) ||
-		 wlan_crypto_vdev_has_auth_mode(
-				vdev,
-				BIT(WLAN_CRYPTO_AUTH_8021X_IN_AUTH)));
-
 	wlan_crypto_aquire_lock();
-	crypto_key = wlan_crypto_get_key_allow_roam_bypass(
-					vdev, peer_mac, key_index,
-					is_roam_eppke);
+	crypto_key = wlan_crypto_get_key(vdev, peer_mac, key_index);
 	if (!crypto_key) {
 		wlan_crypto_release_lock();
 		osif_err("Crypto KEY is NULL");
 		return -EINVAL;
 	}
 	wlan_crypto_release_lock();
-
-	if (wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev))
-		sync = false;
 
 	if (sync) {
 		priv = wlan_get_vdev_crypto_obj(vdev);
@@ -372,88 +337,9 @@ int wlan_cfg80211_crypto_add_key(struct wlan_objmgr_vdev *vdev,
 	return qdf_status_to_os_return(status);
 }
 
-#define WLAN_WAIT_TIME_DEL_NDI_KEY 300
-
-static void
-wlan_cfg80211_crypto_del_ndi_key_cb(void *context,
-				    struct crypto_add_key_result *result)
-{
-	struct osif_request *request;
-
-	request = osif_request_get(context);
-	if (!request) {
-		osif_err("Obsolete request");
-		return;
-	}
-
-	osif_request_complete(request);
-	osif_request_put(request);
-}
-
-int wlan_cfg80211_crypto_del_ndi_key(struct wlan_objmgr_vdev *vdev,
-				     uint8_t key_index, bool pairwise,
-				     const uint8_t *mac_addr)
-{
-	QDF_STATUS status;
-	struct osif_request *request;
-	struct wlan_crypto_comp_priv *priv;
-	int ret;
-	static const struct osif_request_params params = {
-		.priv_size = 0,
-		.timeout_ms = WLAN_WAIT_TIME_DEL_NDI_KEY,
-	};
-
-	priv = wlan_get_vdev_crypto_obj(vdev);
-	if (!priv) {
-		osif_err("Invalid crypto_priv");
-		return -EINVAL;
-	}
-
-	request = osif_request_alloc(&params);
-	if (!request) {
-		osif_err("Request allocation failure");
-		return -ENOMEM;
-	}
-
-	priv->del_key_ctx = osif_request_cookie(request);
-	priv->del_key_cb = wlan_cfg80211_crypto_del_ndi_key_cb;
-
-	status = ucfg_crypto_del_ndi_key_req(vdev, key_index, pairwise,
-					     mac_addr);
-	if (QDF_IS_STATUS_SUCCESS(status)) {
-		ret = osif_request_wait_for_response(request);
-		if (ret)
-			osif_err("Target response timed out");
-	}
-
-	priv->del_key_ctx = NULL;
-	priv->del_key_cb = NULL;
-	osif_request_put(request);
-
-	return qdf_status_to_os_return(status);
-}
-
 int wlan_cfg80211_set_default_key(struct wlan_objmgr_vdev *vdev,
 				  uint8_t key_index, struct qdf_mac_addr *bssid)
 {
 	return wlan_crypto_default_key(vdev, (uint8_t *)bssid,
 				       key_index, true);
-}
-
-int wlan_cfg80211_set_peer_ucastcipher(struct wlan_objmgr_vdev *vdev,
-				       uint8_t *mac_addr, int32_t cipher,
-				       int32_t cipher_cap)
-{
-	struct wlan_objmgr_psoc *psoc = wlan_vdev_get_psoc(vdev);
-	QDF_STATUS status;
-
-	if (!psoc) {
-		osif_err("psoc is NULL");
-		return -EINVAL;
-	}
-
-	status = ucfg_crypto_set_peer_ucastcipher(psoc, mac_addr, cipher,
-						  cipher_cap);
-
-	return qdf_status_to_os_return(status);
 }

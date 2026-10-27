@@ -458,6 +458,62 @@ cdp_update_vdev_host_stats(ol_txrx_soc_handle soc,
 }
 
 /**
+ * cdp_txrx_get_peer_stats_param() - Call to get specified peer stats
+ * @soc: soc handle
+ * @vdev_id: vdev_id of vdev object
+ * @peer_mac: mac address of the peer
+ * @type: enum of required stats
+ * @buf: buffer to hold the value
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+cdp_txrx_get_peer_stats_param(ol_txrx_soc_handle soc, uint8_t vdev_id,
+			      uint8_t *peer_mac,
+			      enum cdp_peer_stats_type type,
+			      cdp_peer_stats_param_t *buf)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->txrx_get_peer_stats_param)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->host_stats_ops->txrx_get_peer_stats_param(soc,
+								   vdev_id,
+								   peer_mac,
+								   type,
+								   buf);
+}
+
+/**
+ * cdp_host_get_soc_stats() - Call to get soc stats
+ * @soc: soc handle
+ * @soc_stats: buffer for cdp soc stats
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+cdp_host_get_soc_stats(ol_txrx_soc_handle soc, struct cdp_soc_stats *soc_stats)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->txrx_get_soc_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->host_stats_ops->txrx_get_soc_stats(soc, soc_stats);
+}
+
+/**
  * cdp_host_get_peer_stats() - Call to get peer stats
  * @soc: soc handle
  * @vdev_id: vdev_id of vdev object
@@ -930,6 +986,30 @@ cdp_get_peer_jitter_stats(ol_txrx_soc_handle soc,
 								    tid_stats);
 }
 
+/**
+ * cdp_mon_pdev_get_rx_stats() - Call to get monitor pdev rx stats
+ * @soc: soc handle
+ * @pdev_id: id of dp_pdev handle
+ * @stats: user allocated buffer for dp pdev mon stats
+ *
+ * Return: status Success/Failure
+ */
+static inline QDF_STATUS
+cdp_mon_pdev_get_rx_stats(ol_txrx_soc_handle soc, uint8_t pdev_id,
+			  struct cdp_pdev_mon_stats *stats)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->mon_ops ||
+	    !soc->ops->mon_ops->get_mon_pdev_rx_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->mon_ops->get_mon_pdev_rx_stats(soc, pdev_id, stats);
+}
+
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 /**
  * cdp_get_peer_tx_capture_stats() - Call to get peer tx capture stats
@@ -1305,6 +1385,32 @@ static inline QDF_STATUS cdp_get_pdev_erp_stats(
 #endif
 
 /**
+ * cdp_get_peer_extd_rate_link_stats() - cdp function to get peer
+ *				extended rate and link stats
+ * @soc: soc handle
+ * @mac_addr: mac address
+ *
+ * Return: status
+ */
+static inline QDF_STATUS cdp_get_peer_extd_rate_link_stats(
+					ol_txrx_soc_handle soc,
+					uint8_t *mac_addr)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->txrx_get_peer_extd_rate_link_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->host_stats_ops->txrx_get_peer_extd_rate_link_stats(
+								soc, mac_addr);
+}
+
+/**
  * cdp_get_pdev_obss_pd_stats() - function to get pdev obss stats
  * @soc: soc handle
  * @pdev_id: pdev id
@@ -1493,21 +1599,6 @@ cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)
 
 	return soc->ops->host_stats_ops->txrx_process_ul_delay(soc, vdev_id);
 }
-
-static inline QDF_STATUS
-cdp_dump_custom_stats(ol_txrx_soc_handle soc, uint8_t vdev_id)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_err("Invalid SOC instance");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc->ops->host_stats_ops ||
-	    !soc->ops->host_stats_ops->txrx_dump_custom_stats)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->host_stats_ops->txrx_dump_custom_stats(soc, vdev_id);
-}
 #else
 static inline QDF_STATUS
 cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)
@@ -1515,100 +1606,4 @@ cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
-
-#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
-/**
- * cdp_set_vdev_predictive_roaming_stats() - Start/Stop predictive
- *  roaming stats capture for the given vdev
- * @soc: soc handle
- * @vdev_id: vdev id
- * @value: true to enable predictive roaming stats collection, false to disable
- *
- * Return: None
- */
-static inline void
-cdp_set_vdev_predictive_roaming_stats(ol_txrx_soc_handle soc,
-				      uint8_t vdev_id,
-				      bool value)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance");
-		return;
-	}
-
-	if (!soc->ops->host_stats_ops ||
-	    !soc->ops->host_stats_ops->set_vdev_predictive_roaming_stats)
-		return;
-
-	soc->ops->host_stats_ops->set_vdev_predictive_roaming_stats(
-							soc, vdev_id, value);
-}
-
-/**
- * cdp_is_vdev_predictive_roaming_stats_enabled() - Check if predictive
- *  roaming stats collection is enabled for the given vdev
- * @soc: SOC handle
- * @vdev_id: vdev id
- *
- * Return: true if predictive roaming stats are enabled, false otherwise
- */
-static inline bool
-cdp_is_vdev_predictive_roaming_stats_enabled(ol_txrx_soc_handle soc,
-					uint8_t vdev_id)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance");
-		return false;
-	}
-
-	if (!soc->ops->host_stats_ops ||
-	    !soc->ops->host_stats_ops->is_vdev_predictive_roaming_stats_enabled)
-		return false;
-
-	return soc->ops->host_stats_ops->is_vdev_predictive_roaming_stats_enabled(
-								soc, vdev_id);
-}
-#else
-static inline void
-cdp_set_vdev_predictive_roaming_stats(ol_txrx_soc_handle soc,
-				      uint8_t vdev_id,
-				      bool value)
-{
-}
-
-static inline bool
-cdp_is_vdev_predictive_roaming_stats_enabled(ol_txrx_soc_handle soc,
-					uint8_t vdev_id)
-{
-	return false;
-}
-#endif
-
-/**
- * cdp_host_get_soc_stats() - Get soc-level stats including reo_error[]
- * @soc: opaque soc handle
- * @soc_stats: caller-allocated output buffer
- *
- * Return: QDF_STATUS
- */
-static inline QDF_STATUS
-cdp_host_get_soc_stats(ol_txrx_soc_handle soc,
-		       struct cdp_soc_stats *soc_stats)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance");
-		QDF_BUG(0);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc_stats)
-		return QDF_STATUS_E_FAILURE;
-
-	if (!soc->ops->host_stats_ops ||
-	    !soc->ops->host_stats_ops->txrx_get_soc_stats)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->host_stats_ops->txrx_get_soc_stats(soc, soc_stats);
-}
-
 #endif /* _CDP_TXRX_HOST_STATS_H_ */

@@ -300,7 +300,7 @@ wlan_ser_move_non_scan_pending_to_active(
 			wlan_serialization_release_lock(
 				&pdev_queue->pdev_queue_lock);
 			ser_debug(
-				"non scan cmd cannot move frm pending to actv");
+				"non scan cmd cannot move frm pendin to actv");
 			goto error;
 		}
 

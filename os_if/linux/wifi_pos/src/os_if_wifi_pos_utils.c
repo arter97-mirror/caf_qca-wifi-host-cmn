@@ -28,11 +28,6 @@
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 static struct wifi_pos_osif_ops osif_ops = {
 	.osif_initiate_pasn_cb = os_if_wifi_pos_initiate_pasn_auth,
-	.osif_rtt_peer_meas_report_cb = os_if_wifi_pos_send_rtt_peer_meas_result,
-	.osif_pasn_peer_create_complete_cb =
-				os_if_wifi_pos_peer_create_indication,
-	.osif_usd_peer_delete_complete_cb =
-				os_if_wifi_pos_usd_peer_delete_complete,
 };
 
 QDF_STATUS

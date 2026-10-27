@@ -377,11 +377,6 @@ void mlo_peer_assign_primary_umac(
 	struct wlan_mlo_dev_context *ml_dev = NULL;
 #endif
 
-	if (!mlo_ctx) {
-		mlo_err("MLO context is Null");
-		return;
-	}
-
 	/* If MLD is within single SOC, then assoc link becomes
 	 * primary umac
 	 */
@@ -877,11 +872,6 @@ QDF_STATUS mlo_peer_allocate_primary_umac(
 	assoc_peer = peer_entry->link_peer;
 	if (!assoc_peer)
 		return QDF_STATUS_E_FAILURE;
-
-	if (!mlo_ctx) {
-		mlo_err("MLO context is Null");
-		return QDF_STATUS_E_INVAL;
-	}
 
 	/* Select assoc peer's PSOC as primary UMAC in Multi-chip solution,
 	 * 1) for single link MLO connection

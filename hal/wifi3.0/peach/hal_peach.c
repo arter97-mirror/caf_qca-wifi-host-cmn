@@ -1134,9 +1134,10 @@ static inline uint32_t
 hal_rx_hw_desc_get_ppduid_get_peach(void *rx_tlv_hdr,
 				    void *rxdma_dst_ring_desc)
 {
-	struct reo_entrance_ring *reo_ent_desc =
-					(struct reo_entrance_ring *)rxdma_dst_ring_desc;
-	return reo_ent_desc->phy_ppdu_id;
+	struct rx_pkt_tlvs *rx_pkt_tlvs =
+					(struct rx_pkt_tlvs *)rx_tlv_hdr;
+
+	return HAL_RX_TLV_PHY_PPDU_ID_GET(rx_pkt_tlvs);
 }
 
 /**
@@ -2302,8 +2303,7 @@ hal_get_tsf_time_peach(hal_soc_handle_t hal_soc_hdl, uint32_t tsf_id,
 	*tsf = global_time + (tsf_offset_low | (tsf_offset_hi << 32));
 	*tsf_sync_soc_time = qdf_log_timestamp_to_usecs(sync_time);
 
-	if (hif_force_wake_release(soc->hif_handle))
-		hal_err("Wake up release failed");
+	hif_force_wake_release(soc->hif_handle);
 }
 #else
 static inline void
@@ -2467,19 +2467,6 @@ hal_srng_dst_get_num_avail_words_peach(hal_ring_handle_t hal_ring_hdl)
 	return SRNG_MS(SRNG_DST_HW_FLD(STATUS, NUM_AVAIL_WORDS), ring_status);
 }
 
-#ifdef DRIVER_PASSTHRU_MODE
-static inline void hal_hw_attach_passthru_ops(struct hal_soc *hal_soc)
-{
-	hal_soc->ops->hal_rx_tlv_get_rssi = hal_rx_tlv_get_rssi_be;
-	hal_soc->ops->hal_rx_tlv_get_ppdu_start_ts =
-					hal_rx_tlv_get_ppdu_start_ts_be;
-}
-#else
-static inline void hal_hw_attach_passthru_ops(struct hal_soc *hal_soc)
-{
-}
-#endif
-
 static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -2572,8 +2559,6 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 					hal_rx_desc_is_first_msdu_be;
 	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_get =
 		hal_rx_tlv_l3_hdr_padding_get_be;
-	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set =
-		hal_rx_tlv_l3_hdr_padding_set_be;
 	hal_soc->ops->hal_rx_encryption_info_valid =
 					hal_rx_encryption_info_valid_be;
 	hal_soc->ops->hal_rx_print_pn = hal_rx_print_pn_be;
@@ -2752,7 +2737,7 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_get_tsf_time = hal_get_tsf_time_peach;
 	hal_soc->ops->hal_rx_reo_ent_get_src_link_id =
 					hal_rx_reo_ent_get_src_link_id_peach;
-#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_DAL_DP_SUPPORT)
+#ifdef FEATURE_DIRECT_LINK
 	hal_soc->ops->hal_srng_set_msi_config = hal_srng_set_msi_config;
 #endif
 	hal_soc->ops->hal_rx_en_mcast_fp_data_filter =
@@ -2773,8 +2758,6 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 				hal_rx_flow_cmem_update_reo_dst_ind;
 	hal_soc->ops->hal_srng_dst_get_num_avail_words =
 				hal_srng_dst_get_num_avail_words_peach;
-	hal_soc->ops->hal_get_fw_qtime = hal_tsf_get_fw_time;
-	hal_hw_attach_passthru_ops(hal_soc);
 };
 
 struct hal_hw_srng_config hw_srng_table_peach[] = {
@@ -3078,19 +3061,15 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 	},
 	{ /* RXDMA_BUF */
 		.start_ring_id = HAL_SRNG_WMAC1_SW2RXDMA0_BUF0,
-#if defined(IPA_OFFLOAD) && (defined(FEATURE_DIRECT_LINK) || \
-			     defined(FEATURE_WIFI_TRANSPORT)) && \
+#if defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK) && \
 	defined(FEATURE_MGMT_RX_OVER_SRNG)
 		.max_rings = 5,
-#elif (defined(IPA_OFFLOAD) && (defined(FEATURE_DIRECT_LINK) || \
-		defined(FEATURE_WIFI_TRANSPORT))) || \
-	((defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)) && \
-		 defined(FEATURE_MGMT_RX_OVER_SRNG)) || \
+#elif (defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK)) || \
+	(defined(FEATURE_DIRECT_LINK) && defined(FEATURE_MGMT_RX_OVER_SRNG)) || \
 	(defined(IPA_OFFLOAD) && defined(FEATURE_MGMT_RX_OVER_SRNG))
 		.max_rings = 4,
 #elif defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK) || \
-		defined(FEATURE_MGMT_RX_OVER_SRNG) || \
-		defined(FEATURE_WIFI_TRANSPORT)
+	defined(FEATURE_MGMT_RX_OVER_SRNG)
 		.max_rings = 3,
 #else
 		.max_rings = 2,
@@ -3238,7 +3217,6 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 #endif
 	{ /* SW2RXDMA_NEW */ 0},
 	{ /* SW2RXDMA_LINK_RELEASE */ 0},
-	{ /* TQM2SW_RELEASE */ 0},
 };
 
 /**

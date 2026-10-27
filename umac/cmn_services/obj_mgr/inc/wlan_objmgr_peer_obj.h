@@ -134,17 +134,12 @@ enum wlan_peer_state {
  * @peer_ext_flags:  PEER OP ext flags
  * @peer_type:       Type of PEER, (STA/AP/etc.)
  * @phymode:         phy mode of station
- * @op_ch_width:     Operating channel width (negotiated)
- * @ap_max_ch_width: AP's maximum supported channel width
- * @center_freq_seg0: Channel center frequency segment 0
- * @center_freq_seg1: Channel center frequency segment 1 (for 80+80 MHz)
  * @max_rate:        Max Rate supported
  * @state:           State of the peer
  * @seq_num:         Sequence number
  * @rssi:            Last received RSSI value
  * @is_authenticated: true if peer is authenticated
  * @assoc_peer:      assoc req/response is handled in this peer
- * @is_key_installed: key install flag
  */
 struct wlan_objmgr_peer_mlme {
 	uint32_t peer_capinfo;
@@ -152,10 +147,6 @@ struct wlan_objmgr_peer_mlme {
 	uint32_t peer_ext_flags;
 	enum wlan_peer_type peer_type;
 	enum wlan_phymode phymode;
-	enum phy_ch_width op_ch_width;
-	enum phy_ch_width ap_max_ch_width;
-	uint8_t center_freq_seg0;
-	uint8_t center_freq_seg1;
 	uint32_t max_rate;
 	enum wlan_peer_state state;
 	uint16_t seq_num;
@@ -164,7 +155,6 @@ struct wlan_objmgr_peer_mlme {
 #ifdef WLAN_FEATURE_11BE_MLO
 	bool assoc_peer;
 #endif
-	bool is_key_installed;
 };
 
 /**
@@ -178,7 +168,9 @@ struct wlan_objmgr_peer_mlme {
 struct wlan_objmgr_peer_objmgr {
 	struct wlan_objmgr_vdev *vdev;
 	qdf_atomic_t ref_cnt;
+#ifdef WLAN_OBJMGR_REF_ID_DEBUG
 	qdf_atomic_t ref_id_dbg[WLAN_REF_ID_MAX];
+#endif
 	uint8_t print_cnt;
 #ifdef WLAN_OBJMGR_REF_ID_TRACE
 	struct wlan_objmgr_trace trace;
@@ -891,125 +883,6 @@ static inline enum wlan_phymode wlan_peer_get_phymode(
 }
 
 /**
- * wlan_peer_set_op_ch_width() - set peer operating channel width
- * @peer: PEER object
- * @ch_width: operating channel width
- *
- * API to set peer operating channel width
- *
- * Return: void
- */
-static inline void wlan_peer_set_op_ch_width(struct wlan_objmgr_peer *peer,
-					      enum phy_ch_width ch_width)
-{
-	peer->peer_mlme.op_ch_width = ch_width;
-}
-
-/**
- * wlan_peer_get_op_ch_width() - get peer operating channel width
- * @peer: PEER object
- *
- * API to get peer operating channel width
- *
- * Return: operating channel width
- */
-static inline enum phy_ch_width
-wlan_peer_get_op_ch_width(struct wlan_objmgr_peer *peer)
-{
-	return peer->peer_mlme.op_ch_width;
-}
-
-/**
- * wlan_peer_set_ap_max_ch_width() - set AP max channel width
- * @peer: PEER object
- * @ch_width: AP maximum channel width
- *
- * API to set AP's maximum supported channel width
- *
- * Return: void
- */
-static inline void
-wlan_peer_set_ap_max_ch_width(struct wlan_objmgr_peer *peer,
-			       enum phy_ch_width ch_width)
-{
-	peer->peer_mlme.ap_max_ch_width = ch_width;
-}
-
-/**
- * wlan_peer_get_ap_max_ch_width() - get AP max channel width
- * @peer: PEER object
- *
- * API to get AP's maximum supported channel width
- *
- * Return: AP maximum channel width
- */
-static inline enum phy_ch_width
-wlan_peer_get_ap_max_ch_width(struct wlan_objmgr_peer *peer)
-{
-	return peer->peer_mlme.ap_max_ch_width;
-}
-
-/**
- * wlan_peer_set_center_freq_seg0() - set channel center freq seg0
- * @peer: PEER object
- * @freq_seg0: center frequency segment 0
- *
- * API to set channel center frequency segment 0
- *
- * Return: void
- */
-static inline void
-wlan_peer_set_center_freq_seg0(struct wlan_objmgr_peer *peer,
-				uint8_t freq_seg0)
-{
-	peer->peer_mlme.center_freq_seg0 = freq_seg0;
-}
-
-/**
- * wlan_peer_get_center_freq_seg0() - get channel center freq seg0
- * @peer: PEER object
- *
- * API to get channel center frequency segment 0
- *
- * Return: center frequency segment 0
- */
-static inline uint8_t
-wlan_peer_get_center_freq_seg0(struct wlan_objmgr_peer *peer)
-{
-	return peer->peer_mlme.center_freq_seg0;
-}
-
-/**
- * wlan_peer_set_center_freq_seg1() - set channel center freq seg1
- * @peer: PEER object
- * @freq_seg1: center frequency segment 1
- *
- * API to set channel center frequency segment 1 (for 80+80 MHz)
- *
- * Return: void
- */
-static inline void
-wlan_peer_set_center_freq_seg1(struct wlan_objmgr_peer *peer,
-				uint8_t freq_seg1)
-{
-	peer->peer_mlme.center_freq_seg1 = freq_seg1;
-}
-
-/**
- * wlan_peer_get_center_freq_seg1() - get channel center freq seg1
- * @peer: PEER object
- *
- * API to get channel center frequency segment 1
- *
- * Return: center frequency segment 1
- */
-static inline uint8_t
-wlan_peer_get_center_freq_seg1(struct wlan_objmgr_peer *peer)
-{
-	return peer->peer_mlme.center_freq_seg1;
-}
-
-/**
  * wlan_peer_set_rssi() - set RSSI
  * @peer: PEER object
  * @rssi: RSSI
@@ -1203,7 +1076,7 @@ static inline void wlan_peer_mlme_flag_ext_clear(struct wlan_objmgr_peer *peer,
 static inline uint8_t wlan_peer_mlme_flag_ext_get(struct wlan_objmgr_peer *peer,
 						  uint32_t flag)
 {
-	return (peer && (peer->peer_mlme.peer_ext_flags & flag)) ? 1 : 0;
+	return (peer->peer_mlme.peer_ext_flags & flag) ? 1 : 0;
 }
 
 /**
@@ -1548,51 +1421,4 @@ wlan_objmgr_peer_trace_del_ref_list(struct wlan_objmgr_peer *peer)
 }
 #endif
 
-/**
- * wlan_peer_mlme_set_key_install_flag() - API to set key install flag
- * @peer: peer object
- * @is_key_installed: key install flag
- *
- * Return: void
- */
-static inline void wlan_peer_mlme_set_key_install_flag(
-						struct wlan_objmgr_peer *peer,
-						bool is_key_installed)
-{
-	peer->peer_mlme.is_key_installed = is_key_installed;
-}
-
-/**
- * wlan_peer_mlme_get_key_install_flag() - API to get key install flag
- * @peer: peer object
- *
- * Return: key install flag
- */
-static inline bool wlan_peer_mlme_get_key_install_flag(
-						struct wlan_objmgr_peer *peer)
-{
-	return peer->peer_mlme.is_key_installed;
-}
-
-/**
- * wlan_peer_set_key_install_flag() - API to set key install flag
- * @psoc: PSOC object
- * @peer_mac_addr: Peer MAC address
- * @is_key_installed: key install flag
- *
- * Return: none
- */
-void wlan_peer_set_key_install_flag(struct wlan_objmgr_psoc *psoc,
-				    uint8_t *peer_mac_addr,
-				    bool is_key_installed);
-
-/**
- * wlan_peer_is_key_installed() - API to get key install flag
- * @psoc: PSOC object
- * @peer_mac_addr: Peer MAC address
- *
- * Return: true if key is installed otherwise false
- */
-bool wlan_peer_is_key_installed(struct wlan_objmgr_psoc *psoc,
-				uint8_t *peer_mac_addr);
 #endif /* _WLAN_OBJMGR_PEER_OBJ_H_*/

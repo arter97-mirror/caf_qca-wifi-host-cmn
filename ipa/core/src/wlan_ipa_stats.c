@@ -23,7 +23,6 @@
 #include "cdp_txrx_ipa.h"
 #include "qdf_platform.h"
 
-#ifdef IPA_RT_DEBUG_ENABLED
 /**
  * wlan_ipa_uc_rt_debug_host_fill - fill rt debug buffer
  * @ctext: pointer to ipa context.
@@ -127,6 +126,22 @@ static void wlan_ipa_uc_rt_debug_handler(void *ctext)
 		WLAN_IPA_UC_RT_DEBUG_PERIOD);
 }
 
+void wlan_ipa_uc_rt_debug_destructor(qdf_nbuf_t nbuff)
+{
+	/* Make change to get the ipa_ctx on per pdev basis
+	 * Currently storing the debug count only in global ipa_ctx
+	 * or to the last enumerated radio ipa_ctx
+	 */
+	struct wlan_ipa_priv *ipa_ctx = wlan_ipa_get_obj_context();
+
+	if (!ipa_ctx) {
+		ipa_err("invalid ipa context");
+		return;
+	}
+
+	ipa_ctx->ipa_rx_destructor_count++;
+}
+
 void wlan_ipa_uc_rt_debug_deinit(struct wlan_ipa_priv *ipa_ctx)
 {
 	qdf_mutex_destroy(&ipa_ctx->rt_debug_lock);
@@ -178,27 +193,6 @@ void wlan_ipa_uc_rt_debug_init(struct wlan_ipa_priv *ipa_ctx)
 	qdf_mc_timer_start(&ipa_ctx->rt_debug_timer,
 		WLAN_IPA_UC_RT_DEBUG_PERIOD);
 
-}
-#else
-void wlan_ipa_uc_rt_debug_host_dump(struct wlan_ipa_priv *ipa_ctx)
-{
-}
-#endif
-
-void wlan_ipa_uc_rt_debug_destructor(qdf_nbuf_t nbuff)
-{
-	/* Make change to get the ipa_ctx on per pdev basis
-	 * Currently storing the debug count only in global ipa_ctx
-	 * or to the last enumerated radio ipa_ctx
-	 */
-	struct wlan_ipa_priv *ipa_ctx = wlan_ipa_get_obj_context();
-
-	if (!ipa_ctx) {
-		ipa_err("invalid ipa context");
-		return;
-	}
-
-	ipa_ctx->ipa_rx_destructor_count++;
 }
 
 /**
@@ -425,22 +419,6 @@ wlan_ipa_dump_iface_context_alt_pipe(struct wlan_ipa_iface_context *iface)
 }
 #endif
 
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
-static void
-wlan_ipa_dump_iface_context_ml_sap(struct wlan_ipa_iface_context *iface)
-{
-	ipa_info("\tis_ml_sap: %d\n", iface->is_ml_sap);
-
-	if (iface->is_ml_sap)
-		ipa_info("\tml_sap_ifname: %s\n", iface->ml_sap_ifname);
-}
-#else /* !WLAN_FEATURE_MULTI_LINK_SAP */
-static inline void
-wlan_ipa_dump_iface_context_ml_sap(struct wlan_ipa_iface_context *iface)
-{
-}
-#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
-
 /**
  * wlan_ipa_dump_iface_context() - Dump IPA interface context structure
  * @ipa_ctx: IPA private context structure
@@ -478,7 +456,6 @@ static void wlan_ipa_dump_iface_context(struct wlan_ipa_priv *ipa_ctx)
 			&iface_context->interface_lock,
 			iface_context->ifa_address);
 		wlan_ipa_dump_iface_context_alt_pipe(iface_context);
-		wlan_ipa_dump_iface_context_ml_sap(iface_context);
 	}
 }
 

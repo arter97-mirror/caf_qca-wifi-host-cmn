@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -89,13 +88,14 @@ void hif_display_ctrl_traffic_pipes_state(struct hif_opaque_softc *hif_ctx)
 	hal_get_sw_hptp(scn->hal_soc,
 			CE_state->status_ring->srng_ctx,
 			&tp, &hp);
-	hif_err("CE-2 Dest status ring current snapshot HP:%u TP:%u", hp, tp);
+	hif_info_high("CE-2 Dest status ring current snapshot HP:%u TP:%u",
+		      hp, tp);
 
 	hp = 0;
 	tp = 0;
 	CE_state = scn->ce_id_to_state[3];
 	hal_get_sw_hptp(scn->hal_soc, CE_state->src_ring->srng_ctx, &tp, &hp);
-	hif_err("CE-3 Source ring current snapshot HP:%u TP:%u", hp, tp);
+	hif_info_high("CE-3 Source ring current snapshot HP:%u TP:%u", hp, tp);
 }
 
 #if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
@@ -154,10 +154,6 @@ void hif_record_ce_srng_desc_event(struct hif_softc *scn, int ce_id,
 
 	hif_record_latest_evt(ce_hist, type, ce_id, event->time,
 			      event->current_hp, event->current_tp);
-	ce_trace_hif_hist_event((uint8_t)ce_id, event->current_hp,
-				event->current_tp, event->cpu_id,
-				event->time, event->type);
-
 }
 #endif /* HIF_CONFIG_SLUB_DEBUG_ON || HIF_CE_DEBUG_DATA_BUF */
 
@@ -298,7 +294,7 @@ ce_sendlist_send_srng(struct CE_handle *copyeng,
 			QDF_DP_TRACE_CE_PACKET_PTR_RECORD,
 			QDF_TRACE_DEFAULT_PDEV_ID,
 			(uint8_t *)(((qdf_nbuf_t)per_transfer_context)->data),
-			qdf_nbuf_len((qdf_nbuf_t)per_transfer_context), QDF_TX));
+			sizeof(((qdf_nbuf_t)per_transfer_context)->data), QDF_TX));
 	} else {
 		/*
 		 * Probably not worth the additional complexity to support
@@ -511,27 +507,11 @@ ce_completed_recv_next_nolock_srng(struct CE_state *CE_state,
 
 	/* NOTE: sw_index is more like a read_index in this context. It has a
 	 * one-to-one mapping with status ring.
-	 * Get the per transfer context from dest_ring.
+	 * Get the per trasnfer context from dest_ring.
 	 */
 	if (per_transfer_contextp)
 		*per_transfer_contextp =
 			dest_ring->per_transfer_context[sw_index];
-
-	/* Populate bufferp from the dest ring descriptor.
-	 * The descriptor retains the DMA address written at enqueue time;
-	 * FW does not clear it after consuming the buffer.  This mirrors the
-	 * legacy path (ce_completed_recv_next_nolock) which reads buffer_addr
-	 * from dest_desc directly.  Without this, bufferp is uninitialised
-	 * stack garbage in callers that rely on it for repost (e.g. WiFi
-	 * Transport CE5 recv callback).
-	 */
-	if (bufferp) {
-		struct ce_srng_dest_desc *desc =
-			&((struct ce_srng_dest_desc *)
-			  dest_ring->base_addr_owner_space)[sw_index];
-		*bufferp = (qdf_dma_addr_t)desc->buffer_addr_lo |
-			  ((qdf_dma_addr_t)(desc->buffer_addr_hi & 0xFF) << 32);
-	}
 
 	dest_ring->per_transfer_context[sw_index] = 0;  /* sanity */
 
@@ -579,7 +559,7 @@ ce_revoke_recv_next_srng(struct CE_handle *copyeng,
 
 	/* NOTE: sw_index is more like a read_index in this context. It has a
 	 * one-to-one mapping with status ring.
-	 * Get the per transfer context from dest_ring.
+	 * Get the per trasnfer context from dest_ring.
 	 */
 	if (per_transfer_contextp)
 		*per_transfer_contextp =
@@ -619,7 +599,6 @@ ce_completed_send_next_nolock_srng(struct CE_state *CE_state,
 	unsigned int swi = src_ring->sw_index;
 	struct hif_softc *scn = CE_state->scn;
 	struct ce_srng_src_desc *src_desc;
-	void *ctx = NULL;
 
 	if (hal_srng_access_start(scn->hal_soc, src_ring->srng_ctx)) {
 		status = QDF_STATUS_E_FAILURE;
@@ -644,12 +623,6 @@ ce_completed_send_next_nolock_srng(struct CE_state *CE_state,
 		*nbytesp = src_desc->nbytes;
 		*transfer_idp = src_desc->meta_data;
 		*toeplitz_hash_result = 0; /*src_desc->toeplitz_hash_result;*/
-
-		if (CE_state->id == CE_ID_3) {
-			ctx = src_ring->per_transfer_context[swi];
-			hif_ce_tx_desc_data_record(scn, *bufferp,
-						   (qdf_nbuf_t)ctx);
-		}
 
 		if (per_CE_contextp)
 			*per_CE_contextp = CE_state->send_context;
@@ -1291,8 +1264,6 @@ QDF_STATUS ce_get_direct_link_srng_info(struct hif_softc *scn,
 
 		if (ce_info_idx > max_ce_info_len)
 			return QDF_STATUS_E_FAILURE;
-
-		ce_state->service_dl = true;
 
 		info[ce_info_idx].ce_id = ce_state->id;
 		info[ce_info_idx].pipe_dir = tgt_svc_cfg[i].pipedir;

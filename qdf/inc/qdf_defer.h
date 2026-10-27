@@ -130,22 +130,6 @@ void qdf_destroy_workqueue(qdf_handle_t hdl, qdf_workqueue_t *wqueue);
 bool qdf_cancel_work(qdf_work_t *work);
 
 /**
- * qdf_cancel_work_nosync() - Cancel a work without waiting for it to
- *                            finish
- * @work: pointer to work
- *
- * Non-blocking counterpart to qdf_cancel_work(). Dequeues work if it is
- * merely pending (queued but not yet started) and returns immediately;
- * never sleeps, so it is safe to call from any context, including from
- * work's own currently executing instance. Does NOT wait for an
- * already-running instance of work to finish
- *
- * Return: true if work was pending and has been canceled, false
- *         otherwise (including when work was already executing)
- */
-bool qdf_cancel_work_nosync(qdf_work_t *work);
-
-/**
  * qdf_disable_work - disable the deferred task (synchronous)
  * @work: pointer to work
  *
@@ -420,22 +404,6 @@ static inline bool qdf_sched_work(qdf_handle_t hdl, qdf_work_t *work)
 static inline bool qdf_cancel_work(qdf_work_t *work)
 {
 	return __qdf_cancel_work(work);
-}
-
-/**
- * qdf_cancel_work_nosync() - Cancel a work without waiting for it to
- *                            finish
- * @work: pointer to work
- *
- * Non-blocking counterpart to qdf_cancel_work(). Dequeues work if it is
- * merely pending (queued but not yet started) and returns immediately;
- *
- * Return: true if work was pending and has been canceled, false
- *         otherwise (including when work was already executing)
- */
-static inline bool qdf_cancel_work_nosync(qdf_work_t *work)
-{
-	return __qdf_cancel_work_nosync(work);
 }
 
 /**

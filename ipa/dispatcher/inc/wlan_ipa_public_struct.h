@@ -42,7 +42,6 @@
  * @ipa_force_voting: support force bw voting
  * @ipa_wds: WDS support for IPA
  * @ipa_vlan_support: support got vlan with IPA
- * @l3_hdr_padding_support: IPA l3 header padding enable/disable flag
  */
 struct wlan_ipa_config {
 	uint32_t ipa_config;
@@ -57,7 +56,6 @@ struct wlan_ipa_config {
 	bool ipa_force_voting;
 	bool ipa_wds;
 	bool ipa_vlan_support;
-	bool l3_hdr_padding_support;
 };
 
 /**

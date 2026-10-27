@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -25,31 +24,6 @@
 #include <wlan_objmgr_pdev_obj.h>
 #include <wlan_cfr_public_structs.h>
 #include <wlan_cfr_utils_api.h>
-
-#ifdef WLAN_CFR_ENABLE
-/**
- * ucfg_cfr_send_stop() - function to start cfr capture for connected client
- * @vdev: pointer to vdev object
- * @reason: reason
- *
- * Return: status of start capture.
- */
-void ucfg_cfr_send_stop(struct wlan_objmgr_vdev *vdev, uint32_t reason);
-#else
-static inline void
-ucfg_cfr_send_stop(struct wlan_objmgr_vdev *vdev, uint32_t reason)
-{
-}
-#endif
-
-/**
- * ucfg_cfr_is_ini_disabled() - Check if CFR is disabled for a given pdev
- * via the cfr_disable INI bitmap.
- * @pdev: pointer to pdev object
- *
- * Return: true if CFR is disabled for this pdev, false otherwise.
- */
-bool ucfg_cfr_is_ini_disabled(struct wlan_objmgr_pdev *pdev);
 
 /**
  * ucfg_cfr_start_capture() - function to start cfr capture for connected client
@@ -194,16 +168,6 @@ QDF_STATUS ucfg_cfr_set_rcc_mode(struct wlan_objmgr_vdev *vdev,
 bool ucfg_cfr_get_rcc_enabled(struct wlan_objmgr_vdev *vdev);
 
 /**
- * ucfg_cfr_set_capture_agc() - function to configure agc gain fixed or not
- * @vdev: pointer to vdev object
- * @params: user config
- *
- * Return: status
- */
-QDF_STATUS ucfg_cfr_set_capture_agc(struct wlan_objmgr_vdev *vdev,
-				    struct cfr_wlanconfig_param *params);
-
-/**
  * ucfg_cfr_set_tara_config() - function to configure TA/RA address and mask
  * @vdev: pointer to vdev object
  * @params: user config
@@ -343,18 +307,6 @@ ucfg_cfr_set_freeze_tlv_delay_cnt(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS ucfg_cfr_committed_rcc_config(struct wlan_objmgr_vdev *vdev);
 
 /**
- * ucfg_cfr_get_peer_info() - function to get peer info
- * @vdev: pointer to vdev object
- * @peer_bw: peer bw
- * @bss_freq: bss_freq
- *
- * Return: status
- */
-QDF_STATUS ucfg_cfr_get_peer_info(struct wlan_objmgr_vdev *vdev,
-				  enum phy_ch_width *peer_bw,
-				  uint32_t *bss_freq);
-
-/**
  * ucfg_cfr_get_cfg() - function to display user config
  * @vdev: pointer to vdev object
  *
@@ -385,14 +337,6 @@ QDF_STATUS ucfg_cfr_rcc_clr_dbg_counters(struct wlan_objmgr_vdev *vdev);
  * Return: status
  */
 QDF_STATUS ucfg_cfr_rcc_dump_lut(struct wlan_objmgr_vdev *vdev);
-
-/**
- * ucfg_cfr_stop_report_interval_timer() - stop report interval timer
- * @vdev: pointer to vdev object
- *
- * Return: status
- */
-QDF_STATUS ucfg_cfr_stop_report_interval_timer(struct wlan_objmgr_vdev *vdev);
 
 /**
  * ucfg_cfr_subscribe_ppdu_desc() - User space interface to

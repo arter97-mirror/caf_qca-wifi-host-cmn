@@ -38,20 +38,6 @@ int wlan_cfg80211_set_default_key(struct wlan_objmgr_vdev *vdev,
 				  struct qdf_mac_addr *bssid);
 
 /**
- * wlan_cfg80211_set_peer_ucastcipher() - Set unicast cipher and cipher
- * cap of the peer
- * @vdev: VDEV Object pointer
- * @mac_addr: peer mac address
- * @cipher: peer cipher bits
- * @cipher_cap: cipher cap
- *
- * Return: Zero for success and negative for failure.
- */
-int wlan_cfg80211_set_peer_ucastcipher(struct wlan_objmgr_vdev *vdev,
-				       uint8_t *mac_addr, int32_t cipher,
-				       int32_t cipher_cap);
-
-/**
  * wlan_cfg80211_translate_ml_sta_key - Translate the cfg80211 keys
  * to internal for ml sta key
  * @key_index: key index
@@ -117,20 +103,6 @@ int wlan_cfg80211_crypto_add_key(struct wlan_objmgr_vdev *vdev,
 				 enum wlan_crypto_key_type key_type,
 				 uint8_t key_index, bool sync);
 
-/**
- * wlan_cfg80211_crypto_del_ndi_key() - Delete an NDI key for the specified
- *  vdev, waiting for firmware to confirm the key removal.
- * @vdev: vdev object
- * @key_index: Key index used in 802.11 frames
- * @pairwise: true if it is pairwise key
- * @mac_addr: Peer address
- *
- * Return: Zero on Success, negative value on failure
- */
-int wlan_cfg80211_crypto_del_ndi_key(struct wlan_objmgr_vdev *vdev,
-				     uint8_t key_index, bool pairwise,
-				     const uint8_t *mac_addr);
-
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * wlan_cfg80211_store_link_key() - store link key info
@@ -141,8 +113,6 @@ int wlan_cfg80211_crypto_del_ndi_key(struct wlan_objmgr_vdev *vdev,
  * @params: params
  * @link_addr: link address
  * @link_id: link id
- * @is_roam_eppke: true if this is a roam-driven EPPKE/802.1X-in-Auth key
- *  install, computed by the caller from the link vdev's state.
  *
  */
 int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
@@ -150,8 +120,7 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 				 enum wlan_crypto_key_type key_type,
 				 const u8 *mac_addr, struct key_params *params,
 				 struct qdf_mac_addr *link_addr,
-				 uint8_t link_id,
-				 bool is_roam_eppke);
+				 uint8_t link_id);
 #else
 static inline
 int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
@@ -159,8 +128,7 @@ int wlan_cfg80211_store_link_key(struct wlan_objmgr_psoc *psoc,
 				 enum wlan_crypto_key_type key_type,
 				 const u8 *mac_addr, struct key_params *params,
 				 struct qdf_mac_addr *link_addr,
-				 uint8_t link_id,
-				 bool is_roam_eppke)
+				 uint8_t link_id)
 {
 	return -EINVAL;
 }

@@ -216,41 +216,6 @@ QDF_STATUS wmi_unified_update_tdls_peer_state_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_extract_vdev_tdls_ev_param(wmi_unified_t wmi_handle,
 					  void *evt_buf,
 					  struct tdls_event_info *param);
-
-/**
- * wmi_unified_tdls_request_stats_info_cmd() - send WMI_REQUEST_STATS_INFO_CMDID
- * @wmi_handle: wmi handle
- * @vdev_id: ID of the STA vdev for which TDLS stats collection is requested
- * @enable: 1 = enable FW TDLS per-peer data stats collection;
- *          host never sends 0 — FW handles disable automatically on
- *          disconnect/MCC transitions.
- *
- * Sends WMI_REQUEST_STATS_INFO_CMDID to firmware to start TDLS per-peer
- * data stats collection on the specified vdev.  Called once per STA
- * connection when a single-STA SCC condition is detected.
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_tdls_request_stats_info_cmd(wmi_unified_t wmi_handle,
-						   uint8_t vdev_id,
-						   uint32_t enable);
-
-/**
- * wmi_extract_tdls_stats_event() - extract TDLS stats event from WMI buffer
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @stats_event: pointer to host-side stats event structure to be populated
- *
- * Extracts the WMI_TDLS_STATS_EVENTID payload into a host-side structure.
- * The caller is responsible for freeing stats_event->tdls_data_stats with
- * qdf_mem_free() after use.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS wmi_extract_tdls_stats_event(wmi_unified_t wmi_handle,
-					void *evt_buf,
-					struct wmi_host_tdls_stats_event
-					*stats_event);
 #endif /* FEATURE_WLAN_TDLS */
 
 /**
@@ -427,6 +392,7 @@ QDF_STATUS wmi_unified_process_ch_avoid_update_cmd(wmi_unified_t wmi_handle);
 QDF_STATUS wmi_unified_pdev_set_pcl_cmd(wmi_unified_t wmi_handle,
 					struct wmi_pcl_chan_weights *msg);
 
+#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * wmi_unified_pdev_set_dual_mac_config_cmd() - Set dual mac config to FW
  * @wmi_handle: wmi handle
@@ -439,6 +405,7 @@ QDF_STATUS wmi_unified_pdev_set_pcl_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_unified_pdev_set_dual_mac_config_cmd(
 		wmi_unified_t wmi_handle,
 		struct policy_mgr_dual_mac_config *msg);
+#endif /* WLAN_POLICY_MGR_ENABLE */
 
 /**
  * wmi_unified_send_adapt_dwelltime_params_cmd() - send wmi cmd of
@@ -497,37 +464,5 @@ QDF_STATUS wmi_unified_peer_unmap_conf_send(wmi_unified_t wmi_handle,
 					    uint8_t vdev_id,
 					    uint32_t peer_id_cnt,
 					    uint16_t *peer_id_list);
-
-#ifdef FEATURE_CQM_RSSI
-/**
- * wmi_unified_set_cqm_rssi_config_cmd() - set adaptive-hysteresis RSSI CQM
- *					   config
- * @wmi_handle: wmi handle
- * @req: CQM RSSI configuration request structure
- *
- * This function reads the incoming @req and fills in the adaptive breach
- * monitor WMI structure and sends the CQM RSSI config down to the firmware.
- *
- * Return: QDF_STATUS_SUCCESS on success; QDF_STATUS error code on failure
- */
-QDF_STATUS
-wmi_unified_set_cqm_rssi_config_cmd(wmi_unified_t wmi_handle,
-				    struct cqm_rssi_config_param *req);
-
-/**
- * wmi_extract_rssi_adaptive_breach_event() - extract adaptive-hysteresis
- *					      RSSI CQM breach event
- * @wmi_handle: wmi handle
- * @evt_buf: event buffer
- * @event: pointer to struct vdev_cqm_rssi_breach_event
- *
- * Return: QDF_STATUS_SUCCESS on success; QDF_STATUS error code on failure
- */
-QDF_STATUS
-wmi_extract_rssi_adaptive_breach_event(wmi_unified_t wmi_handle,
-				       void *evt_buf,
-				       struct vdev_cqm_rssi_breach_event
-				       *event);
-#endif /* FEATURE_CQM_RSSI */
 
 #endif /* _WMI_UNIFIED_STA_API_H_ */

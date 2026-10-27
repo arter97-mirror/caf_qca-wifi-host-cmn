@@ -63,7 +63,7 @@ QDF_STATUS ucfg_cm_disconnect_sync(struct wlan_objmgr_vdev *vdev,
 				   enum wlan_reason_code reason_code);
 
 /**
- * ucfg_cm_is_vdev_connecting() - check if vdev is in connecting state
+ * ucfg_cm_is_vdev_connecting() - check if vdev is in conneting state
  * @vdev: vdev pointer
  *
  * Return: bool
@@ -71,7 +71,7 @@ QDF_STATUS ucfg_cm_disconnect_sync(struct wlan_objmgr_vdev *vdev,
 bool ucfg_cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev);
 
 /**
- * ucfg_cm_is_vdev_connected() - check if vdev is in connected state
+ * ucfg_cm_is_vdev_connected() - check if vdev is in conneted state
  * @vdev: vdev pointer
  *
  * Return: bool
@@ -79,7 +79,7 @@ bool ucfg_cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev);
 bool ucfg_cm_is_vdev_connected(struct wlan_objmgr_vdev *vdev);
 
 /**
- * ucfg_cm_is_vdev_active() - check if vdev is in active state ie connected or
+ * ucfg_cm_is_vdev_active() - check if vdev is in active state ie conneted or
  * roaming state
  * @vdev: vdev pointer
  *
@@ -232,7 +232,7 @@ bool ucfg_cm_is_link_switch_disconnect_resp(struct wlan_cm_discon_rsp *resp);
  */
 bool ucfg_cm_is_link_switch_connect_resp(struct wlan_cm_connect_resp *resp);
 
-#ifdef WLAN_FEATURE_11BE_MLO
+#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_POLICY_MGR_ENABLE)
 /**
  * ucfg_cm_handle_legacy_conn_fail() - Handle legacy connection
  * failure.

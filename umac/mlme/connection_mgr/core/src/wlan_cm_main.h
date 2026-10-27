@@ -65,12 +65,6 @@
  * @WLAN_CM_SS_ROAM_SYNC:               Roam sync indication from FW
  * @WLAN_CM_SS_IDLE_DUE_TO_LINK_SWITCH: Substate when VDEV moves to INIT state
  *                                      due to link switch.
- * @WLAN_CM_SS_SMD_ROAM_SYNC:           Substate of CONNECTED. Vdev completed
- *                                      link switch during SMD roaming and is
- *                                      awaiting EV_SMD_EXEC_COMPLETE to clean
- *                                      up the old link. RSO state changes,
- *                                      link reconfig, and new roam triggers
- *                                      are all blocked in this sub-state.
  * @WLAN_CM_SS_MAX:                     Max Substate
  */
 enum wlan_cm_sm_state {
@@ -89,8 +83,7 @@ enum wlan_cm_sm_state {
 	WLAN_CM_SS_ROAM_STARTED = 12,
 	WLAN_CM_SS_ROAM_SYNC = 13,
 	WLAN_CM_SS_IDLE_DUE_TO_LINK_SWITCH = 14,
-	WLAN_CM_SS_SMD_ROAM_SYNC = 15,
-	WLAN_CM_SS_MAX = 16,
+	WLAN_CM_SS_MAX = 15,
 };
 
 /**
@@ -101,7 +94,11 @@ enum wlan_cm_sm_state {
  * @cm_substate: current substate
  */
 struct cm_state_sm {
+#ifdef WLAN_CM_USE_SPINLOCK
+	qdf_spinlock_t cm_sm_lock;
+#else
 	qdf_mutex_t cm_sm_lock;
+#endif
 	struct wlan_sm *sm_hdl;
 	enum wlan_cm_sm_state cm_state;
 	enum wlan_cm_sm_state cm_substate;
@@ -136,10 +133,8 @@ struct cm_nontx_mbssid_scan_params {
  * @scan_id: scan id for scan for ssid
  * @req: connect req from osif
  * @candidate_list: candidate list
- * @num_bss: bss number in original candidate list
  * @cur_candidate: current candidate
  * @cur_candidate_retries: attempts for current candidate
- * @inval_pmkid_retry_cnt: retries due to invalid pmkid
  * @connect_attempts: number of connect attempts tried
  * @connect_active_time: timestamp when connect became active
  * @first_candidate_rsp: connect response for first candidate
@@ -150,13 +145,13 @@ struct cm_connect_req {
 	wlan_scan_id scan_id;
 	struct wlan_cm_connect_req req;
 	qdf_list_t *candidate_list;
-	uint32_t num_bss;
 	struct scan_cache_node *cur_candidate;
 	uint8_t cur_candidate_retries;
-	uint8_t inval_pmkid_retry_cnt;
 	uint8_t connect_attempts;
 	qdf_time_t connect_active_time;
+#ifdef CONN_MGR_ADV_FEATURE
 	struct wlan_cm_connect_resp *first_candidate_rsp;
+#endif
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct cm_nontx_mbssid_scan_params nontx_scan_req;
 #endif
@@ -293,7 +288,11 @@ struct cnx_mgr {
 	wlan_cm_id active_cm_id;
 	bool preauth_in_progress;
 	qdf_list_t req_list;
+#ifdef WLAN_CM_USE_SPINLOCK
+	qdf_spinlock_t cm_req_lock;
+#else
 	qdf_mutex_t cm_req_lock;
+#endif
 	uint8_t disconnect_count;
 	uint8_t connect_count;
 	bool force_rsne_override;
@@ -305,6 +304,12 @@ struct cnx_mgr {
 	cm_ext_t *ext_cm_ptr;
 #ifdef SM_ENG_HIST_ENABLE
 	struct cm_req_history req_history;
+#endif
+#ifndef CONN_MGR_ADV_FEATURE
+	void (*cm_candidate_advance_filter)(struct wlan_objmgr_vdev *vdev,
+					    struct scan_filter *filter);
+	void (*cm_candidate_list_custom_sort)(struct wlan_objmgr_vdev *vdev,
+					      qdf_list_t *list);
 #endif
 };
 

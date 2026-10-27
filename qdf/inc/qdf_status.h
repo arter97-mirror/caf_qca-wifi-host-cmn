@@ -26,14 +26,6 @@
 #ifndef __QDF_STATUS_H
 #define __QDF_STATUS_H
 
-#include <linux/version.h>
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0))
-#define qdf_in_irq() in_hardirq()
-#else
-#define qdf_in_irq() in_irq()
-#endif
-
 /**
  * typedef QDF_STATUS - QDF error codes
  * @QDF_STATUS_SUCCESS: success
@@ -152,6 +144,8 @@ typedef enum {
 	QDF_STATUS_INVALID_ASSOCID,
 	QDF_STATUS_MAX_VHT_STREAMS,
 	QDF_STATUS_NO_OVERLAP_LEGACY_RATES,
+	QDF_STATUS_MCAST_CIPHER_ERROR,
+	QDF_STATUS_UCAST_CIPHER_ERROR,
 	QDF_STATUS_MAX
 } QDF_STATUS;
 

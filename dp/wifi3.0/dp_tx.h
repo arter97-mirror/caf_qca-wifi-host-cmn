@@ -22,7 +22,6 @@
 #include <qdf_types.h>
 #include <qdf_nbuf.h>
 #include "dp_types.h"
-#include "enet.h"
 #ifdef FEATURE_PERPKT_INFO
 #if defined(QCA_SUPPORT_LATENCY_CAPTURE) || \
 	defined(QCA_TX_CAPTURE_SUPPORT) || \
@@ -47,15 +46,8 @@
 #ifdef WLAN_SUPPORT_FLOW_PRIORTIZATION
 #include "wlan_dp_api.h"
 #endif
-#ifdef WLAN_HAPS_ENABLE
-#include "wlan_dp_haps.h"
-#endif
-#include "dp_ratetable.h"
 
 #define DP_TX_MAX_NUM_FRAGS 6
-#ifdef DP_COMP_FW_REINJECT_WAR
-#define DP_TX_COMP_FW_REINJECTION_WAR 15
-#endif
 
 /* invalid peer id for reinject*/
 #define DP_INVALID_PEER 0XFFFE
@@ -100,7 +92,6 @@ void dp_tx_update_eapol_comp_status_stats(struct dp_soc *soc,
 #define DP_TX_DESC_FLAG_SPECIAL         0x80000
 #define DP_TX_DESC_FLAG_BCAST           0x100000
 #define DP_TX_DESC_FLAG_OPT_DP_CTRL           0x200000
-#define DP_TX_DESC_FLAG_REAPED		0x400000
 
 #define DP_TX_EXT_DESC_FLAG_METADATA_VALID 0x1
 
@@ -238,27 +229,6 @@ struct dp_tx_queue {
  * @payload_addr:
  * @driver_ingress_ts: driver ingress timestamp
  * @is_opt_dp_ctrl: opt_dp_ctrl pkt
- * @ip_dscp: dscp value from packet
- * @is_mcast: Is packet multicast
- * @is_bcast: Is packet broadcast
- * @l3_type: Packet l3_type
- * @l4_proto: Packet Layer protocol
- * @type_or_length: Is packet ether or VLAN type
- * @snap_oui_zero_or_f8: LLC SNAP is present in MAC header and OUI value equals
- *			 to 0x0 or 0xF8
- * @snap_oui_not_zero_or_not_f8: LLC SNAP is present in MAC header and OUI value
- *				 not equal to 0x0 and not equal to 0xF8
- * @is_s_vlan: Outer VLAN tag is present in the packet header
- * @is_c_vlan: Inner VLAN tag is present in the packet header
- * @l4_dport: destination port
- * @is_unicast: whether unicast frame or not
- * @frame_type: 802.11 frame type
- * @is_custom_txpt_sel_valid: is custom_txpt_classif_info_sel valid
- * @custom_txpt_classify_info_sel: Txpt classify info index override
- * @is_custom_flow_sel_valid: is custom_flow_sel valid
- * @custom_flow_sel: custom flow selection
- * @orig_nbuf: Original nbuf
- * @is_intrabss: true if packet is an intrabss forwarded page-pool buffer
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -295,28 +265,6 @@ struct dp_tx_msdu_info_s {
 #endif
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	bool is_opt_dp_ctrl;
-#endif
-#ifdef CONFIG_BORON
-	uint8_t ip_dscp;
-	/*TODO: struct qdf_flow_info flow_info;*/
-	uint8_t is_mcast;
-	uint8_t is_bcast;
-	uint16_t l3_type;
-	uint8_t l4_proto;
-	uint8_t type_or_length;
-	uint8_t snap_oui_zero_or_f8;
-	uint8_t snap_oui_not_zero_or_not_f8;
-	uint8_t is_s_vlan;
-	uint8_t is_c_vlan;
-	uint16_t l4_dport;
-	bool is_custom_txpt_sel_valid;
-	uint8_t custom_txpt_classify_info_sel;
-	bool is_custom_flow_sel_valid;
-	uint8_t custom_flow_sel;
-#endif
-#ifdef DP_FEATURE_TX_PAGE_POOL
-	qdf_nbuf_t orig_nbuf;
-	bool is_intrabss;
 #endif
 };
 
@@ -677,113 +625,6 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      qdf_nbuf_t nbuf);
 
 /**
- * __dp_tx_send() - Internal transmit path with explicit intrabss flag
- * @soc_hdl: CDP SOC handle
- * @vdev_id: VDEV ID to transmit on
- * @nbuf: Network buffer to transmit
- * @is_intrabss: true if @nbuf is an intrabss forwarded packet
- *
- * Core transmit implementation. All callers that know the intrabss
- * context should use this instead of dp_tx_send() to avoid redundant
- * pp_recycle lookups. dp_tx_send() wraps this with is_intrabss=false.
- *
- * Return: NULL on success, @nbuf on failure (caller must free)
- */
-qdf_nbuf_t __dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			qdf_nbuf_t nbuf, bool is_intrabss);
-
-#ifdef DRIVER_PASSTHRU_MODE
-/**
- * dp_tx_send_passthru() - Simplified TX send function for passthrough mode
- * @soc_hdl: CDP SoC handle
- * @vdev_id: Virtual device ID
- * @nbuf: Network buffer to transmit
- *
- * This is a simplified version of dp_tx_send() specifically designed for
- * passthrough mode. It eliminates many checks and processing steps that
- * are not needed in passthrough mode.
- *
- * Return: Network buffer on error, NULL on success
- */
-qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			       qdf_nbuf_t nbuf);
-
-/**
- * dp_tx_comp_process_desc_passthru() - Process tx descriptor and free
- *  associated nbuf
- * @soc: DP Soc handle
- * @desc: software Tx descriptor
- * @ts: Tx completion status from HAL/HTT descriptor
- * @txrx_peer: DP peer context
- *
- * Return: none
- */
-void dp_tx_comp_process_desc_passthru(struct dp_soc *soc,
-				      struct dp_tx_desc_s *desc,
-				      struct hal_tx_completion_status *ts,
-				      struct dp_txrx_peer *txrx_peer);
-
-/**
- * dp_tx_comp_process_tx_status_passthru() - Process TX completion status
- * in passthrough mode
- * @soc: DP soc handle
- * @tx_desc: TX descriptor
- * @ts: TX completion status from HAL
- * @txrx_peer: DP peer handle
- * @ring_id: Completion ring ID
- *
- * This is a streamlined version of dp_tx_comp_process_tx_status() optimized
- * for passthrough mode. It skips various statistics collection and monitoring
- * functions to reduce processing overhead.
- *
- * Return: None
- */
-void dp_tx_comp_process_tx_status_passthru(struct dp_soc *soc,
-					   struct dp_tx_desc_s *tx_desc,
-					   struct hal_tx_completion_status *ts,
-					   struct dp_txrx_peer *txrx_peer,
-					   uint8_t ring_id);
-
-static inline
-void dp_tx_comp_process_tx_status_n_desc_wrapper(struct dp_soc *soc,
-						 struct dp_vdev *vdev,
-						 struct dp_tx_desc_s *tx_desc,
-						 struct hal_tx_completion_status *ts,
-						 struct dp_txrx_peer *txrx_peer,
-						 uint8_t ring_id)
-{
-	if (qdf_unlikely(vdev && vdev->opmode == wlan_op_mode_passthru)) {
-		dp_tx_comp_process_tx_status_passthru(soc, tx_desc, ts,
-						      txrx_peer, ring_id);
-		dp_tx_comp_process_desc_passthru(soc, tx_desc, ts, txrx_peer);
-		return;
-	}
-
-	dp_tx_comp_process_tx_status(soc, tx_desc, ts, txrx_peer, ring_id);
-	dp_tx_comp_process_desc(soc, tx_desc, ts, txrx_peer);
-}
-#else
-static inline
-qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			       qdf_nbuf_t nbuf)
-{
-	return nbuf;
-}
-
-static inline
-void dp_tx_comp_process_tx_status_n_desc_wrapper(struct dp_soc *soc,
-						 struct dp_vdev *vdev,
-						 struct dp_tx_desc_s *tx_desc,
-						 struct hal_tx_completion_status *ts,
-						 struct dp_txrx_peer *txrx_peer,
-						 uint8_t ring_id)
-{
-	dp_tx_comp_process_tx_status(soc, tx_desc, ts, txrx_peer, ring_id);
-	dp_tx_comp_process_desc(soc, tx_desc, ts, txrx_peer);
-}
-#endif
-
-/**
  * dp_tx_send_vdev_id_check() - Transmit a frame on a given VAP in special
  *      case to avoid check in per-packet path.
  * @soc_hdl: DP soc handle
@@ -897,28 +738,6 @@ dp_tx_send_msdu_multiple(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 qdf_nbuf_t dp_tx_send_msdu_multiple(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 				    struct dp_tx_msdu_info_s *msdu_info);
 #endif
-
-#if defined(DP_TRAFFIC_END_INDICATION) && defined(WLAN_SUPPORT_LAPB)
-/**
- * dp_trigger_traffic_end_indication - Trigger traffic end for TWT SP
- * @soc: DP soc reference
- * @vdev_id: vdev id
- * @mac_addr: Peer mac address
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-dp_trigger_traffic_end_indication(struct cdp_soc_t *soc, uint8_t vdev_id,
-				  struct qdf_mac_addr *mac_addr);
-#else
-static inline QDF_STATUS
-dp_trigger_traffic_end_indication(struct cdp_soc_t *soc, uint8_t vdev_id,
-				  struct qdf_mac_addr *mac_addr)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 #ifdef FEATURE_WLAN_TDLS
 /**
  * dp_tx_non_std() - Allow the control-path SW to send data frames
@@ -1251,12 +1070,7 @@ static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 				   qdf_nbuf_t nbuf, struct dp_tx_queue *queue)
 {
-	struct dp_soc *soc = vdev->pdev->soc;
-
-	if (qdf_unlikely(!soc->num_tcl_data_rings))
-		queue->ring_id = 0;
-	else
-		queue->ring_id = qdf_get_cpu() % soc->num_tcl_data_rings;
+	queue->ring_id = qdf_get_cpu();
 	queue->desc_pool_id = queue->ring_id;
 }
 #endif
@@ -1302,21 +1116,6 @@ static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 				  vdev->pdev->soc->num_tcl_data_rings);
 }
 #elif defined(IPA_OFFLOAD)
-#ifdef CONFIG_MDM_PLATFORM
-static inline void dp_tx_get_queue(struct dp_vdev *vdev,
-				   qdf_nbuf_t nbuf, struct dp_tx_queue *queue)
-{
-	/* get flow id */
-	queue->desc_pool_id = DP_TX_GET_DESC_POOL_ID(vdev);
-	if (vdev->pdev->soc->wlan_cfg_ctx->ipa_enabled &&
-	    !wlan_ipa_config_is_opt_wifi_dp_enabled() &&
-	    vdev->pdev->soc->num_embedded_tx_paths == 1)
-		queue->ring_id = DP_TX_GET_RING_ID(vdev);
-	else
-		queue->ring_id = (qdf_nbuf_get_queue_mapping(nbuf) %
-					vdev->pdev->soc->num_embedded_tx_paths);
-}
-#else
 static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 				   qdf_nbuf_t nbuf, struct dp_tx_queue *queue)
 {
@@ -1329,7 +1128,6 @@ static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 		queue->ring_id = (qdf_nbuf_get_queue_mapping(nbuf) %
 					vdev->pdev->soc->num_tcl_data_rings);
 }
-#endif
 #elif defined(WLAN_SUPPORT_LAPB)
 static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 				   qdf_nbuf_t nbuf, struct dp_tx_queue *queue)
@@ -1792,42 +1590,6 @@ dp_tx_attempt_coalescing(struct dp_soc *soc, struct dp_vdev *vdev,
 
 #endif /* WLAN_DP_FEATURE_SW_LATENCY_MGR */
 
-#ifdef WLAN_HAPS_ENABLE
-/**
- * dp_try_hp_update() - Try HP update for all TCL rings
- * @haps_ctx: Haps ctx pointer
- * @is_direct_reg_write: To decide whether delayed reg write or direct reg
- *			 is required
- *
- * Returns: QDF_STATUS
- */
-QDF_STATUS dp_try_hp_update(struct dp_haps *haps_ctx, bool is_direct_reg_write);
-
-/**
- * dp_tx_attempt_coalescing_wrapper() - Check and attempt TCL register write
- *					coalescing
- * @soc: Datapath soc handle
- * @vdev: DP vdev handle
- * @tx_desc: tx packet descriptor
- * @tid: TID for pkt transmission
- * @msdu_info: MSDU info of tx packet
- * @ring_id: TCL ring id
- *
- * Return: 1, if coalescing is to be done
- *	    0, if coalescing is not to be done
- */
-int
-dp_tx_attempt_coalescing_wrapper(struct dp_soc *soc, struct dp_vdev *vdev,
-				 struct dp_tx_desc_s *tx_desc,
-				 uint8_t tid,
-				 struct dp_tx_msdu_info_s *msdu_info,
-				 uint8_t ring_id);
-#else
-#define \
-dp_tx_attempt_coalescing_wrapper(soc, vdev, tx_desc, tid, msdu_info, ring_id) \
-	dp_tx_attempt_coalescing(soc, vdev, tx_desc, tid, msdu_info, ring_id)
-#endif
-
 #ifdef FEATURE_RUNTIME_PM
 /**
  * dp_set_rtpm_tput_policy_requirement() - Update RTPM throughput policy
@@ -1946,29 +1708,6 @@ dp_tx_compute_hw_delay_us(struct hal_tx_completion_status *ts,
  */
 void dp_set_delta_tsf(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      uint32_t delta_tsf);
-
-/**
- * dp_qos_latency_stats_request() - latency stats request
- * @soc_hdl: cdp soc pointer
- * @vdev_id: vdev id
- * @req: request pointer
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			     struct cdp_qos_latency_stats *req);
-
-/**
- * dp_qos_latency_get_stats() - Get QoS latency stats
- * @soc_hdl: cdp soc pointer
- * @vdev_id: vdev id
- * @stats: Latency stats pointer
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS dp_qos_latency_get_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-				    struct cdp_qos_latency_stats_req *stats);
 #endif
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 /**
@@ -1996,33 +1735,12 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
  * dp_get_uplink_delay() - Get uplink delay value
  * @soc_hdl: cdp soc pointer
  * @vdev_id: vdev id
- * @client: client
  * @val: pointer to save uplink delay value
- * @num_pkts: pointer to store number of packets
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			       uint8_t client, uint32_t *val, int *num_pkts);
-
-/**
- * dp_txrx_enable_ul_delay() - Enable UL delay calculation
- * @soc_hdl: cdp soc pointer
- * @vdev_id: vdev id
- * @enable: 0 - disable, 1 - enable
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS dp_txrx_enable_ul_delay(struct cdp_soc_t *soc_hdl,
-				   uint8_t vdev_id, bool enable);
-
-/**
- * dp_tx_average_ul_delay() - calculate average ul delay
- * @vdev: vdev handle
- * @client: ul delay for client_id
- * @val: pointer to store average delay
- */
-int dp_tx_average_ul_delay(struct dp_vdev *vdev, uint8_t client, uint32_t *val);
+			       uint32_t *val);
 #endif /* WLAN_FEATURE_TSF_UPLINK_TSF */
 
 #ifdef WLAN_TRACEPOINTS
@@ -2175,6 +1893,7 @@ bool dp_tx_desc_set_ktimestamp(struct dp_vdev *vdev,
 	if (qdf_unlikely(vdev->pdev->delay_stats_flag) ||
 	    qdf_unlikely(vdev->pdev->soc->wlan_cfg_ctx->pext_stats_enabled) ||
 	    qdf_unlikely(dp_tx_pkt_tracepoints_enabled()) ||
+	    qdf_unlikely(vdev->pdev->soc->peerstats_enabled) ||
 	    qdf_unlikely(dp_is_vdev_tx_delay_stats_enabled(vdev)) ||
 	    qdf_unlikely(wlan_cfg_is_peer_jitter_stats_enabled(vdev->pdev->soc->wlan_cfg_ctx))) {
 		tx_desc->timestamp = qdf_ktime_real_get();
@@ -2190,6 +1909,7 @@ bool dp_tx_desc_set_ktimestamp(struct dp_vdev *vdev,
 	if (qdf_unlikely(vdev->pdev->delay_stats_flag) ||
 	    qdf_unlikely(vdev->pdev->soc->wlan_cfg_ctx->pext_stats_enabled) ||
 	    qdf_unlikely(dp_tx_pkt_tracepoints_enabled()) ||
+	    qdf_unlikely(vdev->pdev->soc->peerstats_enabled) ||
 	    qdf_unlikely(wlan_cfg_is_peer_jitter_stats_enabled(vdev->pdev->soc->wlan_cfg_ctx))) {
 		tx_desc->timestamp = qdf_ktime_real_get();
 		return true;
@@ -2204,13 +1924,13 @@ bool dp_tx_desc_set_ktimestamp(struct dp_vdev *vdev,
  *
  * @vdev: dp vdev
  * @index: index to decide offset in payload
- * @qtime: timestamp to add in data payload
+ * @time: timestamp to add in data payload
  * @nbuf: network buffer
  *
  * Return: none
  */
 void dp_pkt_add_timestamp(struct dp_vdev *vdev,
-			  enum qdf_pkt_timestamp_index index, uint64_t qtime,
+			  enum qdf_pkt_timestamp_index index, uint64_t time,
 			  qdf_nbuf_t nbuf);
 /**
  * dp_pkt_get_timestamp() - get current system time
@@ -2221,7 +1941,7 @@ void dp_pkt_add_timestamp(struct dp_vdev *vdev,
  */
 void dp_pkt_get_timestamp(uint64_t *time);
 #else
-#define dp_pkt_add_timestamp(vdev, index, qtime, nbuf)
+#define dp_pkt_add_timestamp(vdev, index, time, nbuf)
 
 static inline
 void dp_pkt_get_timestamp(uint64_t *time)
@@ -2833,31 +2553,6 @@ void hal_tx_comp_get_status_wrapper(struct dp_soc *soc,
 				    struct dp_tx_desc_pool_s *tx_desc_pool,
 				    struct dp_tx_desc_s *tx_desc,
 				    void *ts, uint16_t comp_index);
-#ifdef DP_COMP_FW_REINJECT_WAR
-/*
- * dp_tx_fw_release_reason(): This is WAR for congo v1 to identify SW completion
- * as TQM is not copying release source module in V1
- *
- * @tx_status: Release reason
- *
- * Return: true if reinjected from FW
- */
-static inline
-bool dp_tx_fw_release_reason(uint8_t tx_status)
-{
-	if (tx_status == DP_TX_COMP_FW_REINJECTION_WAR)
-		return true;
-
-	return false;
-}
-#else
-static inline
-bool dp_tx_fw_release_reason(uint8_t tx_status)
-{
-	return false;
-}
-#endif
-
 #ifndef WLAN_SOFTUMAC_SUPPORT
 /**
  * dp_tx_dump_tx_desc() - Dump tx desc for debugging
@@ -2909,232 +2604,4 @@ struct dp_tx_desc_pool_s *dp_get_tx_desc_pool_wrapper(struct dp_soc *soc)
 	return NULL;
 }
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */
-
-#ifdef CONFIG_BORON
-
-#define COMP_RING_TYPE TQM2SW_RELEASE
-
-#define DP_TX_MSDU_INFO_SET_DSCP(msdu_info, dscp) \
-		(msdu_info)->ip_dscp = (dscp) << DP_IP_DSCP_SHIFT
-
-#define DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, proto) \
-		(msdu_info)->l4_proto = (proto)
-
-#define DP_TX_MSDU_INFO_SET_MC(msdu_info, mcast) \
-		(msdu_info)->is_mcast = (mcast)
-
-static inline
-void dp_tx_msdu_info_set_bc(struct dp_tx_msdu_info_s *msdu_info,
-			    uint8_t *hdr_ptr)
-{
-		(msdu_info)->is_bcast = DP_FRAME_IS_BROADCAST(hdr_ptr) ? 1 : 0;
-}
-
-static inline
-void dp_tx_msdu_info_set_llc_snap_oui(struct dp_tx_msdu_info_s *msdu_info,
-				      struct llc_snap_hdr_t *llc_hdr)
-{
-	/*TODO: Do endian check */
-	if (IS_BTEP(llc_hdr) || IS_RFC1042(llc_hdr))
-		msdu_info->snap_oui_zero_or_f8 = 1;
-	else
-		msdu_info->snap_oui_not_zero_or_not_f8 = 1;
-}
-
-static inline
-void dp_tx_msdu_info_set_eth_type_fields(struct dp_tx_msdu_info_s *msdu_info,
-					 uint16_t eth_type)
-{
-	msdu_info->l3_type = eth_type;
-	msdu_info->type_or_length = eth_type > 0x600 ? 1 : 0;
-
-	if (eth_type == ETH_P_8021AD) {
-		msdu_info->is_s_vlan = 1;
-		msdu_info->is_c_vlan = 1;
-	} else if (eth_type == ETH_P_8021Q) {
-		msdu_info->is_c_vlan = 1;
-	}
-}
-
-#else /* CONFIG_BORON */
-#define COMP_RING_TYPE WBM2SW_RELEASE
-
-#define DP_TX_MSDU_INFO_SET_DSCP(msdu_info, dscp)
-
-#define DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, proto)
-
-#define DP_TX_MSDU_INFO_SET_MC(msdu_info, is_mcast)
-
-static inline
-void dp_tx_msdu_info_set_bc(struct dp_tx_msdu_info_s *msdu_info,
-			    uint8_t *hdr_ptr)
-{
-}
-
-static inline
-void dp_tx_msdu_info_set_llc_snap_oui(struct dp_tx_msdu_info_s *msdu_info,
-				      struct llc_snap_hdr_t *llc_hdr)
-{
-}
-
-static inline
-void dp_tx_msdu_info_set_eth_type_fields(struct dp_tx_msdu_info_s *msdu_info,
-					 uint16_t eth_type)
-{
-}
-#endif /* !CONFIG_BORON */
-
-#ifndef WLAN_SOFTUMAC_SUPPORT
-#ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
-void
-dp_tx_comp_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num);
-
-QDF_STATUS
-dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
-			      QDF_STATUS status);
-#else
-static inline void
-dp_tx_comp_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
-{
-}
-
-static inline QDF_STATUS
-dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
-			      QDF_STATUS status)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* DP_TX_COMP_RING_DESC_SANITY_CHECK */
-#endif /* WLAN_SOFTUMAC_SUPPORT */
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * dp_tx_hw_enqueue_post_process() - Handle post-processing after hw_enqueue
- * @soc: DP SOC handle
- * @vdev: DP VDEV handle
- * @tx_desc: TX descriptor
- * @msdu_info: MSDU information
- * @hw_enqueue_result: Result from hw_enqueue operation
- *
- * This function handles both success and failure cases after TX hw_enqueue.
- * It replicates the handling logic that is normally done immediately after
- * hw_enqueue in the regular TX path, but is needed for DAL flush operations
- * where the original context has been split across suspend/resume.
- *
- * Return: QDF_STATUS_SUCCESS for success, QDF_STATUS_E_FAILURE for failure
- */
-void dp_tx_hw_enqueue_post_process(struct dp_soc *soc,
-				   struct dp_vdev *vdev,
-				   struct dp_tx_desc_s *tx_desc,
-				   struct dp_tx_msdu_info_s *msdu_info,
-				   int hw_enqueue_result);
-#endif /* FEATURE_DAL_DP_SUPPORT */
-
-#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
-/**
- * dp_tx_update_peer_phy_rate_stats() - Accumulate per-CPU TX PHY rate stats
- *     for predictive roaming. Called only when the vdev has opted in and
- *     dst_mcs_idx is valid (must NOT be MCS_INVALID_ARRAY_INDEX).
- *
- * @ts:          TX completion status from HW
- * @txrx_peer:   txrx peer handle
- * @pkt_type:    SW-converted packet type (post hal_2_dp_pkt_type_map)
- * @dst_mcs_idx: MCS array index, caller guarantees validity
- */
-static inline void
-dp_tx_update_peer_phy_rate_stats(struct hal_tx_completion_status *ts,
-				 struct dp_txrx_peer *txrx_peer,
-				 uint8_t pkt_type,
-				 uint8_t dst_mcs_idx)
-{
-	uint64_t tx_phy_rate;
-	uint32_t rix;
-	uint16_t ratecode;
-	uint8_t cpu_id;
-
-	if (!txrx_peer->vdev ||
-	    !txrx_peer->vdev->predictive_roam_stats_enabled)
-		return;
-
-	tx_phy_rate = dp_getrateindex(ts->sgi, dst_mcs_idx, ts->tx_nss,
-				      pkt_type, ts->bw, 0, &rix, &ratecode);
-
-	cpu_id = qdf_get_cpu();
-	qdf_atomic64_add(tx_phy_rate,
-			 &txrx_peer->tx_phy_rate_stats.phy_rate_sum[cpu_id]);
-	qdf_atomic64_inc(&txrx_peer->tx_phy_rate_stats.phy_rate_cnt[cpu_id]);
-}
-#else
-static inline void
-dp_tx_update_peer_phy_rate_stats(struct hal_tx_completion_status *ts,
-				 struct dp_txrx_peer *txrx_peer,
-				 uint8_t pkt_type,
-				 uint8_t dst_mcs_idx)
-{
-}
-#endif /* FEATURE_WLAN_PREDICTIVE_ROAMING */
-
-#ifdef DP_FEATURE_TX_PAGE_POOL
-/**
- * dp_tx_trigger_page_pool_shrink() - Trigger shrink monitor for all vdevs
- * @soc_hdl: soc handle
- * @pdev_id: pdev id
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t pdev_id);
-#else
-static inline QDF_STATUS
-dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* DP_FEATURE_TX_PAGE_POOL */
-#ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
-static inline
-bool dp_tx_comp_loop_pkt_limit_hit(struct dp_soc *soc, int num_reaped,
-				   int max_reap_limit)
-{
-	bool limit_hit = false;
-
-	limit_hit =
-		(num_reaped >= max_reap_limit) ? true : false;
-
-	if (limit_hit)
-		DP_STATS_INC(soc, tx.tx_comp_loop_pkt_limit_hit, 1);
-
-	return limit_hit;
-}
-
-static inline bool dp_tx_comp_enable_eol_data_check(struct dp_soc *soc)
-{
-	return soc->wlan_cfg_ctx->tx_comp_enable_eol_data_check;
-}
-
-static inline int dp_tx_comp_get_loop_pkt_limit(struct dp_soc *soc)
-{
-	struct wlan_cfg_dp_soc_ctxt *cfg = soc->wlan_cfg_ctx;
-
-	return cfg->tx_comp_loop_pkt_limit;
-}
-#else
-static inline
-bool dp_tx_comp_loop_pkt_limit_hit(struct dp_soc *soc, int num_reaped,
-				   int max_reap_limit)
-{
-	return false;
-}
-
-static inline bool dp_tx_comp_enable_eol_data_check(struct dp_soc *soc)
-{
-	return false;
-}
-
-static inline int dp_tx_comp_get_loop_pkt_limit(struct dp_soc *soc)
-{
-	return 0;
-}
-#endif
-
 #endif

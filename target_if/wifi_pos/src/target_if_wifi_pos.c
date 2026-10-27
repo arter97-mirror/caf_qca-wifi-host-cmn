@@ -137,7 +137,7 @@ QDF_STATUS target_if_wifi_pos_get_vht_ch_width(struct wlan_objmgr_psoc *psoc,
 					       enum phy_ch_width *ch_width)
 {
 	struct target_psoc_info *tgt_hdl;
-	uint32_t vht_cap_info;
+	int vht_cap_info;
 
 	*ch_width = CH_WIDTH_INVALID;
 
@@ -294,7 +294,7 @@ static QDF_STATUS target_if_wifi_pos_deinit_ring(uint8_t ring_idx,
 					struct wifi_pos_psoc_priv_obj *priv)
 {
 	target_if_wifi_pos_empty_ring(ring_idx, priv);
-
+	priv->dma_buf_pool[ring_idx] = NULL;
 	hal_srng_cleanup(priv->hal_soc, priv->dma_cfg[ring_idx].srng, 0);
 	qdf_mem_free_consistent(NULL, NULL,
 		priv->dma_cfg[ring_idx].ring_alloc_size,
@@ -302,7 +302,6 @@ static QDF_STATUS target_if_wifi_pos_deinit_ring(uint8_t ring_idx,
 		(qdf_dma_addr_t)priv->dma_cfg[ring_idx].base_paddr_unaligned,
 		0);
 	qdf_mem_free(priv->dma_buf_pool[ring_idx]);
-	priv->dma_buf_pool[ring_idx] = NULL;
 
 	return QDF_STATUS_SUCCESS;
 }

@@ -48,8 +48,6 @@
 #include "linux/genetlink.h"
 #include "wifi_pos_utils_pub.h"
 #endif
-#include "wlan_osif_request_manager.h"
-#include "wmi_unified_param.h"
 
 #ifdef CNSS_GENL
 #define WLAN_CLD80211_MAX_SIZE SKB_WITH_OVERHEAD(8192UL)
@@ -760,7 +758,7 @@ static int  wifi_pos_parse_req(const void *data, int len, int pid,
 	}
 	return status;
 }
-#elif !defined(WLAN_POS_GET_BY_NAME_NOT_SUPPORT)
+#else
 static int wifi_pos_parse_req(struct sk_buff *skb, struct wifi_pos_req_msg *req,
 			      struct wlan_objmgr_psoc **psoc)
 {
@@ -864,59 +862,6 @@ static int wifi_pos_parse_req(struct sk_buff *skb, struct wifi_pos_req_msg *req,
 
 	return 0;
 }
-#else
-static int wifi_pos_parse_req(struct sk_buff *skb, struct wifi_pos_req_msg *req,
-			      struct wlan_objmgr_psoc **psoc)
-{
-	/* SKB->data contains NL msg */
-	/* NLMSG_DATA(nlh) contains ANI msg */
-	struct nlmsghdr *nlh;
-	tAniMsgHdr *msg_hdr;
-	size_t field_info_len;
-
-	nlh = (struct nlmsghdr *)skb->data;
-	if (!nlh) {
-		osif_err("Netlink header null");
-		return OEM_ERR_NULL_MESSAGE_HEADER;
-	}
-
-	if (nlh->nlmsg_len < NLMSG_LENGTH(sizeof(*msg_hdr))) {
-		osif_err("nlmsg_len(%d) and msg_hdr_size(%zu) mismatch",
-			 nlh->nlmsg_len, sizeof(*msg_hdr));
-		return OEM_ERR_INVALID_MESSAGE_LENGTH;
-	}
-
-	msg_hdr = NLMSG_DATA(nlh);
-	if (!msg_hdr) {
-		osif_err("Message header null");
-		return OEM_ERR_NULL_MESSAGE_HEADER;
-	}
-
-	if (nlh->nlmsg_len < NLMSG_LENGTH(sizeof(*msg_hdr) + msg_hdr->length)) {
-		osif_err("nlmsg_len(%d) and animsg_len(%d) mismatch",
-			 nlh->nlmsg_len, msg_hdr->length);
-		return OEM_ERR_INVALID_MESSAGE_LENGTH;
-	}
-
-	req->msg_type = map_ani_msg_req_to_wifi_pos_cmd(
-				(uint32_t)msg_hdr->type);
-	req->rsp_version = WIFI_POS_RSP_V1_FLAT_MEMORY;
-	req->buf_len = msg_hdr->length;
-	req->buf = (uint8_t *)&msg_hdr[1];
-	req->pid = nlh->nlmsg_pid;
-	req->field_info_buf = NULL;
-	req->field_info_buf_len = 0;
-
-	field_info_len = nlh->nlmsg_len -
-			(NLMSG_LENGTH(sizeof(*msg_hdr) + msg_hdr->length));
-	if (field_info_len) {
-		req->field_info_buf = (struct wifi_pos_field_info *)
-				      (req->buf + req->buf_len);
-		req->field_info_buf_len = field_info_len;
-	}
-
-	return 0;
-}
 #endif
 
 #ifdef CNSS_GENL
@@ -986,7 +931,7 @@ static int __os_if_wifi_pos_callback(struct sk_buff *skb)
 	uint8_t err;
 	QDF_STATUS status;
 	struct wifi_pos_req_msg req = {0};
-	struct wlan_objmgr_psoc *psoc = wifi_pos_get_psoc();
+	struct wlan_objmgr_psoc *psoc = NULL;
 
 	osif_debug("enter");
 
@@ -1209,12 +1154,6 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 	 */
 	record_size = nla_total_size(2 * nla_total_size(ETH_ALEN));
 
-	if (num_pasn_peers > WLAN_MAX_11AZ_PEERS) {
-		osif_err("Invalid num_pasn_peers: %d, max: %d)", num_pasn_peers,
-			 WLAN_MAX_11AZ_PEERS);
-		return QDF_STATUS_E_INVAL;
-	}
-
 	/* QCA_WLAN_VENDOR_ATTR_PASN_PEERS nest */
 	len += nla_total_size(num_pasn_peers * record_size);
 
@@ -1404,12 +1343,6 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 	 */
 	record_size = nla_total_size(2 * nla_total_size(ETH_ALEN));
 
-	if (num_pasn_peers > WLAN_MAX_11AZ_PEERS) {
-		osif_err("Invalid num_pasn_peers: %d, max: %d)", num_pasn_peers,
-			 WLAN_MAX_11AZ_PEERS);
-		return QDF_STATUS_E_INVAL;
-	}
-
 	/* QCA_WLAN_VENDOR_ATTR_PASN_PEERS nest */
 	len += nla_total_size(num_pasn_peers * record_size);
 
@@ -1547,288 +1480,3 @@ nla_put_failure:
 }
 #endif
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
-
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
-	defined(CFG80211_PD_SUPPORT)
-
-static struct osif_wifi_pos_legacy_ops *osif_wifi_pos_legacy_cb;
-
-void osif_wifi_pos_set_legacy_cb(struct osif_wifi_pos_legacy_ops *legacy_ops)
-{
-	osif_wifi_pos_legacy_cb = legacy_ops;
-}
-
-void osif_wifi_pos_reset_legacy_cb(void)
-{
-	osif_wifi_pos_legacy_cb = NULL;
-}
-
-struct osif_wifi_pos_legacy_ops *osif_wifi_pos_get_legacy_cb(void)
-{
-	return osif_wifi_pos_legacy_cb;
-}
-
-QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
-						 void *cookie,
-						 uint8_t peer_create_status)
-{
-	struct osif_request *request;
-	uint8_t *priv;
-
-	request = osif_request_get(cookie);
-	if (!request) {
-		osif_debug("Obsolete PASN peer create request (cookie:0x%pK)",
-			   cookie);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	priv = osif_request_priv(request);
-	*priv = peer_create_status;
-	osif_debug("PASN NB Peer create completed! status:%d",
-		   peer_create_status);
-
-	osif_request_complete(request);
-	osif_request_put(request);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-QDF_STATUS
-os_if_wifi_pos_usd_peer_delete_complete(struct wlan_objmgr_psoc *psoc,
-					void *cookie)
-{
-	struct osif_request *request;
-
-	request = osif_request_get(cookie);
-	if (!request) {
-		osif_debug("Obsolete USD peer delete request (cookie:0x%pK)",
-			   cookie);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	osif_debug("USD peer delete completed");
-	osif_request_complete(request);
-	osif_request_put(request);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * osif_pmsr_wmi_preamble_to_nl() - Map WMI preamble to NL80211 preamble
- * @preamble: NL80211 preamble value
- *
- * Return: WMI_HOST_RATE_PREAMBLE value
- */
-static enum nl80211_preamble
-osif_pmsr_wmi_preamble_to_nl(uint32_t preamble)
-{
-	switch (preamble) {
-	case WMI_HOST_RATE_PREAMBLE_HT:
-		return NL80211_PREAMBLE_HT;
-	case WMI_HOST_RATE_PREAMBLE_VHT:
-		return NL80211_PREAMBLE_VHT;
-	case WMI_HOST_RATE_PREAMBLE_HE:
-		return NL80211_PREAMBLE_HE;
-	default:
-		return NL80211_PREAMBLE_HE;
-	}
-}
-
-static void
-osif_rtt_populate_rate_info(struct rate_info *rate, uint32_t preamble,
-			    uint8_t mcs, uint8_t nss, uint8_t bw, uint8_t gi)
-{
-	switch (preamble) {
-	case WMI_HOST_RATE_PREAMBLE_HT:
-		rate->flags |= RATE_INFO_FLAGS_MCS;
-		break;
-	case WMI_HOST_RATE_PREAMBLE_VHT:
-		rate->flags |= RATE_INFO_FLAGS_VHT_MCS;
-		break;
-	case WMI_HOST_RATE_PREAMBLE_HE:
-		rate->flags |= RATE_INFO_FLAGS_HE_MCS;
-		if (gi == 1)
-			rate->he_gi = 0; /* 0.8 us */
-		else if (gi == 2)
-			rate->he_gi = 1; /* 1.6 us */
-		else if (gi == 3)
-			rate->he_gi = 2; /* 3.2 us */
-		break;
-	}
-
-	rate->mcs = mcs;
-	rate->nss = nss;
-
-	switch (bw) {
-	case 1:
-		rate->bw = RATE_INFO_BW_40;
-		break;
-	case 2:
-		rate->bw = RATE_INFO_BW_80;
-		break;
-	case 3:
-		rate->bw = RATE_INFO_BW_160;
-		break;
-	case 4:
-		rate->bw = RATE_INFO_BW_320;
-		break;
-	case 0:
-	default:
-		rate->bw = RATE_INFO_BW_20;
-		break;
-	}
-}
-
-QDF_STATUS
-os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
-					 struct wifi_pos_peer_meas_report *report)
-{
-	struct wlan_objmgr_vdev *vdev;
-	struct vdev_osif_priv *osif_priv;
-	struct wireless_dev *wdev;
-	struct cfg80211_pmsr_result pmsr_result;
-	struct cfg80211_pmsr_request request = {0};
-	struct osif_wifi_pos_legacy_ops *legacy_cb;
-	struct wiphy *wiphy;
-	bool req_cleared = false;
-	uint8_t i;
-
-	if (!psoc || !report) {
-		osif_err("psoc or report is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, report->vdev_id,
-						    WLAN_WIFI_POS_CORE_ID);
-	if (!vdev) {
-		osif_err("vdev %d not found", report->vdev_id);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	osif_priv = wlan_vdev_get_ospriv(vdev);
-	if (!osif_priv || !osif_priv->wdev) {
-		osif_err("OSIF priv or wdev is NULL");
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	wiphy = osif_priv->wdev->wiphy;
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
-
-	legacy_cb = osif_wifi_pos_get_legacy_cb();
-	if (!legacy_cb || !legacy_cb->get_pmsr_req_legacy_cb) {
-		osif_err("legacy callback is not registered");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	wdev = legacy_cb->get_pmsr_req_legacy_cb(wiphy, &request);
-	if (!wdev) {
-		osif_debug("No active pmsr_req; result event arrived after session teardown");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	for (i = 0; i < report->num_peers; i++) {
-		struct wifi_pos_peer_meas_result *res = &report->peer_result[i];
-
-		qdf_mem_zero(&pmsr_result, sizeof(pmsr_result));
-
-		/* Populate host address */
-		qdf_mem_copy(pmsr_result.addr, res->peer_mac.bytes, ETH_ALEN);
-
-		pmsr_result.host_time = ktime_get_boottime_ns();
-		pmsr_result.ap_tsf_valid = res->ap_tsf_valid;
-		pmsr_result.final = res->final;
-
-		pmsr_result.type = NL80211_PMSR_TYPE_FTM;
-		if (res->status == WIFI_POS_RTT_PEER_MEAS_STATUS_OK)
-			pmsr_result.status = NL80211_PMSR_STATUS_SUCCESS;
-		else
-			pmsr_result.status = NL80211_PMSR_STATUS_FAILURE;
-
-		/* Populate FTM-specific fields */
-		pmsr_result.ftm.burst_index = res->burst_idx;
-		pmsr_result.ftm.num_bursts_exp = res->burst_count;
-		pmsr_result.ftm.burst_duration = res->burst_duration;
-		pmsr_result.ftm.burst_period = res->burst_period;
-		if (res->meas_per_aw)
-			pmsr_result.ftm.ftms_per_burst = res->meas_per_aw;
-		else
-			pmsr_result.ftm.ftms_per_burst = res->ftms_per_burst;
-
-		pmsr_result.ftm.preamble =
-			osif_pmsr_wmi_preamble_to_nl(res->preamble);
-		pmsr_result.ftm.preamble_valid = 1;
-		pmsr_result.ftm.chan_width =
-			wlan_cfg80211_get_nl80211_chwidth(res->channel_bw);
-		pmsr_result.ftm.chan_width_valid = 1;
-
-		pmsr_result.ftm.rssi_avg = res->rssi_avg;
-		pmsr_result.ftm.rssi_avg_valid = 1;
-		pmsr_result.ftm.rssi_spread = res->rssi_spread;
-		pmsr_result.ftm.rssi_spread_valid = 1;
-		pmsr_result.ftm.rtt_avg = res->rtt_avg;
-		pmsr_result.ftm.rtt_avg_valid = 1;
-		pmsr_result.ftm.rtt_variance = res->rtt_variance;
-		pmsr_result.ftm.rtt_variance_valid = 1;
-		pmsr_result.ftm.rtt_spread = res->rtt_spread;
-		pmsr_result.ftm.rtt_spread_valid = 1;
-		pmsr_result.ftm.dist_avg = res->dist_avg_mm;
-		pmsr_result.ftm.dist_avg_valid = 1;
-		pmsr_result.ftm.dist_variance = res->dist_variance_mm;
-		pmsr_result.ftm.dist_variance_valid = 1;
-		pmsr_result.ftm.dist_spread = res->dist_spread_mm;
-		pmsr_result.ftm.dist_spread_valid = 1;
-
-		pmsr_result.ftm.num_tx_spatial_streams = res->num_tx_sts;
-		pmsr_result.ftm.num_tx_spatial_streams_valid = 1;
-		pmsr_result.ftm.num_rx_spatial_streams = res->num_rx_sts;
-		pmsr_result.ftm.num_rx_spatial_streams_valid = 1;
-		pmsr_result.ftm.tx_ltf_repetition_count =
-					res->tx_ltf_repetition_count;
-		pmsr_result.ftm.tx_ltf_repetition_count_valid = 1;
-		pmsr_result.ftm.rx_ltf_repetition_count =
-					res->rx_ltf_repetition_count;
-		pmsr_result.ftm.rx_ltf_repetition_count_valid = 1;
-
-		pmsr_result.ftm.max_time_between_measurements =
-					res->max_time_between_meas;
-		pmsr_result.ftm.max_time_between_measurements_valid = 1;
-		pmsr_result.ftm.min_time_between_measurements =
-					res->min_time_between_meas;
-		pmsr_result.ftm.min_time_between_measurements_valid = 1;
-
-		pmsr_result.ftm.num_ftmr_successes = res->num_ftmr_successes;
-		pmsr_result.ftm.num_ftmr_successes_valid = 1;
-		pmsr_result.ftm.num_ftmr_attempts = res->num_ftmr_attempts;
-		pmsr_result.ftm.num_ftmr_attempts_valid = 1;
-
-		pmsr_result.ftm.nominal_time = res->nominal_time;
-		pmsr_result.ftm.nominal_time_valid = 1;
-		pmsr_result.ftm.availability_window =
-				res->availability_window_duration;
-		pmsr_result.ftm.availability_window_valid = 1;
-
-		pmsr_result.ftm.is_delayed_lmr = res->is_delayed_lmr;
-
-		osif_rtt_populate_rate_info(&pmsr_result.ftm.tx_rate,
-					    res->preamble, res->tx_mcs,
-					    res->tx_nss, res->tx_bw,
-					    res->tx_gi);
-
-		osif_rtt_populate_rate_info(&pmsr_result.ftm.rx_rate,
-					    res->preamble, res->rx_mcs,
-					    res->rx_nss, res->rx_bw,
-					    res->rx_gi);
-
-		cfg80211_pmsr_report(wdev, &request, &pmsr_result,
-				     qdf_mem_malloc_flags());
-
-		if (res->final && !req_cleared && legacy_cb->pmsr_req_clear_cb) {
-			legacy_cb->pmsr_req_clear_cb(wiphy);
-			req_cleared = true;
-		}
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && CFG80211_PD_SUPPORT */

@@ -936,7 +936,7 @@ static inline void target_psoc_set_total_mac_phy_cnt
  *
  * API to get total_mac_phy
  *
- * Return: uint8_t
+ * Return: unint8_t
  */
 static inline uint8_t target_psoc_get_total_mac_phy_cnt(
 		struct target_psoc_info *psoc_info)
@@ -1086,7 +1086,7 @@ static inline void target_psoc_set_num_mem_chunks(
  *
  * API to get total_mac_phy
  *
- * Return: uint8_t
+ * Return: unint8_t
  */
 static inline uint32_t target_psoc_get_num_mem_chunks
 		(struct target_psoc_info *psoc_info)
@@ -2494,31 +2494,14 @@ static inline int32_t target_if_get_ht_cap_info
 }
 
 /**
- * target_if_get_vht_supp_mcs() - get vht MCS capabilities
- * @target_psoc_info:  pointer to structure target_psoc_info
- *
- * API to get vht MCS capabilities from the target caps
- *
- * Return: uint32_t
- */
-static inline
-uint32_t target_if_get_vht_supp_mcs(struct target_psoc_info *target_psoc_info)
-{
-	if (!target_psoc_info)
-		return 0;
-
-	return target_psoc_info->info.target_caps.vht_supp_mcs;
-}
-
-/**
  * target_if_get_vht_cap_info() - get vht capabilities info
  * @target_psoc_info:  pointer to structure target_psoc_info
  *
  * API to get vht capabilities info from the target caps
  *
- * Return: uint32_t
+ * Return: int32_t
  */
-static inline uint32_t target_if_get_vht_cap_info
+static inline int32_t target_if_get_vht_cap_info
 		(struct target_psoc_info *target_psoc_info)
 {
 	if (!target_psoc_info)
@@ -2647,34 +2630,6 @@ uint16_t target_if_res_cfg_get_num_max_mlo_link(struct target_psoc_info *tgt_hdl
 
 	return tgt_hdl->info.wlan_res_cfg.num_max_mlo_link_per_ml_bss;
 }
-
-static inline
-uint32_t target_psoc_get_max_ml_sap_num_bss(struct target_psoc_info *tgt_hdl)
-{
-	if (!tgt_hdl)
-		return 0;
-
-	return tgt_hdl->info.service_ext2_param.max_ml_sap_num_bss;
-}
-
-static inline
-uint32_t target_psoc_get_max_ml_sta_num_bss(struct target_psoc_info *tgt_hdl)
-{
-	if (!tgt_hdl)
-		return 0;
-
-	return tgt_hdl->info.service_ext2_param.max_ml_sta_num_bss;
-}
-
-static inline
-uint32_t target_psoc_get_max_ml_bss_num(struct target_psoc_info *tgt_hdl)
-{
-	if (!tgt_hdl)
-		return 0;
-
-	return tgt_hdl->info.service_ext2_param.max_ml_bss_num;
-}
-
 #else
 static inline
 uint32_t target_psoc_get_num_max_mlo_link(struct target_psoc_info *tgt_hdl)
@@ -2683,30 +2638,10 @@ uint32_t target_psoc_get_num_max_mlo_link(struct target_psoc_info *tgt_hdl)
 }
 
 static inline
-uint16_t target_if_res_cfg_get_num_max_mlo_link(
-				struct target_psoc_info *tgt_hdl)
+uint16_t target_if_res_cfg_get_num_max_mlo_link(struct target_psoc_info *tgt_hdl)
 {
 	return 0;
 }
-
-static inline
-uint32_t target_psoc_get_max_ml_sap_num_bss(struct target_psoc_info *tgt_hdl)
-{
-	return 0;
-}
-
-static inline
-uint32_t target_psoc_get_max_ml_sta_num_bss(struct target_psoc_info *tgt_hdl)
-{
-	return 0;
-}
-
-static inline
-uint32_t target_psoc_get_max_ml_bss_num(struct target_psoc_info *tgt_hdl)
-{
-	return 0;
-}
-
 #endif
 
 #ifdef WLAN_FEATURE_MULTI_LINK_SAP
@@ -3110,23 +3045,6 @@ static inline uint8_t target_psoc_get_target_dp_peer_meta_data_ver(
 	return psoc_info->info.service_ext2_param.dp_peer_meta_data_ver;
 }
 
-/**
- * target_psoc_get_target_dp_peer_meta_data_ext_ver() - Get DP RX peer
- * metadata extended version reported by target
- *
- * @psoc_info:  pointer to structure target_psoc_info
- *
- * Return: value of DP RX peer metadata extended version
- */
-static inline uint8_t target_psoc_get_target_dp_peer_meta_data_ext_ver(
-				struct target_psoc_info *psoc_info)
-{
-	if (!psoc_info)
-		return 0;
-
-	return psoc_info->info.service_ext2_param.dp_peer_meta_data_ext_ver;
-}
-
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 #define PDEV_INVALID_HW_LINK_ID 0xFFFF
 
@@ -3340,9 +3258,6 @@ target_if_get_fw_link_reconfig_support(struct wlan_objmgr_psoc *psoc)
 		return false;
 
 	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
-	if (!mac_phy_cap)
-		return false;
-
 	return mac_phy_cap->mldcap.link_reconfig_operation_support;
 }
 
@@ -3365,133 +3280,7 @@ target_if_get_fw_btm_multi_ap_support(struct wlan_objmgr_psoc *psoc)
 
 	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
 
-	if (!mac_phy_cap)
-		return false;
-
 	return mac_phy_cap->ext_mldcap.btm_recommended_for_multi_ap;
-}
-
-/**
- * target_if_get_fw_multi_link_power_mgmt_support() - Get if FW supports
- * multi link power management or not
- * @psoc: objmgr psoc
- *
- * Return: true if multi link power management is supported else false
- */
-static inline bool
-target_if_get_fw_multi_link_power_mgmt_support(struct wlan_objmgr_psoc *psoc)
-{
-	struct target_psoc_info *tgt_hdl;
-	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
-
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
-	if (!tgt_hdl)
-		return false;
-
-	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
-	if (!mac_phy_cap)
-		return false;
-
-	return mac_phy_cap->ext_mldcap.multi_link_power_mgmt_support;
-}
-
-/**
- * target_if_get_fw_enhanced_group_key_delivery_support() - Get if FW
- * supports enhanced group key delivery or not
- * @psoc: objmgr psoc
- *
- * Return: true if enhanced group key delivery is supported else false
- */
-static inline bool
-target_if_get_fw_enhanced_group_key_delivery_support(
-		struct wlan_objmgr_psoc *psoc)
-{
-	struct target_psoc_info *tgt_hdl;
-	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
-
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
-	if (!tgt_hdl)
-		return false;
-
-	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
-	if (!mac_phy_cap)
-		return false;
-
-	return mac_phy_cap->ext_mldcap.enhanced_group_key_delivery_support;
-}
-
-/**
- * target_if_get_fw_max_supported_dl_ba_bitmap_length() - Get the max
- * supported DL BA bitmap length advertised by FW
- * @psoc: objmgr psoc
- *
- * Return: max supported DL BA bitmap length, 0 if unavailable
- */
-static inline uint8_t
-target_if_get_fw_max_supported_dl_ba_bitmap_length(
-		struct wlan_objmgr_psoc *psoc)
-{
-	struct target_psoc_info *tgt_hdl;
-	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
-
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
-	if (!tgt_hdl)
-		return 0;
-
-	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
-	if (!mac_phy_cap)
-		return 0;
-
-	return mac_phy_cap->ext_mldcap.max_supported_dl_ba_bitmap_length;
-}
-
-/**
- * target_if_get_fw_dl_dual_ba_support() - Get if FW supports DL dual BA
- * or not
- * @psoc: objmgr psoc
- *
- * Return: true if DL dual BA is supported else false
- */
-static inline bool
-target_if_get_fw_dl_dual_ba_support(struct wlan_objmgr_psoc *psoc)
-{
-	struct target_psoc_info *tgt_hdl;
-	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
-
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
-	if (!tgt_hdl)
-		return false;
-
-	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
-	if (!mac_phy_cap)
-		return false;
-
-	return mac_phy_cap->ext_mldcap.dl_dual_ba_support;
-}
-
-/**
- * target_if_get_fw_negotiated_ttlm_discard_exception_support() - Get if FW
- * supports negotiated TTLM discard exception or not
- * @psoc: objmgr psoc
- *
- * Return: true if negotiated TTLM discard exception is supported else false
- */
-static inline bool
-target_if_get_fw_negotiated_ttlm_discard_exception_support(
-		struct wlan_objmgr_psoc *psoc)
-{
-	struct target_psoc_info *tgt_hdl;
-	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
-
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
-	if (!tgt_hdl)
-		return false;
-
-	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
-	if (!mac_phy_cap)
-		return false;
-
-	return mac_phy_cap->ext_mldcap.negotiated_ttlm_discard_exception_support;
 }
 #endif
 

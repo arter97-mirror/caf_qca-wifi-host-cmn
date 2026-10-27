@@ -25,7 +25,6 @@
 #define _WLAN_OBJMGR_VDEV_OBJ_H_
 
 #include "qdf_atomic.h"
-#include "qdf_delayed_work.h"
 #include "qdf_list.h"
 #include "qdf_lock.h"
 #include "qdf_types.h"
@@ -244,9 +243,6 @@
  /* MLO link rejection handling is in progress on this VDEV */
 #define WLAN_VDEV_OP_MLO_LINK_REJECTION_IN_PROGRESS 0x04000000
 
-/* MLO Link recfg mac update in progress on this VDEV */
-#define WLAN_VDEV_OP_LNK_CFG_UPDATE_MAC_IN_PROGRESS 0x08000000
-
  /* flag to indicate disconnect only legacy peers due to moving to DFS channel
   * from non-DFS channel
   */
@@ -310,7 +306,7 @@ struct wlan_vdev_create_params {
 	uint8_t mataddr[QDF_MAC_ADDR_SIZE];
 	uint8_t mldaddr[QDF_MAC_ADDR_SIZE];
 	bool mlo_sap_sync_disable;
-#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
+#ifdef FEATURE_WLAN_SUPPORT_USD
 	uint32_t wfd_mode;
 #endif
 };
@@ -348,42 +344,12 @@ struct wlan_channel {
 };
 
 /**
- * struct vdev_op_info - VDEV operational mode and bandwidth info
- * @op_bw: Current operating bandwidth (updated by CSA/OMN)
- * @max_supported_bw: Maximum capability (min of self/peer/regulatory)
- * @assoc_bw: Bandwidth at association time (static)
- * @user_defined_bw: User-configured bandwidth limit
- * @sta_max_ch_width: STA's maximum supported channel width capability.
- *                    This represents the STA's true maximum bandwidth
- *                    capability independent of AP's current operational
- *                    bandwidth. Used for advertising in Association Request
- *                    to allow AP to make informed bandwidth decisions.
- * @dot11_mode: Negotiated 802.11 standard (11n/ac/ax/be),
- *              see enum mlme_dot11_mode
- * @phymode: Physical layer mode (derived from dot11_mode + op_bw)
- * @puncture_bitmap: Puncture bitmap
- */
-struct vdev_op_info {
-	enum phy_ch_width    op_bw;
-	enum phy_ch_width    max_supported_bw;
-	enum phy_ch_width    assoc_bw;
-	enum phy_ch_width    user_defined_bw;
-	enum phy_ch_width    sta_max_ch_width;
-	uint32_t             dot11_mode;
-	enum wlan_phymode    phymode;
-#ifdef WLAN_FEATURE_11BE
-	uint16_t             puncture_bitmap;
-#endif
-};
-
-/**
  * struct wlan_objmgr_vdev_mlme - VDEV MLME specific sub structure
  * @vdev_opmode:        Opmode of VDEV
  * @mlme_state:         VDEV MLME SM state
  * @mlme_substate:      VDEV MLME SM substate
  * @bss_chan:           BSS channel
  * @des_chan:           Desired channel, for STA Desired may not be used
- * @op_info:            VDEV operational bandwidth and mode information
  * @vdev_caps:          VDEV capabilities
  * @vdev_feat_caps:     VDEV feature caps
  * @vdev_feat_ext_caps: VDEV Extended feature caps
@@ -403,11 +369,7 @@ struct vdev_op_info {
  * WLAN_VDEV_FEXT2_MLO feature flag in vdev MLME
  * @mlo_sap_sync_disable: flag to disable mlo sap vdev sync
  * @rsno_gen_supported: RSNO generation supported for connection
- * @okc_pmkid_in_assoc: OKC PMKID-in-AssocReq enabled for this connection
- * @security_profile_enabled: Security Profile element enabled for connection
  * @wfd_mode: WFD mode
- * @is_eppke_allowed: flag indicating userspace has requested EPPKE
- *                    authentication for this connection
  */
 struct wlan_objmgr_vdev_mlme {
 	enum QDF_OPMODE vdev_opmode;
@@ -415,7 +377,6 @@ struct wlan_objmgr_vdev_mlme {
 	enum wlan_vdev_state mlme_substate;
 	struct wlan_channel *bss_chan;
 	struct wlan_channel *des_chan;
-	struct vdev_op_info op_info;
 	uint32_t vdev_caps;
 	uint32_t vdev_feat_caps;
 	uint32_t vdev_feat_ext_caps;
@@ -443,15 +404,8 @@ struct wlan_objmgr_vdev_mlme {
 #endif
 #endif
 	uint8_t rsno_gen_supported;
-	bool okc_pmkid_in_assoc;
-#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
+#ifdef FEATURE_WLAN_SUPPORT_USD
 	uint32_t wfd_mode;
-#endif
-#ifdef WLAN_FEATURE_11BI_SECURITY
-	bool is_eppke_allowed;
-#endif
-#ifdef WLAN_FEATURE_SECURITY_PROFILE
-	bool security_profile_enabled;
 #endif
 };
 
@@ -516,7 +470,7 @@ struct wlan_objmgr_vdev_objmgr {
  * @obj_state:      VDEV object state
  * @vdev_lock:      VDEV lock
  * @mlo_dev_ctx:    MLO device context
- * @twt_work:	    TWT delayed work
+ * @twt_work:	    TWT work
  * @is_ap_suspend:	AP suspend state
  */
 struct wlan_objmgr_vdev {
@@ -532,7 +486,7 @@ struct wlan_objmgr_vdev {
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
 #endif
 #ifdef WLAN_SUPPORT_TWT
-	struct qdf_delayed_work twt_work;
+	qdf_work_t twt_work;
 #endif
 	qdf_atomic_t is_ap_suspend;
 };
@@ -902,249 +856,6 @@ static inline enum QDF_OPMODE wlan_vdev_mlme_get_opmode(
 	return vdev->vdev_mlme.vdev_opmode;
 }
 
-/**
- * wlan_vdev_mlme_set_op_bw() - set vdev operational bandwidth
- * @vdev: VDEV object
- * @bw: operational bandwidth
- *
- * API to set operational bandwidth of vdev object
- *
- * Return: void
- */
-static inline void wlan_vdev_mlme_set_op_bw(struct wlan_objmgr_vdev *vdev,
-					    enum phy_ch_width bw)
-{
-	vdev->vdev_mlme.op_info.op_bw = bw;
-}
-
-/**
- * wlan_vdev_mlme_get_op_bw() - get vdev operational bandwidth
- * @vdev: VDEV object
- *
- * API to get operational bandwidth of vdev object
- *
- * Return: operational bandwidth
- */
-static inline enum phy_ch_width wlan_vdev_mlme_get_op_bw(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.op_info.op_bw;
-}
-
-/**
- * wlan_vdev_mlme_set_max_supported_bw() - set vdev max supported bandwidth
- * @vdev: VDEV object
- * @bw: max supported bandwidth
- *
- * API to set max supported bandwidth of vdev object
- *
- * Return: void
- */
-static inline void wlan_vdev_mlme_set_max_supported_bw(
-					struct wlan_objmgr_vdev *vdev,
-					enum phy_ch_width bw)
-{
-	vdev->vdev_mlme.op_info.max_supported_bw = bw;
-}
-
-/**
- * wlan_vdev_mlme_get_max_supported_bw() - get vdev max supported bandwidth
- * @vdev: VDEV object
- *
- * API to get max supported bandwidth of vdev object
- *
- * Return: max supported bandwidth
- */
-static inline enum phy_ch_width wlan_vdev_mlme_get_max_supported_bw(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.op_info.max_supported_bw;
-}
-
-/**
- * wlan_vdev_mlme_set_assoc_bw() - set vdev association bandwidth
- * @vdev: VDEV object
- * @bw: association bandwidth
- *
- * API to set association bandwidth of vdev object
- *
- * Return: void
- */
-static inline void wlan_vdev_mlme_set_assoc_bw(struct wlan_objmgr_vdev *vdev,
-					       enum phy_ch_width bw)
-{
-	vdev->vdev_mlme.op_info.assoc_bw = bw;
-}
-
-/**
- * wlan_vdev_mlme_get_assoc_bw() - get vdev association bandwidth
- * @vdev: VDEV object
- *
- * API to get association bandwidth of vdev object
- *
- * Return: association bandwidth
- */
-static inline enum phy_ch_width wlan_vdev_mlme_get_assoc_bw(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.op_info.assoc_bw;
-}
-
-/**
- * wlan_vdev_mlme_set_user_defined_bw() - set vdev user defined bandwidth
- * @vdev: VDEV object
- * @bw: user defined bandwidth
- *
- * API to set user defined bandwidth of vdev object
- *
- * Return: void
- */
-static inline void wlan_vdev_mlme_set_user_defined_bw(
-					struct wlan_objmgr_vdev *vdev,
-					enum phy_ch_width bw)
-{
-	vdev->vdev_mlme.op_info.user_defined_bw = bw;
-}
-
-/**
- * wlan_vdev_mlme_get_user_defined_bw() - get vdev user defined bandwidth
- * @vdev: VDEV object
- *
- * API to get user defined bandwidth of vdev object
- *
- * Return: user defined bandwidth
- */
-static inline enum phy_ch_width wlan_vdev_mlme_get_user_defined_bw(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.op_info.user_defined_bw;
-}
-
-/**
- * wlan_vdev_mlme_set_sta_max_ch_width() - set vdev STA max channel width
- * @vdev: VDEV object
- * @bw: STA maximum channel width
- *
- * API to set STA maximum channel width of vdev object. This represents
- * the STA's true maximum bandwidth capability independent of AP's current
- * operational bandwidth.
- *
- * Return: void
- */
-static inline void wlan_vdev_mlme_set_sta_max_ch_width(
-					struct wlan_objmgr_vdev *vdev,
-					enum phy_ch_width bw)
-{
-	vdev->vdev_mlme.op_info.sta_max_ch_width = bw;
-}
-
-/**
- * wlan_vdev_mlme_get_sta_max_ch_width() - get vdev STA max channel width
- * @vdev: VDEV object
- *
- * API to get STA maximum channel width of vdev object. This represents
- * the STA's true maximum bandwidth capability independent of AP's current
- * operational bandwidth.
- *
- * Return: STA maximum channel width
- */
-static inline enum phy_ch_width wlan_vdev_mlme_get_sta_max_ch_width(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.op_info.sta_max_ch_width;
-}
-
-/**
- * wlan_vdev_mlme_set_dot11_mode() - set vdev dot11 mode
- * @vdev: VDEV object
- * @mode: dot11 mode
- *
- * API to set dot11 mode of vdev object
- *
- * Return: void
- */
-static inline void wlan_vdev_mlme_set_dot11_mode(
-					struct wlan_objmgr_vdev *vdev,
-					uint32_t mode)
-{
-	vdev->vdev_mlme.op_info.dot11_mode = mode;
-}
-
-/**
- * wlan_vdev_mlme_get_dot11_mode() - get vdev dot11 mode
- * @vdev: VDEV object
- *
- * API to get dot11 mode of vdev object
- *
- * Return: dot11 mode
- */
-static inline uint32_t wlan_vdev_mlme_get_dot11_mode(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.op_info.dot11_mode;
-}
-
-/**
- * wlan_vdev_mlme_set_phymode() - set vdev phymode
- * @vdev: VDEV object
- * @phymode: phymode
- *
- * API to set phymode of vdev object
- *
- * Return: void
- */
-static inline void wlan_vdev_mlme_set_phymode(struct wlan_objmgr_vdev *vdev,
-					      enum wlan_phymode phymode)
-{
-	vdev->vdev_mlme.op_info.phymode = phymode;
-}
-
-/**
- * wlan_vdev_mlme_get_phymode() - get vdev phymode
- * @vdev: VDEV object
- *
- * API to get phymode of vdev object
- *
- * Return: phymode
- */
-static inline enum wlan_phymode wlan_vdev_mlme_get_phymode(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.op_info.phymode;
-}
-
-#ifdef WLAN_FEATURE_11BE
-/**
- * wlan_vdev_mlme_set_puncture_bitmap() - set vdev puncture bitmap
- * @vdev: VDEV object
- * @puncture_bitmap: puncture bitmap
- *
- * API to set puncture bitmap of vdev object
- *
- * Return: void
- */
-static inline void wlan_vdev_mlme_set_puncture_bitmap(
-					struct wlan_objmgr_vdev *vdev,
-					uint16_t puncture_bitmap)
-{
-	vdev->vdev_mlme.op_info.puncture_bitmap = puncture_bitmap;
-}
-
-/**
- * wlan_vdev_mlme_get_puncture_bitmap() - get vdev puncture bitmap
- * @vdev: VDEV object
- *
- * API to get puncture bitmap of vdev object
- *
- * Return: puncture bitmap
- */
-static inline uint16_t wlan_vdev_mlme_get_puncture_bitmap(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.op_info.puncture_bitmap;
-}
-#endif
-
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_MULTI_LINK_SAP)
 /**
  * wlan_vdev_mlme_set_mlo_sap_sync_disable() - set mlo sap sync disable flag
@@ -1218,78 +929,6 @@ wlan_vdev_get_rsno_gen_supported(struct wlan_objmgr_vdev *vdev)
 {
 	return vdev->vdev_mlme.rsno_gen_supported;
 }
-
-/**
- * wlan_vdev_set_okc_pmkid_in_assoc() - set OKC PMKID-in-AssocReq for connection
- * @vdev: VDEV object
- * @val: true if OKC PMKID-in-AssocReq is enabled for this connection
- *
- * API to set per-connect OKC PMKID-in-AssocReq flag on the vdev
- *
- * Return: void
- */
-static inline void
-wlan_vdev_set_okc_pmkid_in_assoc(struct wlan_objmgr_vdev *vdev, bool val)
-{
-	vdev->vdev_mlme.okc_pmkid_in_assoc = val;
-}
-
-/**
- * wlan_vdev_get_okc_pmkid_in_assoc() - get OKC PMKID-in-AssocReq flag
- * @vdev: VDEV object
- *
- * API to get per-connect OKC PMKID-in-AssocReq flag from the vdev
- *
- * Return: true if OKC PMKID-in-AssocReq is enabled for this connection
- */
-static inline bool
-wlan_vdev_get_okc_pmkid_in_assoc(struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.okc_pmkid_in_assoc;
-}
-
-/**
- * wlan_vdev_set_eppke_allowed() - set EPPKE authentication is allowed for the
- * connection
- * @vdev: VDEV object
- * @val: EPPKE allowed flag
- *
- * API to set whether EPPKE authentication is allowed for connection
- *
- * Return: void
- */
-#ifdef WLAN_FEATURE_11BI_SECURITY
-static inline void
-wlan_vdev_set_eppke_allowed(struct wlan_objmgr_vdev *vdev, uint8_t val)
-{
-	vdev->vdev_mlme.is_eppke_allowed = val;
-}
-
-/**
- * wlan_vdev_is_eppke_allowed() - check if EPPKE authentication is allowed
- * @vdev: VDEV object
- *
- * API to get whether EPPKE authentication is allowed for connection
- *
- * Return: true if EPPKE authentication is allowed, false otherwise
- */
-static inline bool
-wlan_vdev_is_eppke_allowed(struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.is_eppke_allowed;
-}
-#else
-static inline void
-wlan_vdev_set_eppke_allowed(struct wlan_objmgr_vdev *vdev, uint8_t val)
-{
-}
-
-static inline bool
-wlan_vdev_is_eppke_allowed(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_11BI_SECURITY */
 
 /**
  * wlan_vdev_mlme_set_macaddr() - set vdev macaddr
@@ -2243,7 +1882,7 @@ static inline bool wlan_vdev_mlme_is_mlo_ap_sync_disabled(
 /**
  * wlan_vdev_mlme_set_epcs_flag() - Set epcs flag for vdev
  * @vdev: VDEV object
- * @flag: True or False
+ * @flag: True or Flase
  *
  * Return: void
  */
@@ -2260,7 +1899,7 @@ bool wlan_vdev_mlme_get_epcs_flag(struct wlan_objmgr_vdev *vdev);
 /**
  * wlan_vdev_mlme_set_user_dis_eht_flag() - Set user disable eht flag for vdev
  * @vdev: VDEV object
- * @flag: True or False
+ * @flag: True or Flase
  *
  * Return: void
  */
@@ -2399,53 +2038,6 @@ wlan_vdev_mlme_is_mlo_link_rejection_in_progress(struct wlan_objmgr_vdev *vdev)
 	return wlan_vdev_mlme_op_flags_get(vdev, flag);
 }
 
-/**
- * wlan_vdev_mlme_set_link_recfg_mac_update_in_progress() - Set link recfg mac
- * address update in progress flag for VDEV.
- * @vdev: VDEV object manager.
- *
- * Return: void
- */
-static inline void
-wlan_vdev_mlme_set_link_recfg_mac_update_in_progress(
-					struct wlan_objmgr_vdev *vdev)
-{
-	unsigned long flag = WLAN_VDEV_OP_LNK_CFG_UPDATE_MAC_IN_PROGRESS;
-
-	wlan_vdev_mlme_op_flags_set(vdev, flag);
-}
-
-/**
- * wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress() - Clear link recfg
- * mac address update in progress flag for VDEV.
- * @vdev: VDEV object manager
- *
- * Return: void
- */
-static inline void
-wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress(
-					struct wlan_objmgr_vdev *vdev)
-{
-	unsigned long flag = WLAN_VDEV_OP_LNK_CFG_UPDATE_MAC_IN_PROGRESS;
-
-	wlan_vdev_mlme_op_flags_clear(vdev, flag);
-}
-
-/**
- * wlan_vdev_mlme_is_link_recfg_mac_update_in_progress() - Return true if VDEV
- * is link recfg mac address update in progress flag
- * @vdev: VDEV object manager.
- *
- * Return: bool
- */
-static inline bool
-wlan_vdev_mlme_is_link_recfg_mac_update_in_progress(
-					struct wlan_objmgr_vdev *vdev)
-{
-	unsigned long flag = WLAN_VDEV_OP_LNK_CFG_UPDATE_MAC_IN_PROGRESS;
-
-	return wlan_vdev_mlme_op_flags_get(vdev, flag);
-}
 #else
 static inline void
 wlan_vdev_mlme_set_mlo_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
@@ -2479,24 +2071,6 @@ wlan_vdev_mlme_is_mlo_link_rejection_in_progress(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 
-static inline void
-wlan_vdev_mlme_set_link_recfg_mac_update_in_progress(
-					struct wlan_objmgr_vdev *vdev)
-{
-}
-
-static inline void
-wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress(
-					struct wlan_objmgr_vdev *vdev)
-{
-}
-
-static inline bool
-wlan_vdev_mlme_is_link_recfg_mac_update_in_progress(
-					struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE  */
 
 #ifdef WLAN_MCAST_MLO
@@ -2667,22 +2241,6 @@ bool wlan_vdev_mlme_is_link_sta_vdev(struct wlan_objmgr_vdev *vdev)
 }
 
 static inline void
-wlan_vdev_mlme_set_link_recfg_mac_update_in_progress(struct wlan_objmgr_vdev *vdev)
-{
-}
-
-static inline void
-wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress(struct wlan_objmgr_vdev *vdev)
-{
-}
-
-static inline bool
-wlan_vdev_mlme_is_link_recfg_mac_update_in_progress(struct wlan_objmgr_vdev *vdev)
-{
-		return false;
-}
-
-static inline void
 wlan_vdev_mlme_set_mlo_link_rejection_in_progress(struct wlan_objmgr_vdev *vdev)
 {
 }
@@ -2697,28 +2255,7 @@ wlan_vdev_mlme_is_mlo_link_rejection_in_progress(struct wlan_objmgr_vdev *vdev)
 {
 	return false;
 }
-#endif
 
-#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
-/**
- * wlan_vdev_mlme_is_mlo_link_removal_in_progress() - whether it is mlo sap in
- * link removal progress
- * @vdev: VDEV object
- *
- * Return: True if it is mlo sap link removal, otherwise false.
- */
-static inline
-bool wlan_vdev_mlme_is_mlo_link_removal_in_progress(struct wlan_objmgr_vdev *vdev)
-{
-	return wlan_vdev_mlme_op_flags_get(vdev,
-				WLAN_VDEV_OP_MLO_LINK_REMOVAL_IN_PROGRESS);
-}
-#else
-static inline
-bool wlan_vdev_mlme_is_mlo_link_removal_in_progress(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
 #endif
 
 /**
@@ -3231,7 +2768,7 @@ wlan_vdev_read_skip_pumac_cnt(struct wlan_objmgr_vdev *vdev)
  */
 uint8_t wlan_vdev_get_peer_sta_count(struct wlan_objmgr_vdev *vdev);
 
-#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
+#ifdef FEATURE_WLAN_SUPPORT_USD
 /**
  * wlan_vdev_mlme_get_wfd_mode() - get WFD mode from VDEV MLME object
  * @vdev: VDEV object
@@ -3243,111 +2780,11 @@ wlan_vdev_mlme_get_wfd_mode(struct wlan_objmgr_vdev *vdev)
 {
 	return vdev->vdev_mlme.wfd_mode;
 }
-
-/**
- * wlan_vdev_set_wfd_mode() - set WFD mode in VDEV MLME object
- * @vdev: VDEV object
- * @wfd_mode: WFD mode
- *
- * Return: void
- */
-void wlan_vdev_set_wfd_mode(struct wlan_objmgr_vdev *vdev, uint8_t wfd_mode);
-
 #else
 static inline uint8_t
 wlan_vdev_mlme_get_wfd_mode(struct wlan_objmgr_vdev *vdev)
 {
 	return 0xFF;
 }
-
-static inline void
-wlan_vdev_set_wfd_mode(struct wlan_objmgr_vdev *vdev, uint8_t wfd_mode)
-{
-}
-
-#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 || FEATURE_WLAN_SUPPORT_PCC */
-
-#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
-/**
- * wlan_vdev_p2p_is_wfd_r2_mode() - This API checks whether P2P has WFD R2
- * mode or not.
- * @psoc: Pointer to PSOC object
- * @vdev_id: VDEV ID
- *
- * Return: true if P2P is in WFD R2 mode, otherwise false
- */
-bool wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc,
-				  uint8_t vdev_id);
-
-#else
-static inline bool
-wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
-{
-	return false;
-}
-
-#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 */
-
-#ifdef FEATURE_WLAN_SUPPORT_PCC
-/**
- * wlan_vdev_p2p_is_pcc_mode() - This API checks whether P2P has PCC
- * mode or not.
- * @psoc: Pointer to PSOC object
- * @vdev_id: VDEV ID
- *
- * Return: true if P2P is in PCC mode, otherwise false
- */
-bool wlan_vdev_p2p_is_pcc_mode(struct wlan_objmgr_psoc *psoc,
-			       uint8_t vdev_id);
-
-#else
-static inline bool
-wlan_vdev_p2p_is_pcc_mode(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
-{
-	return false;
-}
-
-#endif /* FEATURE_WLAN_SUPPORT_PCC */
-
-#ifdef WLAN_FEATURE_SECURITY_PROFILE
-/**
- * wlan_vdev_set_security_profile_enabled() - set Security Profile
- * element enabled for connection
- * @vdev: VDEV object
- * @val: true if Security Profile element handling is enabled
- *
- * Return: void
- */
-static inline void
-wlan_vdev_set_security_profile_enabled(struct wlan_objmgr_vdev *vdev,
-				       bool val)
-{
-	vdev->vdev_mlme.security_profile_enabled = val;
-}
-
-/**
- * wlan_vdev_get_security_profile_enabled() - get Security Profile
- * element enabled for connection
- * @vdev: VDEV object
- *
- * Return: true if Security Profile element handling is enabled
- */
-static inline bool
-wlan_vdev_get_security_profile_enabled(struct wlan_objmgr_vdev *vdev)
-{
-	return vdev->vdev_mlme.security_profile_enabled;
-}
-#else
-static inline void
-wlan_vdev_set_security_profile_enabled(struct wlan_objmgr_vdev *vdev,
-				       bool val)
-{
-}
-
-static inline bool
-wlan_vdev_get_security_profile_enabled(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_SECURITY_PROFILE */
+#endif /* FEATURE_WLAN_SUPPORT_USD */
 #endif /* _WLAN_OBJMGR_VDEV_OBJ_H_*/

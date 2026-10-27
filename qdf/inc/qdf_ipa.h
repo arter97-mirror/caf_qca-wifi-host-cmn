@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -41,8 +40,6 @@
  * @QDF_WDI_ENABLE: WDI enable complete
  * @QDF_WDI_DISABLE: WDI teardown
  * @QDF_FWR_SSR_BEFORE_SHUTDOWN: WLAN FW recovery
- * @QDF_IPA_SW_ROUTING_ENABLE: Switch to SW Path
- * @QDF_IPA_SW_ROUTING_DISABLE: Switch to IPA path
  * @QDF_IPA_WLAN_EVENT_MAX: Max value for the enum
  */
 typedef enum {
@@ -60,8 +57,6 @@ typedef enum {
 	QDF_WDI_ENABLE,
 	QDF_WDI_DISABLE,
 	QDF_FWR_SSR_BEFORE_SHUTDOWN,
-	QDF_IPA_SW_ROUTING_ENABLE,
-	QDF_IPA_SW_ROUTING_DISABLE,
 	QDF_IPA_WLAN_EVENT_MAX
 } qdf_ipa_wlan_event;
 
@@ -301,14 +296,7 @@ typedef __qdf_ipa_ast_info_type_t qdf_ipa_ast_info_type_t;
 #else
 #define QDF_IPA_CLIENT_WLAN_LEGACY_CONS   QDF_IPA_CLIENT_WLAN1_CONS
 #define QDF_IPA_CLIENT_WLAN_LEGACY_PROD   QDF_IPA_CLIENT_WLAN1_PROD
-
-#define QDF_IPA_CLIENT_MCC2_CONS          QDF_IPA_CLIENT_WLAN4_CONS
-#endif
-
-#if defined(CONFIG_ARCH_SA510M) && defined(CONFIG_AR6320_SUPPORT)
-#define QDF_IPA_CLIENT_MCC1_CONS          QDF_IPA_CLIENT_WLAN3_CONS
-#else
-#define QDF_IPA_CLIENT_MCC1_CONS          QDF_IPA_CLIENT_WLAN2_CONS
+#define QDF_IPA_CLIENT_MCC2_CONS          QDF_IPA_CLIENT_WLAN3_CONS
 #endif
 
 #ifdef QCN7605_SUPPORT

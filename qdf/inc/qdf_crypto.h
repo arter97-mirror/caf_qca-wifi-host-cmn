@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2017-2018, 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -87,9 +86,9 @@ int qdf_get_hash(uint8_t *type, uint8_t element_cnt,
  *
  * Return: 0 if success else error code
  */
-int qdf_get_hmac_hash(const uint8_t *type, uint8_t *key,
-		      uint32_t keylen, uint8_t element_cnt,
-		      uint8_t *addr[], uint32_t *addr_len, int8_t *hash);
+int qdf_get_hmac_hash(uint8_t *type, uint8_t *key,
+		uint32_t keylen, uint8_t element_cnt,
+		uint8_t *addr[], uint32_t *addr_len, int8_t *hash);
 
 /**
  * qdf_default_hmac_sha256_kdf()- This API calculates key data using default kdf
@@ -201,105 +200,6 @@ int qdf_crypto_aes_gmac(const uint8_t *key, uint16_t key_length,
  */
 int qdf_crypto_aes_128_cmac(const uint8_t *key, const uint8_t *data,
 			    uint16_t len, uint8_t *mic);
-
-#ifdef WLAN_FEATURE_11BN_SMD
-/* ECDH key sizes for NIST P-256 curve */
-#define QDF_ECDH_PRIVATE_KEY_SIZE    32  /* 256 bits */
-#define QDF_ECDH_PUBLIC_KEY_SIZE     64  /* Uncompressed: 0x04 + X + Y */
-#define QDF_ECDH_SHARED_SECRET_SIZE  32  /* 256 bits */
-
-/**
- * struct qdf_ecdh_key_pair - ECDH key pair structure
- * @private_key: Private key buffer
- * @private_key_len: Length of private key
- * @public_key: Public key buffer (uncompressed format)
- * @public_key_len: Length of public key
- */
-struct qdf_ecdh_key_pair {
-	uint8_t private_key[QDF_ECDH_PRIVATE_KEY_SIZE];
-	size_t private_key_len;
-	uint8_t public_key[QDF_ECDH_PUBLIC_KEY_SIZE];
-	size_t public_key_len;
-};
-
-/**
- * struct qdf_ecdh_shared_secret - ECDH shared secret structure
- * @secret: Shared secret buffer
- * @secret_len: Length of shared secret
- */
-struct qdf_ecdh_shared_secret {
-	uint8_t secret[QDF_ECDH_SHARED_SECRET_SIZE];
-	size_t secret_len;
-};
-
-/**
- * qdf_crypto_ecdh_init() - Initialize ECDH crypto subsystem
- *
- * Initializes the kernel crypto transform for ECDH operations.
- * Must be called before any ECDH operations.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS qdf_crypto_ecdh_init(void);
-
-/**
- * qdf_crypto_ecdh_deinit() - Deinitialize ECDH crypto subsystem
- *
- * Frees resources allocated by qdf_crypto_ecdh_init().
- */
-void qdf_crypto_ecdh_deinit(void);
-
-/**
- * qdf_crypto_ecdh_generate_private_key() - Generate ECDH private key
- * @private_key: Buffer to store private key
- * @key_size: Size of private key buffer
- *
- * Generates a cryptographically secure random private key for ECDH.
- * The key is validated before returning.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS qdf_crypto_ecdh_generate_private_key(uint8_t *private_key,
-						size_t key_size);
-
-/**
- * qdf_crypto_ecdh_generate_public_key() - Generate ECDH public key
- * @private_key: Private key buffer
- * @private_key_size: Size of private key
- * @public_key: Buffer to store public key
- * @public_key_size: Size of public key buffer
- *
- * Generates the public key corresponding to the given private key.
- * Uses heap-allocated scatterlists to avoid CONFIG_VMAP_STACK issues.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS qdf_crypto_ecdh_generate_public_key(const uint8_t *private_key,
-					       size_t private_key_size,
-					       uint8_t *public_key,
-					       size_t *public_key_size);
-
-/**
- * qdf_crypto_ecdh_compute_shared_secret() - Compute ECDH shared secret
- * @private_key: Local private key buffer
- * @private_key_size: Size of private key
- * @peer_public_key: Peer's public key buffer
- * @peer_public_key_size: Size of peer's public key
- * @shared_secret: Buffer to store shared secret
- * @shared_secret_size: Size of shared secret buffer
- *
- * Computes the ECDH shared secret using local private key and peer's
- * public key. Uses heap-allocated scatterlists to avoid CONFIG_VMAP_STACK.
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS qdf_crypto_ecdh_compute_shared_secret(const uint8_t *private_key,
-						 size_t private_key_size,
-						 const uint8_t *peer_public_key,
-						 size_t peer_public_key_size,
-						 uint8_t *shared_secret,
-						 size_t *shared_secret_size);
-#endif /* WLAN_FEATURE_11BN_SMD */
 
 #ifdef __cplusplus
 }

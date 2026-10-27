@@ -29,16 +29,6 @@
 #ifndef _QDF_NBUF_M_H
 #define _QDF_NBUF_M_H
 
-static inline int qdf_nbuf_dal_owned_get(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_dal_owned_get(buf);
-}
-
-static inline void qdf_nbuf_dal_owned_set(qdf_nbuf_t buf)
-{
-	__qdf_nbuf_dal_owned_set(buf);
-}
-
 static inline int qdf_nbuf_ipa_owned_get(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_ipa_owned_get(buf);
@@ -377,62 +367,4 @@ static inline qdf_time_t qdf_nbuf_get_tx_ts(qdf_nbuf_t buf, bool clear)
 		__qdf_nbuf_clear_tx_ts(buf);
 	return ts;
 }
-
-/**
- * qdf_nbuf_rx_pp_track_id_get() - get rx pool track id from nbuf
- * @buf: Network buffer
- *
- * Return: RX page pool tracker index value (1-15)
- */
-static inline uint8_t qdf_nbuf_rx_pp_track_id_get(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_rx_pp_track_id_get(buf);
-}
-
-/**
- * qdf_nbuf_rx_pp_track_id_set() - set rx pool track id in nbuf
- * @buf: Network buffer
- * @rx_pp_track_id: RX page pool tracker index value to set (1-15)
- *
- * Return: None
- */
-static inline void
-qdf_nbuf_rx_pp_track_id_set(qdf_nbuf_t buf, uint8_t rx_pp_track_id)
-{
-	__qdf_nbuf_rx_pp_track_id_set(buf, rx_pp_track_id);
-}
-
-#if defined(WLAN_SUPPORT_RX_FISA) && defined(WLAN_FAST_L2L_RX)
-/**
- * qdf_nbuf_set_rx_flow_idx_valid() - set flow_idx_valid in skb->cb
- * @buf: Network buffer
- * @val: value to set
- * Return: None
- */
-static inline void
-qdf_nbuf_set_rx_flow_idx_valid(qdf_nbuf_t buf, uint8_t val)
-{
-	__qdf_nbuf_set_rx_flow_idx_valid(buf, val);
-}
-
-/**
- * qdf_nbuf_get_rx_flow_idx_valid() - get flow_idx_valid from skb->cb
- * @buf: Network buffer
- * Return: flow_idx_valid value
- */
-static inline uint8_t qdf_nbuf_get_rx_flow_idx_valid(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_get_rx_flow_idx_valid(buf);
-}
-#else
-static inline void
-qdf_nbuf_set_rx_flow_idx_valid(qdf_nbuf_t buf, uint8_t val)
-{}
-
-static inline uint8_t qdf_nbuf_get_rx_flow_idx_valid(qdf_nbuf_t buf)
-{
-	return 0;
-}
-#endif
-
 #endif /* _QDF_NBUF_M_H */

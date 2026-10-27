@@ -30,14 +30,6 @@ defined(WLAN_PKT_CAPTURE_RX_2_0)
 #include <hal_generic_api.h>
 #include <hal_api_mon.h>
 
-#ifdef CONFIG_BORON
-#define WIFIPHYRX_GENERIC_EHT_SIG_E WIFIPHYRX_GENERIC_EHT_OR_UHR_SIG_E
-/* User info offset to bypass the common fields */
-#define HAL_RX_EHT_SIG_NON_OFDMA_USER_INFO_OFFSET_BITS 20
-#else
-#define HAL_RX_EHT_SIG_NON_OFDMA_USER_INFO_OFFSET_BITS 32
-#endif
-
 #define HAL_RX_PPDU_START_PHY_PPDU_ID_OFFSET                        0x00000000
 #define HAL_RX_PPDU_START_PHY_PPDU_ID_LSB                           0
 #define HAL_RX_PPDU_START_PHY_PPDU_ID_MSB                           15
@@ -867,7 +859,6 @@ hal_be_get_mon_dest_status(hal_soc_handle_t hal_soc,
 			   struct hal_mon_desc *status)
 {
 	struct mon_destination_ring *desc = hw_desc;
-	uint32_t buf_virt_addr_63_32;
 
 	status->empty_descriptor = desc->empty_descriptor;
 	if (status->empty_descriptor) {
@@ -879,21 +870,10 @@ hal_be_get_mon_dest_status(hal_soc_handle_t hal_soc,
 		status->tlv_drop_count = drop_desc->tlv_drop_cnt;
 		status->end_of_ppdu_dropped = drop_desc->end_of_ppdu_seen;
 	} else {
-		/* Check BUF_VIRT_ADDR_63_32 field value */
-		buf_virt_addr_63_32 = HAL_RX_GET(desc,
-						 MON_DESTINATION_RING_STAT,
-						 BUF_VIRT_ADDR_63_32);
-
-		if (qdf_likely(buf_virt_addr_63_32)) {
-			status->buf_addr =
-				HAL_RX_GET(desc, MON_DESTINATION_RING_STAT,
-					   BUF_VIRT_ADDR_31_0) |
-				(((uint64_t)buf_virt_addr_63_32) << 32);
-			/* Set BUF_VIRT_ADDR_63_32 to invalidate value 0 */
-			desc->stat_buf_virt_addr_63_32 = 0;
-		} else {
-			status->buf_addr = 0;
-		}
+		status->buf_addr = HAL_RX_GET(desc, MON_DESTINATION_RING_STAT,BUF_VIRT_ADDR_31_0) |
+						(((uint64_t)HAL_RX_GET(desc,
+								       MON_DESTINATION_RING_STAT,
+								       BUF_VIRT_ADDR_63_32)) << 32);
 		status->end_reason = desc->end_reason;
 		status->end_offset = desc->end_offset;
 	}
@@ -1123,13 +1103,13 @@ defined(WLAN_PKT_CAPTURE_RX_2_0)
 static inline
 void hal_mon_buff_addr_info_set(hal_soc_handle_t hal_soc_hdl,
 				void *mon_entry,
-				void *mon_desc_addr,
+				unsigned long long mon_desc_addr,
 				qdf_dma_addr_t phy_addr)
 {
 	uint32_t paddr_lo = ((uintptr_t)phy_addr & 0x00000000ffffffff);
 	uint32_t paddr_hi = ((uintptr_t)phy_addr & 0xffffffff00000000) >> 32;
-	uint32_t vaddr_lo = ((uintptr_t)mon_desc_addr & 0x00000000ffffffff);
-	uint32_t vaddr_hi = ((uintptr_t)mon_desc_addr & 0xffffffff00000000) >> 32;
+	uint32_t vaddr_lo = ((unsigned long long)mon_desc_addr & 0x00000000ffffffff);
+	uint32_t vaddr_hi = ((unsigned long long)mon_desc_addr & 0xffffffff00000000) >> 32;
 
 	HAL_MON_PADDR_LO_SET(mon_entry, paddr_lo);
 	HAL_MON_PADDR_HI_SET(mon_entry, paddr_hi);
@@ -2221,16 +2201,7 @@ static inline uint32_t
 hal_rx_parse_eht_sig_non_ofdma_be(struct hal_soc *hal_soc, void *tlv,
 				  struct hal_rx_ppdu_info *ppdu_info)
 {
-	uint64_t non_ofdma_tlv_payload;
-	void *user_info;
-
-	/* Copy TLV content to 64-bit variable */
-	non_ofdma_tlv_payload = *(uint64_t *)tlv;
-	non_ofdma_tlv_payload >>=
-		HAL_RX_EHT_SIG_NON_OFDMA_USER_INFO_OFFSET_BITS;
-
-	/* Use address of shifted payload as user_info */
-	user_info = (void *)&non_ofdma_tlv_payload;
+	void *user_info = (void *)((uint8_t *)tlv + 4);
 
 	hal_rx_parse_usig_overflow(hal_soc, tlv, ppdu_info);
 	hal_rx_parse_non_ofdma_users(hal_soc, tlv, ppdu_info);
@@ -3064,7 +3035,7 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 				      qdf_nbuf_t nbuf)
 {
 	struct hal_soc *hal = (struct hal_soc *)hal_soc_hdl;
-	uint32_t tlv_tag, user_id, tlv_len, value, ppdu_id;
+	uint32_t tlv_tag, user_id, tlv_len, value;
 	uint8_t group_id = 0;
 	uint8_t he_dcm = 0;
 	uint8_t he_stbc = 0;
@@ -3085,14 +3056,15 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 	switch (tlv_tag) {
 	case WIFIRX_PPDU_START_E:
 	{
-		ppdu_id = HAL_RX_GET(rx_tlv, HAL_RX_PPDU_START, PHY_PPDU_ID);
-		if (qdf_unlikely(ppdu_id && ppdu_info->com_info.last_ppdu_id ==
-				 ppdu_id))
+		if (qdf_unlikely(ppdu_info->com_info.last_ppdu_id ==
+		    HAL_RX_GET(rx_tlv, HAL_RX_PPDU_START, PHY_PPDU_ID)))
 			hal_err("Matching ppdu_id(%u) detected",
 				ppdu_info->com_info.last_ppdu_id);
 
 		ppdu_info->com_info.last_ppdu_id =
-			ppdu_info->com_info.ppdu_id = ppdu_id;
+			ppdu_info->com_info.ppdu_id =
+				HAL_RX_GET(rx_tlv, HAL_RX_PPDU_START,
+					   PHY_PPDU_ID);
 
 		/* channel number is set in PHY meta data */
 		ppdu_info->rx_status.chan_num =
@@ -3473,7 +3445,6 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		case TARGET_TYPE_MANGO:
 		case TARGET_TYPE_PEACH:
 		case TARGET_TYPE_WCN7750:
-		case TARGET_TYPE_WCN8750:
 		case TARGET_TYPE_QCC2072:
 		case TARGET_TYPE_FIG:
 			ppdu_info->rx_status.is_stbc =

@@ -1262,7 +1262,7 @@ qdf_mem_get_dma_pa(qdf_device_t osdev,
  * qdf_mem_set_dma_pa() - Set DMA physical address
  * @osdev: parent device instance
  * @mem_info: Pointer to allocated memory information
- * @dma_pa: DMA physical address
+ * @dma_pa: DMA phsical address
  *
  * Return: none
  */

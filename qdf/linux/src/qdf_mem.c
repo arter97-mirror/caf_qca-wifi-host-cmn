@@ -730,7 +730,7 @@ static ssize_t qdf_major_alloc_set_threshold(struct file *file,
 					     size_t count,
 					     loff_t *pos)
 {
-	char buf[32] = {0};
+	char buf[32];
 	ssize_t buf_size;
 	uint32_t threshold;
 	struct seq_file *seq = file->private_data;
@@ -903,7 +903,7 @@ static ssize_t qdf_major_nbuf_alloc_set_threshold(struct file *file,
 						  size_t count,
 						  loff_t *pos)
 {
-	char buf[32] = {0};
+	char buf[32];
 	ssize_t buf_size;
 	uint32_t threshold;
 	struct seq_file *seq = file->private_data;
@@ -1550,8 +1550,7 @@ void *qdf_mem_malloc_debug(size_t size, const char *func, uint32_t line,
 			 duration, size, func, line);
 
 	if (!header) {
-		qdf_rl_warn("Failed to malloc %zuB flag:%#x(%pGg) @ %s:%d",
-			    size, flag, &flag, func, line);
+		qdf_warn("Failed to malloc %zuB @ %s:%d", size, func, line);
 		return NULL;
 	}
 
@@ -1693,7 +1692,6 @@ void qdf_mem_free_debug(void *ptr, const char *func, uint32_t line)
 	qdf_mem_header_assert_valid(header, current_domain, error_bitmap,
 				    func, line);
 
-	qdf_nbuf_detect_track_list_corruption(ptr, header->size);
 	qdf_mem_kmalloc_dec(ksize(header));
 	kfree(header);
 }
@@ -1746,7 +1744,7 @@ void qdf_mem_multi_pages_alloc_debug(qdf_device_t osdev,
 	if (cacheable) {
 		/* Pages information storage */
 		pages->cacheable_pages = qdf_mem_malloc_debug(
-			pages->num_pages * sizeof(*pages->cacheable_pages),
+			pages->num_pages * sizeof(pages->cacheable_pages),
 			func, line, caller, 0);
 		if (!pages->cacheable_pages)
 			goto out_fail;
@@ -1907,7 +1905,7 @@ void qdf_mem_multi_pages_alloc(qdf_device_t osdev,
 	if (cacheable) {
 		/* Pages information storage */
 		pages->cacheable_pages = qdf_mem_malloc(
-			pages->num_pages * sizeof(*pages->cacheable_pages));
+			pages->num_pages * sizeof(pages->cacheable_pages));
 		if (!pages->cacheable_pages)
 			goto out_fail;
 
@@ -2000,7 +1998,7 @@ void qdf_mem_multi_pages_alloc(qdf_device_t osdev,
 	if (cacheable) {
 		/* Pages information storage */
 		pages->cacheable_pages = qdf_mem_malloc(
-			pages->num_pages * sizeof(*pages->cacheable_pages));
+			pages->num_pages * sizeof(pages->cacheable_pages));
 		if (!pages->cacheable_pages)
 			goto out_fail;
 
@@ -2213,7 +2211,6 @@ qdf_export_symbol(__qdf_mem_free);
 void *__qdf_mem_malloc(size_t size, const char *func, uint32_t line)
 {
 	void *ptr;
-	int flags;
 
 	if (!size || size > QDF_MEM_MAX_MALLOC) {
 		qdf_nofl_err("Cannot malloc %zu bytes @ %s:%d", size, func,
@@ -2225,13 +2222,9 @@ void *__qdf_mem_malloc(size_t size, const char *func, uint32_t line)
 	if (ptr)
 		return ptr;
 
-	flags = qdf_mem_malloc_flags();
-	ptr = kzalloc(size, flags);
-	if (!ptr) {
-		qdf_rl_nofl_err("Cannot malloc %zuB flags:%#x(%pGg) @ %s:%d",
-				size, flags, &flags, func, line);
+	ptr = kzalloc(size, qdf_mem_malloc_flags());
+	if (!ptr)
 		return NULL;
-	}
 
 	qdf_mem_kmalloc_inc(ksize(ptr));
 
@@ -2457,7 +2450,7 @@ qdf_shared_mem_t *qdf_mem_shared_mem_alloc(qdf_device_t osdev, uint32_t size)
 	paddr = qdf_mem_paddr_from_dmaaddr(osdev, dma_addr);
 
 	qdf_mem_set_dma_pa(osdev, &shared_mem->mem_info, paddr);
-	ret = qdf_mem_dma_get_sgtable(QDF_DMA_DEV(osdev), &shared_mem->sgtable,
+	ret = qdf_mem_dma_get_sgtable(osdev->dev, &shared_mem->sgtable,
 				      shared_mem->vaddr, dma_addr, size);
 	if (ret) {
 		qdf_err("Unable to get DMA sgtable");
@@ -2742,15 +2735,8 @@ void *qdf_mem_alloc_consistent_debug(qdf_device_t osdev, void *dev,
 		return NULL;
 	}
 
-	/* Ignore caller-supplied dev in favor of the DMA device on osdev
-	 * (see qdf_dev->dma_dev init in hdd_init_qdf_ctx). Almost every
-	 * caller already passes dev == osdev->dev, so this is a no-op for
-	 * them; the one exception is callers with no osdev at all (e.g.
-	 * target_if_wifi_pos_init_ring()), which must keep using their
-	 * own dev.
-	 */
-	vaddr = qdf_mem_dma_alloc(osdev, osdev ? QDF_DMA_DEV(osdev) : dev,
-				  size + QDF_DMA_MEM_DEBUG_SIZE, paddr);
+	vaddr = qdf_mem_dma_alloc(osdev, dev, size + QDF_DMA_MEM_DEBUG_SIZE,
+				   paddr);
 
 	if (!vaddr) {
 		qdf_warn("Failed to malloc %zuB @ %s:%d", size, func, line);
@@ -2819,15 +2805,7 @@ void qdf_mem_free_consistent_debug(qdf_device_t osdev, void *dev,
 	qdf_mem_header_assert_valid(header, domain, error_bitmap, func, line);
 
 	qdf_mem_dma_dec(header->size);
-	/* Ignore caller-supplied dev in favor of the DMA device on osdev
-	 * (see qdf_dev->dma_dev init in hdd_init_qdf_ctx). Almost every
-	 * caller already passes dev == osdev->dev, so this is a no-op for
-	 * them; the one exception is callers with no osdev at all (e.g.
-	 * target_if_wifi_pos_init_ring()), which must keep using their
-	 * own dev.
-	 */
-	qdf_mem_dma_free(osdev ? QDF_DMA_DEV(osdev) : dev,
-			 size + QDF_DMA_MEM_DEBUG_SIZE, vaddr, paddr);
+	qdf_mem_dma_free(dev, size + QDF_DMA_MEM_DEBUG_SIZE, vaddr, paddr);
 }
 qdf_export_symbol(qdf_mem_free_consistent_debug);
 #endif /* MEMORY_DEBUG */
@@ -2836,15 +2814,8 @@ void __qdf_mem_free_consistent(qdf_device_t osdev, void *dev,
 			       qdf_size_t size, void *vaddr,
 			       qdf_dma_addr_t paddr, qdf_dma_context_t memctx)
 {
-	/* Ignore caller-supplied dev in favor of the DMA device on osdev
-	 * (see qdf_dev->dma_dev init in hdd_init_qdf_ctx). Almost every
-	 * caller already passes dev == osdev->dev, so this is a no-op for
-	 * them; the one exception is callers with no osdev at all (e.g.
-	 * target_if_wifi_pos_init_ring()), which must keep using their
-	 * own dev.
-	 */
 	qdf_mem_dma_dec(size);
-	qdf_mem_dma_free(osdev ? QDF_DMA_DEV(osdev) : dev, size, vaddr, paddr);
+	qdf_mem_dma_free(dev, size, vaddr, paddr);
 }
 
 qdf_export_symbol(__qdf_mem_free_consistent);
@@ -2861,15 +2832,7 @@ void *__qdf_mem_alloc_consistent(qdf_device_t osdev, void *dev,
 		return NULL;
 	}
 
-	/* Ignore caller-supplied dev in favor of the DMA device on osdev
-	 * (see qdf_dev->dma_dev init in hdd_init_qdf_ctx). Almost every
-	 * caller already passes dev == osdev->dev, so this is a no-op for
-	 * them; the one exception is callers with no osdev at all (e.g.
-	 * target_if_wifi_pos_init_ring()), which must keep using their
-	 * own dev.
-	 */
-	vaddr = qdf_mem_dma_alloc(osdev, osdev ? QDF_DMA_DEV(osdev) : dev,
-				  size, paddr);
+	vaddr = qdf_mem_dma_alloc(osdev, dev, size, paddr);
 
 	if (vaddr)
 		qdf_mem_dma_inc(size);
@@ -2940,8 +2903,7 @@ void qdf_mem_dma_sync_single_for_device(qdf_device_t osdev,
 					qdf_size_t size,
 					enum dma_data_direction direction)
 {
-	dma_sync_single_for_device(QDF_DMA_DEV(osdev), bus_addr,
-				   size, direction);
+	dma_sync_single_for_device(osdev->dev, bus_addr,  size, direction);
 }
 qdf_export_symbol(qdf_mem_dma_sync_single_for_device);
 
@@ -2950,8 +2912,7 @@ void qdf_mem_dma_sync_single_for_cpu(qdf_device_t osdev,
 				     qdf_size_t size,
 				     enum dma_data_direction direction)
 {
-	dma_sync_single_for_cpu(QDF_DMA_DEV(osdev), bus_addr,
-				size, direction);
+	dma_sync_single_for_cpu(osdev->dev, bus_addr,  size, direction);
 }
 qdf_export_symbol(qdf_mem_dma_sync_single_for_cpu);
 

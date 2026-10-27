@@ -40,43 +40,24 @@ dp_tx_comp_get_params_from_hal_desc_li(struct dp_soc *soc,
 {
 	uint8_t pool_id;
 	uint32_t tx_desc_id;
-	uint16_t page_id, offset;
-	bool spcl_pool;
-	struct dp_tx_desc_pool_s *pool;
-
-	*r_tx_desc = NULL;
 
 	tx_desc_id = hal_tx_comp_get_desc_id(tx_comp_hal_desc);
 	pool_id = (tx_desc_id & DP_TX_DESC_ID_POOL_MASK) >>
 			DP_TX_DESC_ID_POOL_OS;
-	page_id = (tx_desc_id & DP_TX_DESC_ID_PAGE_MASK) >>
-			DP_TX_DESC_ID_PAGE_OS;
-	offset = (tx_desc_id & DP_TX_DESC_ID_OFFSET_MASK) >>
-			DP_TX_DESC_ID_OFFSET_OS;
-	spcl_pool = !!(tx_desc_id & DP_TX_DESC_ID_SPCL_MASK);
-
-	pool = spcl_pool ? dp_get_spcl_tx_desc_pool(soc, pool_id) :
-			    dp_get_tx_desc_pool(soc, pool_id);
-
-	/* FW-echoed cookie: bounds-check page_id/offset before dereferencing */
-	if (qdf_unlikely(!pool || !pool->desc_pages.cacheable_pages ||
-			 page_id >= pool->desc_pages.num_pages ||
-			 offset >= pool->desc_pages.num_element_per_page)) {
-		dp_tx_comp_alert(
-			"Invalid tx comp cookie 0x%x: pool %u page %u off %u",
-			tx_desc_id, pool_id, page_id, offset);
-		return QDF_STATUS_E_INVAL;
-	}
 
 	/* Find Tx descriptor */
-	*r_tx_desc = dp_tx_desc_find(soc, pool_id, page_id, offset, spcl_pool);
+	*r_tx_desc = dp_tx_desc_find(soc, pool_id,
+				     (tx_desc_id & DP_TX_DESC_ID_PAGE_MASK) >>
+							DP_TX_DESC_ID_PAGE_OS,
+				     (tx_desc_id & DP_TX_DESC_ID_OFFSET_MASK) >>
+						DP_TX_DESC_ID_OFFSET_OS,
+				     (tx_desc_id & DP_TX_DESC_ID_SPCL_MASK));
 	/* Pool id is not matching. Error */
 	if ((*r_tx_desc)->pool_id != pool_id) {
 		dp_tx_comp_alert("Tx Comp pool id %d not matched %d",
 				 pool_id, (*r_tx_desc)->pool_id);
 
-		*r_tx_desc = NULL;
-		return QDF_STATUS_E_INVAL;
+		qdf_assert_always(0);
 	}
 
 	(*r_tx_desc)->peer_id = hal_tx_comp_get_peer_id(tx_comp_hal_desc);
@@ -661,7 +642,7 @@ dp_tx_hw_enqueue_li(struct dp_soc *soc, struct dp_vdev *vdev,
 ring_access_fail:
 	dp_tx_ring_access_end_wrapper(soc, hal_ring_hdl, coalesce);
 	dp_pkt_add_timestamp(vdev, QDF_PKT_TX_DRIVER_EXIT,
-			     qdf_get_log_timestamp_usecs(), tx_desc->nbuf);
+			     qdf_get_log_timestamp(), tx_desc->nbuf);
 
 	return status;
 }
@@ -694,7 +675,6 @@ QDF_STATUS dp_tx_desc_pool_init_li(struct dp_soc *soc,
 		tx_desc->id = id;
 		tx_desc->pool_id = pool_id;
 		tx_desc->vdev_id = DP_INVALID_VDEV_ID;
-		dp_tx_desc_init_peer_bw(tx_desc);
 		dp_tx_desc_set_magic(tx_desc, DP_TX_MAGIC_PATTERN_FREE);
 		tx_desc = tx_desc->next;
 		count++;
@@ -727,79 +707,3 @@ void dp_tx_desc_pool_free_li(struct dp_soc *soc, uint8_t pool_id)
 {
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * dp_tx_gen_hw_desc_li() - Generate hardware descriptor for LI architecture
- * @soc: DP soc handle
- * @vdev: DP vdev handle
- * @tx_desc: TX descriptor
- * @fw_metadata: Firmware metadata
- * @tx_exc_metadata: TX exception metadata
- * @msdu_info: MSDU information
- * @tcl_desc: TCL descriptor
- *
- * This function is a stub implementation for generating hardware descriptors
- * in the Lithium (LI) architecture. Currently returns failure status as the
- * functionality is not implemented.
- *
- * Return: QDF_STATUS_E_FAILURE - Always returns failure
- */
-QDF_STATUS
-dp_tx_gen_hw_desc_li(struct dp_soc *soc, struct dp_vdev *vdev,
-		     struct dp_tx_desc_s *tx_desc,
-		     uint16_t fw_metadata,
-		     struct cdp_tx_exception_metadata *tx_exc_metadata,
-		     struct dp_tx_msdu_info_s *msdu_info, void *tcl_desc)
-{
-	return QDF_STATUS_E_FAILURE;
-}
-
-/**
- * dp_tx_hw_desc_sync_li() - LI specific hw desc sync function
- * @hal_tx_desc_cached: cached descriptor in host memory
- * @hw_desc: descriptor in hardware memory
- * @num_bytes: number of bytes to sync (unused in LI)
- *
- * Return: None
- */
-void dp_tx_hw_desc_sync_li(void *hal_tx_desc_cached, void *hw_desc,
-			   uint8_t num_bytes)
-{
-	hal_tx_desc_sync(hal_tx_desc_cached, hw_desc);
-}
-
-/**
- * dp_tx_desc_update_buffer_info_li() - Dummy function for LI architecture
- * @soc: DP soc handle
- * @hal_tx_desc_cached: cached descriptor in host memory
- * @tx_desc: tx descriptor
- * @ring_id: ring ID
- *
- * This is a dummy place holder function for LI architecture.
- *
- * Return: None
- */
-void dp_tx_desc_update_buffer_info_li(struct dp_soc *soc,
-				      void *hal_tx_desc_cached,
-				      struct dp_tx_desc_s *tx_desc,
-				      uint8_t ring_id)
-{
-	/* Dummy implementation - no action needed for LI */
-}
-
-/**
- * dp_dal_tx_comp_check_reserved_cookie_li() - Check if cookie is DAL reserved
- * @soc: DP soc handle
- * @tx_comp_hal_desc: TX completion HAL descriptor
- *
- * This is a dummy implementation for LI architecture that always returns false
- * since LI doesn't support DAL reserved cookie functionality.
- *
- * Return: false - Always returns false for LI architecture
- */
-bool dp_dal_tx_comp_check_reserved_cookie_li(struct dp_soc *soc,
-					     void *tx_comp_hal_desc)
-{
-	return false;
-}
-#endif /* FEATURE_DAL_DP_SUPPORT */

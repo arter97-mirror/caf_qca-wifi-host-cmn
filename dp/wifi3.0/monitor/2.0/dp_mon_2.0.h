@@ -38,7 +38,19 @@
 #define DP_MON_MAX_STATUS_BUF 1200
 #define DP_MON_MSDU_LOGGING 0
 #define DP_MON_MPDU_LOGGING 1
+#define DP_MON_DESC_ADDR_MASK 0x000000FFFFFFFFFF
+#define DP_MON_DESC_ADDR_SHIFT 40
+#define DP_MON_DESC_FIXED_ADDR_MASK 0xFFFFFF
+#define DP_MON_DESC_FIXED_ADDR ((uint64_t)DP_MON_DESC_FIXED_ADDR_MASK << \
+	DP_MON_DESC_COOKIE_LSB)
+#define DP_MON_DESC_COOKIE_MASK 0xFFFFFF0000000000
+#define DP_MON_DESC_COOKIE_SHIFT 24
+#define DP_MON_DESC_COOKIE_LSB 40
+#define DP_MON_GET_COOKIE(mon_desc) \
+	((uint32_t)(((unsigned long long)(mon_desc) & DP_MON_DESC_COOKIE_MASK) \
+	>> DP_MON_DESC_COOKIE_LSB))
 
+#define DP_MON_DESC_64B_PTR_SZ 8
 #define DP_MON_DECAP_FORMAT_INVALID 0xff
 #define DP_MON_MIN_FRAGS_FOR_RESTITCH 2
 
@@ -171,6 +183,7 @@ struct dp_mon_filter_be {
  * @in_use: desc is in use
  * @unmapped: used to mark desc an unmapped if the corresponding
  * nbuf is already unmapped
+ * @cookie_2: unique cookie provided as part of 64 bit cookie to HW
  * @end_offset: offset in status buffer where DMA ended
  * @cookie: unique desc identifier
  * @magic: magic number to validate desc data
@@ -178,8 +191,9 @@ struct dp_mon_filter_be {
 struct dp_mon_desc {
 	uint8_t *buf_addr;
 	qdf_dma_addr_t paddr;
-	uint8_t in_use:1,
-		unmapped:1;
+	uint32_t in_use:1,
+		unmapped:1,
+		cookie_2:24;
 	uint16_t end_offset;
 	uint32_t cookie;
 	uint32_t magic;
@@ -272,6 +286,10 @@ struct dp_mon_pdev_be {
 	uint16_t rx_mon_queue_depth;
 	uint16_t desc_count;
 	struct dp_mon_desc *status[DP_MON_MAX_STATUS_BUF];
+#ifdef QCA_SUPPORT_LITE_MONITOR
+	struct dp_lite_mon_rx_config *lite_mon_rx_config;
+	struct dp_lite_mon_tx_config *lite_mon_tx_config;
+#endif
 	void *prev_rxmon_desc;
 	uint32_t prev_rxmon_cookie;
 	void *prev_rxmon_pkt_desc;
@@ -482,6 +500,14 @@ void dp_mon_filter_show_rx_filter_be(enum dp_mon_filter_mode mode,
 QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_tx_2_0(struct dp_pdev *pdev,
 						     uint16_t num_of_buffers);
 
+/**
+ * dp_vdev_set_monitor_mode_buf_rings_rx_2_0() - Add buffers to rx ring
+ * @pdev: Pointer to dp_pdev object
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_rx_2_0(struct dp_pdev *pdev);
+
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 /**
  * dp_mon_get_puncture_type() - Get puncture type
@@ -649,4 +675,33 @@ dp_enable_enhanced_stats_2_0(struct cdp_soc_t *soc, uint8_t pdev_id);
 QDF_STATUS
 dp_disable_enhanced_stats_2_0(struct cdp_soc_t *soc, uint8_t pdev_id);
 #endif /* QCA_ENHANCED_STATS_SUPPORT */
+
+static inline unsigned long long
+dp_mon_get_debug_desc_addr(union dp_mon_desc_list_elem_t **desc_list)
+{
+	unsigned long long desc;
+
+	desc = (unsigned long)&((*desc_list)->mon_desc);
+	desc = (unsigned long long)((unsigned long long)desc & DP_MON_DESC_ADDR_MASK);
+	desc = (desc | ((unsigned long long)(*desc_list)->mon_desc.cookie_2 << DP_MON_DESC_ADDR_SHIFT));
+	return desc;
+}
+
+/**
+ * dp_mon_get_desc_addr() - Get desc addr from debug addr
+ * @desc: debug desc addr
+ *
+ * Return: SW desc addr
+ */
+static inline struct dp_mon_desc*
+dp_mon_get_desc_addr(unsigned long long desc)
+{
+	if (sizeof(void *) == DP_MON_DESC_64B_PTR_SZ) {
+		return ((struct dp_mon_desc *)(uintptr_t)(((unsigned long long)(desc) &
+						DP_MON_DESC_ADDR_MASK) | ((unsigned long long)DP_MON_DESC_FIXED_ADDR)));
+	} else {
+		return ((struct dp_mon_desc *)(uintptr_t)(((unsigned long)(desc) &
+						DP_MON_DESC_ADDR_MASK)));
+	}
+}
 #endif /* _DP_MON_2_0_H_ */

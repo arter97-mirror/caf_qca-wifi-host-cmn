@@ -53,7 +53,7 @@ extern "C" {
  *
  * @MGMT: Indicates management frames
  * @CTRL: Indicates control frames
- * @DATA: Indicates data frames
+ * @DATA: Inidcates data frames
  */
 enum wifi_frm_type {
 	MGMT = 0x00,
@@ -105,8 +105,6 @@ enum mgmt_frm_subtype {
  * @AUTH_WPA2_PSK: WPA2 PSK based auth
  * @AUTH_WAPI_CERT: WAPI CERT based auth
  * @AUTH_WAPI_PSK: WAPI PSK based auth
- * @AUTH_EPPKE: EPP Key Exchange based auth (802.11bi)
- * @AUTH_1X_OVER_AUTH: IEEE 802.1X authentication carried over Auth frames
  * @AUTH_MAX: max enumeration
  */
 enum mgmt_auth_type {
@@ -118,8 +116,6 @@ enum mgmt_auth_type {
 	AUTH_WPA2_PSK = 0x05,
 	AUTH_WAPI_CERT = 0x06,
 	AUTH_WAPI_PSK = 0x07,
-	AUTH_EPPKE = 0x08,
-	AUTH_1X_OVER_AUTH = 0x09,
 	AUTH_MAX = 0xff,
 };
 
@@ -190,8 +186,6 @@ enum mgmt_ch_width {
  * @DOT11_MODE_11AX_ONLY: 802.11-AX only mode
  * @DOT11_MODE_11BE: 802.11-BE mode
  * @DOT11_MODE_11BE_ONLY: 802.11-BE only mode
- * @DOT11_MODE_11BN: 802.11-BN mode
- * @DOT11_MODE_11BN_ONLY: 802.11-BN only mode
  * @DOT11_MODE_MAX: max enumeration
  */
 enum mgmt_dot11_mode {
@@ -209,8 +203,6 @@ enum mgmt_dot11_mode {
 	DOT11_MODE_11AX_ONLY = 0x0b,
 	DOT11_MODE_11BE = 0x0c,
 	DOT11_MODE_11BE_ONLY = 0x0d,
-	DOT11_MODE_11BN = 0x0e,
-	DOT11_MODE_11BN_ONLY = 0x0f,
 	DOT11_MODE_MAX = 0xff,
 };
 
@@ -516,8 +508,6 @@ typedef struct {
  *                           packet wakeup count
  * @wow_ipv6_mcast_na_stats: wow ipv6 multicast address space
  *                           packet wakeup count
- * @wow_ipv6_mcast_mlq_stats: wow ipv6 multicast listener query
- *			      packet wakeup count
  * @wow_pno_match_wake_up_count: wow preferred network offload match
  *                           packet wakeup count
  * @wow_pno_complete_wake_up_count: wow preferred network offload complete
@@ -543,7 +533,6 @@ struct host_event_wlan_powersave_wow_stats {
 	uint32_t    wow_ipv6_mcast_ra_stats;
 	uint32_t    wow_ipv6_mcast_ns_stats;
 	uint32_t    wow_ipv6_mcast_na_stats;
-	uint32_t    wow_ipv6_mcast_mlq_stats;
 	uint32_t    wow_pno_match_wake_up_count;
 	uint32_t    wow_pno_complete_wake_up_count;
 	uint32_t    wow_gscan_wake_up_count;
@@ -973,9 +962,6 @@ enum wifi_connectivity_events {
  * @WIFI_POWER_EVENT_WAKELOCK_RTPM_TPUT_POLICY: Wakelock for RTPM Tput policy
  * @WIFI_POWER_EVENT_WAKELOCK_DYN_MAC_ADDR_UPDATE: Dynamic mac addr update
  * @WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP: OPT_WIFI_DP feature enabled
- * @WIFI_POWER_EVENT_WAKELOCK_TX_POWER_BOOST: TX Powerboost feature enabled
- * @WIFI_POWER_EVENT_WAKELOCK_MIRACAST_OPT: Miracast opt enabled
- * @WIFI_POWER_EVENT_WAKELOCK_PASSTHRU: Wakelock for Passthrough mode
  *
  * Indicates the reason for which the wakelock was taken/released
  */
@@ -1012,9 +998,6 @@ enum wake_lock_reason {
 	WIFI_POWER_EVENT_WAKELOCK_RTPM_TPUT_POLICY,
 	WIFI_POWER_EVENT_WAKELOCK_DYN_MAC_ADDR_UPDATE,
 	WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP,
-	WIFI_POWER_EVENT_WAKELOCK_TX_POWER_BOOST,
-	WIFI_POWER_EVENT_WAKELOCK_MIRACAST_OPT,
-	WIFI_POWER_EVENT_WAKELOCK_PASSTHRU,
 };
 
 /* The length of interface name should >= IFNAMSIZ */

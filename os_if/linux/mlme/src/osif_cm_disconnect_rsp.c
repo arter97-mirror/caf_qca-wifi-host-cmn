@@ -38,7 +38,7 @@
  * osif_validate_disconnect_and_reset_src_id() - Validate disconnection
  * and resets source and id
  * @osif_priv: Pointer to vdev osif priv
- * @rsp: Disconnect response from connection manager
+ * @rsp: Disconnect response from connectin manager
  *
  * This function validates disconnect response and if the disconnect
  * response is valid, resets the source and id of the command
@@ -87,7 +87,7 @@ rel_lock:
 
 #if defined(CFG80211_DISCONNECTED_V2) || \
 (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0))
-
+#ifdef CONN_MGR_ADV_FEATURE
 static void
 osif_cm_indicate_disconnect_result(struct net_device *dev,
 				   enum ieee80211_reasoncode reason,
@@ -98,6 +98,31 @@ osif_cm_indicate_disconnect_result(struct net_device *dev,
 	cfg80211_disconnected(dev, reason, ie,
 			      ie_len, locally_generated, gfp);
 }
+#else
+#ifdef WLAN_SUPPORT_CFG80211_DISCONNECT_LINK_PARAM
+static void
+osif_cm_indicate_disconnect_result(struct net_device *dev,
+				   enum ieee80211_reasoncode reason,
+				   const u8 *ie, size_t ie_len,
+				   bool locally_generated, int link_id,
+				   gfp_t gfp)
+{
+	cfg80211_disconnected(dev, reason, ie,
+			      ie_len, locally_generated, link_id, gfp);
+}
+#else
+static void
+osif_cm_indicate_disconnect_result(struct net_device *dev,
+				   enum ieee80211_reasoncode reason,
+				   const u8 *ie, size_t ie_len,
+				   bool locally_generated, int link_id,
+				   gfp_t gfp)
+{
+	cfg80211_disconnected(dev, reason, ie,
+			      ie_len, locally_generated, gfp);
+}
+#endif /* WLAN_SUPPORT_CFG80211_DISCONNECT_LINK_PARAM */
+#endif
 
 #ifdef WLAN_FEATURE_11BE_MLO
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
@@ -300,6 +325,7 @@ osif_cm_get_disconnect_reason(struct vdev_osif_priv *osif_priv, uint16_t reason)
 	return ieee80211_reason;
 }
 
+#ifdef CONN_MGR_ADV_FEATURE
 static inline bool
 osif_is_disconnect_locally_generated(struct wlan_cm_discon_rsp *rsp)
 {
@@ -308,7 +334,19 @@ osif_is_disconnect_locally_generated(struct wlan_cm_discon_rsp *rsp)
 
 	return true;
 }
+#else
+static inline bool
+osif_is_disconnect_locally_generated(struct wlan_cm_discon_rsp *rsp)
+{
+	if (rsp->req.req.source == CM_PEER_DISCONNECT ||
+	    rsp->req.req.source == CM_SB_DISCONNECT)
+		return false;
 
+	return true;
+}
+#endif
+
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * osif_cm_indicate_qca_reason: Send driver disconnect reason to user space
  * @osif_priv: osif_priv pointer
@@ -341,6 +379,13 @@ osif_cm_indicate_qca_reason(struct vdev_osif_priv *osif_priv,
 
 	wlan_cfg80211_vendor_event(vendor_event, GFP_KERNEL);
 }
+#else
+static inline void
+osif_cm_indicate_qca_reason(struct vdev_osif_priv *osif_priv,
+			    enum qca_disconnect_reason_codes qca_reason)
+{
+}
+#endif
 
 QDF_STATUS osif_disconnect_handler(struct wlan_objmgr_vdev *vdev,
 				   struct wlan_cm_discon_rsp *rsp)
@@ -369,28 +414,17 @@ QDF_STATUS osif_disconnect_handler(struct wlan_objmgr_vdev *vdev,
 		       qca_reason,
 		       osif_cm_qca_reason_to_str(qca_reason));
 
-	/*
-	 * Unlink BSS entry when disconnect is triggered by:
-	 * - Peer initiated disconnect (CM_PEER_DISCONNECT)
-	 * - Southbound initiated disconnect (CM_SB_DISCONNECT)
-	 * - Internal roam failure (QCA_DISCONNECT_REASON_INTERNAL_ROAM_FAILURE)
-	 *
-	 * This ensures the host does not retain outdated BSS information,
-	 * which could lead to incorrect connection attempts.
-	 */
+	/* Unlink bss if disconnect is from peer or south bound */
 	if (rsp->req.req.source == CM_PEER_DISCONNECT ||
 	    rsp->req.req.source == CM_SB_DISCONNECT ||
-	    qca_reason == QCA_DISCONNECT_REASON_INTERNAL_ROAM_FAILURE)
+	    ((wlan_scan_is_localy_gen_non_tx_mbssid_entry(
+		    wlan_vdev_get_pdev(vdev),
+		    &rsp->req.req.bssid) ||
+	      wlan_scan_is_locally_generated_entry(
+		    wlan_vdev_get_pdev(vdev),
+		    &rsp->req.req.bssid)) &&
+	    rsp->req.req.source != CM_MLO_LINK_SWITCH_DISCONNECT))
 		osif_cm_unlink_bss(vdev, &rsp->req.req.bssid);
-
-	if (!wlan_vdev_mlme_is_mlo_vdev(vdev) ||
-	    (!wlan_vdev_mlme_is_mlo_link_vdev(vdev) &&
-	     rsp->req.req.source != CM_MLO_LINK_SWITCH_DISCONNECT))
-		/*
-		 * Flush all the locally generated entries for the connected
-		 * SSID during the assoc VDEV disconnect.
-		 */
-		mlo_mgr_flush_connected_profile_scan_entry(vdev);
 
 	status = osif_validate_disconnect_and_reset_src_id(osif_priv, rsp);
 	if (QDF_IS_STATUS_ERROR(status)) {

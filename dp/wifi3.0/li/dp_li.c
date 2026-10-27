@@ -36,7 +36,7 @@
 static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RINGS] = {
 	{.tcl_ring_num = 0, .wbm_ring_num = 0, .wbm_rbm_id = HAL_LI_WBM_SW0_BM_ID, .for_ipa = 0},
 	/*
-	 * INVALID_WBM_RING_NUM implies reuse of an existing WBM2SW ring
+	 * INVALID_WBM_RING_NUM implies re-use of an existing WBM2SW ring
 	 * as indicated by rbm id.
 	 */
 	{1, INVALID_WBM_RING_NUM, HAL_LI_WBM_SW0_BM_ID, 0},
@@ -130,180 +130,10 @@ static void dp_soc_interrupt_detach_li(struct cdp_soc_t *txrx_soc)
 	return dp_soc_interrupt_detach(txrx_soc);
 }
 
-#ifndef QCA_HOST_MODE_WIFI_DISABLED
 static uint32_t dp_service_srngs_li(void *dp_ctx, uint32_t dp_budget, int cpu)
 {
-	struct dp_intr *int_ctx = (struct dp_intr *)dp_ctx;
-	struct dp_intr_stats *intr_stats = &int_ctx->intr_stats;
-	struct dp_soc *soc = int_ctx->soc;
-	int ring = 0;
-	int index;
-	uint32_t work_done  = 0;
-	int budget = dp_budget;
-	uint32_t remaining_quota = dp_budget;
-	uint8_t tx_mask = 0;
-	uint8_t rx_mask = 0;
-	uint8_t rx_err_mask = 0;
-	uint8_t rx_wbm_rel_mask = 0;
-	uint8_t reo_status_mask = 0;
-
-	qdf_atomic_set_bit(cpu, &soc->service_rings_running);
-
-	tx_mask = int_ctx->tx_ring_mask;
-	rx_mask = int_ctx->rx_ring_mask;
-	rx_err_mask = int_ctx->rx_err_ring_mask;
-	rx_wbm_rel_mask = int_ctx->rx_wbm_rel_ring_mask;
-	reo_status_mask = int_ctx->reo_status_ring_mask;
-
-	dp_verbose_debug("tx %x rx %x rx_err %x rx_wbm_rel %x reo_status %x rx_mon_ring %x host2rxdma %x rxdma2host %x",
-			 tx_mask, rx_mask, rx_err_mask, rx_wbm_rel_mask,
-			 reo_status_mask,
-			 int_ctx->rx_mon_ring_mask,
-			 int_ctx->host2rxdma_ring_mask,
-			 int_ctx->rxdma2host_ring_mask);
-
-	/* Process Tx completion interrupts first to return back buffers */
-	for (index = 0; index < soc->num_tx_comp_rings; index++) {
-		if (!(1 << wlan_cfg_get_wbm_ring_num_for_index(soc->wlan_cfg_ctx, index) & tx_mask))
-			continue;
-		work_done = dp_tx_comp_handler(int_ctx,
-					       soc,
-					       soc->tx_comp_ring[index].hal_srng,
-					       index, remaining_quota);
-		if (work_done) {
-			intr_stats->num_tx_ring_masks[index]++;
-			dp_verbose_debug("tx mask 0x%x index %d, budget %d, work_done %d",
-					 tx_mask, index, budget,
-					 work_done);
-		}
-		budget -= work_done;
-		if (budget <= 0)
-			goto budget_done;
-
-		remaining_quota = budget;
-	}
-
-	/* Process REO Exception ring interrupt */
-	if (rx_err_mask) {
-		work_done = dp_rx_err_process(int_ctx, soc,
-					      soc->reo_exception_ring.hal_srng,
-					      remaining_quota);
-
-		if (work_done) {
-			intr_stats->num_rx_err_ring_masks++;
-			dp_verbose_debug("REO Exception Ring: work_done %d budget %d",
-					 work_done, budget);
-		}
-
-		budget -=  work_done;
-		if (budget <= 0) {
-			goto budget_done;
-		}
-		remaining_quota = budget;
-	}
-
-	/* Process Rx WBM release ring interrupt */
-	if (rx_wbm_rel_mask) {
-		work_done = dp_rx_wbm_err_process(int_ctx, soc,
-						  soc->rx_rel_ring.hal_srng,
-						  remaining_quota);
-
-		if (work_done) {
-			intr_stats->num_rx_wbm_rel_ring_masks++;
-			dp_verbose_debug("WBM Release Ring: work_done %d budget %d",
-					 work_done, budget);
-		}
-
-		budget -=  work_done;
-		if (budget <= 0) {
-			goto budget_done;
-		}
-		remaining_quota = budget;
-	}
-
-	/* Process Rx interrupts */
-	if (rx_mask) {
-		for (ring = 0; ring < soc->num_reo_dest_rings; ring++) {
-			if (!(rx_mask & (1 << ring)))
-				continue;
-			work_done = soc->arch_ops.dp_rx_process(int_ctx,
-						  soc->reo_dest_ring[ring].hal_srng,
-						  ring,
-						  remaining_quota);
-			if (work_done) {
-				intr_stats->num_rx_ring_masks[ring]++;
-				dp_verbose_debug("rx mask 0x%x ring %d, work_done %d budget %d",
-						 rx_mask, ring,
-						 work_done, budget);
-				budget -=  work_done;
-				if (budget <= 0)
-					goto budget_done;
-				remaining_quota = budget;
-			}
-		}
-	}
-
-	if (reo_status_mask) {
-		if (dp_reo_status_ring_handler(int_ctx, soc))
-			int_ctx->intr_stats.num_reo_status_ring_masks++;
-	}
-
-	if (qdf_unlikely(!dp_monitor_is_vdev_timer_running(soc))) {
-		work_done = dp_process_lmac_rings(int_ctx, remaining_quota);
-		if (work_done) {
-			budget -=  work_done;
-			if (budget <= 0)
-				goto budget_done;
-			remaining_quota = budget;
-		}
-	}
-
-	qdf_lro_flush(int_ctx->lro_ctx);
-	intr_stats->num_masks++;
-
-budget_done:
-	qdf_atomic_clear_bit(cpu, &soc->service_rings_running);
-
-	dp_umac_reset_trigger_pre_reset_notify_cb(soc);
-
-	return dp_budget - budget;
+	return dp_service_srngs(dp_ctx, dp_budget, cpu);
 }
-
-#else /* QCA_HOST_MODE_WIFI_DISABLED */
-
-static uint32_t dp_service_srngs_li(void *dp_ctx, uint32_t dp_budget, int cpu)
-{
-	struct dp_intr *int_ctx = (struct dp_intr *)dp_ctx;
-	struct dp_intr_stats *intr_stats = &int_ctx->intr_stats;
-	struct dp_soc *soc = int_ctx->soc;
-	uint32_t remaining_quota = dp_budget;
-	uint32_t work_done  = 0;
-	int budget = dp_budget;
-	uint8_t reo_status_mask = int_ctx->reo_status_ring_mask;
-
-	if (reo_status_mask) {
-		if (dp_reo_status_ring_handler(int_ctx, soc))
-			int_ctx->intr_stats.num_reo_status_ring_masks++;
-	}
-
-	if (qdf_unlikely(!dp_monitor_is_vdev_timer_running(soc))) {
-		work_done = dp_process_lmac_rings(int_ctx, remaining_quota);
-		if (work_done) {
-			budget -=  work_done;
-			if (budget <= 0)
-				goto budget_done;
-			remaining_quota = budget;
-		}
-	}
-
-	qdf_lro_flush(int_ctx->lro_ctx);
-	intr_stats->num_masks++;
-
-budget_done:
-	return dp_budget - budget;
-}
-
-#endif /* QCA_HOST_MODE_WIFI_DISABLED */
 
 static void *dp_soc_init_li(struct dp_soc *soc, HTC_HANDLE htc_handle,
 			    struct hif_opaque_softc *hif_handle)
@@ -428,9 +258,13 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	struct htt_rx_ring_tlv_filter htt_tlv_filter = {0};
 	struct dp_srng *rx_mac_srng;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 	uint16_t buf_size;
 
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
+
+	if (target_type == TARGET_TYPE_QCN9160)
+		return status;
 
 	htt_tlv_filter.mpdu_start = 1;
 	htt_tlv_filter.msdu_start = 1;
@@ -446,7 +280,8 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	htt_tlv_filter.ppdu_end_user_stats_ext = 0;
 	htt_tlv_filter.ppdu_end_status_done = 0;
 	htt_tlv_filter.enable_fp = 1;
-
+	htt_tlv_filter.enable_md = 0;
+	htt_tlv_filter.enable_md = 0;
 	htt_tlv_filter.enable_mo = 0;
 
 	htt_tlv_filter.fp_mgmt_filter = 0;
@@ -457,6 +292,7 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	htt_tlv_filter.mo_mgmt_filter = 0;
 	htt_tlv_filter.mo_ctrl_filter = 0;
 	htt_tlv_filter.mo_data_filter = 0;
+	htt_tlv_filter.md_data_filter = 0;
 
 	htt_tlv_filter.offset_valid = true;
 
@@ -517,9 +353,13 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	struct htt_rx_ring_tlv_filter htt_tlv_filter = {0};
 	struct dp_srng *rx_mac_srng;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 	uint16_t buf_size;
 
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
+
+	if (target_type == TARGET_TYPE_QCN9160)
+		return status;
 
 	htt_tlv_filter.mpdu_start = 1;
 	htt_tlv_filter.msdu_start = 1;
@@ -535,7 +375,8 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	htt_tlv_filter.ppdu_end_user_stats_ext = 0;
 	htt_tlv_filter.ppdu_end_status_done = 0;
 	htt_tlv_filter.enable_fp = 1;
-
+	htt_tlv_filter.enable_md = 0;
+	htt_tlv_filter.enable_md = 0;
 	htt_tlv_filter.enable_mo = 0;
 
 	htt_tlv_filter.fp_mgmt_filter = 0;
@@ -546,6 +387,7 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	htt_tlv_filter.mo_mgmt_filter = 0;
 	htt_tlv_filter.mo_ctrl_filter = 0;
 	htt_tlv_filter.mo_data_filter = 0;
+	htt_tlv_filter.md_data_filter = 0;
 
 	htt_tlv_filter.offset_valid = true;
 
@@ -813,62 +655,6 @@ dp_soc *dp_get_soc_by_chip_id_li(struct dp_soc *soc,
 	return soc;
 }
 
-/**
- * dp_print_peer_txrx_stats_li() - Print LI specific peer stats
- * @peer_stats: cdp peer stats
- * @stats_type: stats type tx or rx
- *
- * Return: void
- */
-static void dp_print_peer_txrx_stats_li(struct cdp_peer_stats *peer_stats,
-					enum peer_stats_type stats_type)
-{
-	if (stats_type == PEER_TX_STATS) {
-		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d\n",
-			       peer_stats->tx.bw[CMN_BW_20MHZ],
-			       peer_stats->tx.bw[CMN_BW_40MHZ],
-			       peer_stats->tx.bw[CMN_BW_80MHZ],
-			       peer_stats->tx.bw[CMN_BW_160MHZ]);
-		DP_PRINT_STATS("RU Locations");
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_26_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_26_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_26_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_26_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_52_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_52_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_52_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_52_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_106_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_106_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_106_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_106_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_242_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_242_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_242_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_242_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_484_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_484_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_484_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_484_INDEX].mpdu_tried);
-		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
-			       cdp_ru_string[RU_996_INDEX].ru_type,
-			       peer_stats->tx.ru_loc[RU_996_INDEX].num_msdu,
-			       peer_stats->tx.ru_loc[RU_996_INDEX].num_mpdu,
-			       peer_stats->tx.ru_loc[RU_996_INDEX].mpdu_tried);
-	} else {
-		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d",
-			       peer_stats->rx.bw[CMN_BW_20MHZ],
-			       peer_stats->rx.bw[CMN_BW_40MHZ],
-			       peer_stats->rx.bw[CMN_BW_80MHZ],
-			       peer_stats->rx.bw[CMN_BW_160MHZ]);
-	}
-}
-
 void dp_initialize_arch_ops_li(struct dp_arch_ops *arch_ops)
 {
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
@@ -956,17 +742,6 @@ void dp_initialize_arch_ops_li(struct dp_arch_ops *arch_ops)
 	arch_ops->dp_mlo_tx_pool_map = dp_mlo_tx_pool_map_li;
 	arch_ops->dp_mlo_tx_pool_unmap = dp_mlo_tx_pool_unmap_li;
 	arch_ops->dp_tx_override_flow_pool_id = dp_tx_override_flow_pool_id_li;
-#ifdef FEATURE_DAL_DP_SUPPORT
-	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_li;
-	arch_ops->dp_tx_hw_desc_sync = dp_tx_hw_desc_sync_li;
-	arch_ops->dp_tx_desc_update_buffer_info =
-					dp_tx_desc_update_buffer_info_li;
-	arch_ops->dp_dal_tx_comp_check_reserved_cookie =
-					dp_dal_tx_comp_check_reserved_cookie_li;
-	arch_ops->dp_dal_rx_process_nbuf_list = dp_dal_rx_process_nbuf_list_li;
-	arch_ops->dp_rx_validate_and_fetch_rx_desc =
-					dp_rx_validate_and_fetch_rx_desc_li;
-#endif /* FEATURE_DAL_DP_SUPPORT */
 }
 
 #ifdef QCA_DP_TX_HW_SW_NBUF_DESC_PREFETCH

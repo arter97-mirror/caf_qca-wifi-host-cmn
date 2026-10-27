@@ -516,7 +516,7 @@ void wmi_p2p_listen_offload_attach_tlv(wmi_unified_t wmi_handle)
 }
 #endif /* FEATURE_P2P_LISTEN_OFFLOAD */
 
-#if defined(FEATURE_WLAN_SUPPORT_USD) || defined(FEATURE_WLAN_SUPPORT_P2P_R2)
+#ifdef FEATURE_WLAN_SUPPORT_USD
 /**
  * wmi_p2p_op_type_convert_p2p_enum_to_wmi_enum() - this API converts
  * P2P_USD_OP_TYPE_XX to WMI_USD_MODE_XX
@@ -681,8 +681,6 @@ send_p2p_usd_req_cmd_tlv(wmi_unified_t wmi_handle,
 		cmd->service_specific_info_len = ssi_len;
 		cmd->default_freq = param->freq_config.default_freq;
 
-		WMI_CHAR_ARRAY_TO_MAC_ADDR(param->multicast_mac_addr.bytes,
-					   &cmd->multicast_addr);
 		WMI_CHAR_ARRAY_TO_MAC_ADDR(param->p2p_mac_addr.bytes,
 					   &cmd->device_mac_addr);
 
@@ -742,7 +740,7 @@ static void wmi_p2p_attach_usd_tlv(struct wmi_ops *ops)
 static inline void wmi_p2p_attach_usd_tlv(struct wmi_ops *ops)
 {
 }
-#endif /* FEATURE_WLAN_SUPPORT_USD || FEATURE_WLAN_SUPPORT_P2P_R2 */
+#endif /* FEATURE_WLAN_SUPPORT_USD */
 
 void wmi_p2p_attach_tlv(wmi_unified_t wmi_handle)
 {

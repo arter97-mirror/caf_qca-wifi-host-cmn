@@ -360,7 +360,7 @@ qdf_export_symbol(qdf_wait_for_event_completion);
  *
  * This function creates a list for maintaining events on which threads
  * wait for completion. A spinlock is also created to protect related
- * operations.
+ * oprations.
  *
  * Return: None
  */

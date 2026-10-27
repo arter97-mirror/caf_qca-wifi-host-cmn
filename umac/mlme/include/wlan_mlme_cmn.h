@@ -30,14 +30,9 @@
 #endif
 #include "wlan_twt_public_structs.h"
 
-#ifdef FEATURE_CQM_RSSI
-struct vdev_cqm_rssi_breach_event;
-#endif
-
 /**
  * struct mlme_cm_ops: connection manager osif callbacks
  * @mlme_cm_connect_active_notify_cb: Connect active notify callback
- * @mlme_cm_connect_start_notify_cb: Connect start notify callback
  * @mlme_cm_connect_complete_cb: Connect done callback
  * @vdev: vdev pointer
  * @rsp: connect response
@@ -77,13 +72,6 @@ struct vdev_cqm_rssi_breach_event;
  * @mlme_cm_link_reconfig_notify_cb:
  * @vdev: vdev object
  *
- * @mlme_cm_mgmt_tx_status_cb: callback to indicate mgmt frame tx status
- * @vdev: vdev pointer
- * @cookie: nl80211 cookie for mgmt tx status
- * @buf: management frame buffer
- * @len: frame length
- * @ack: true if acked by peer
- *
  * @mlme_cm_roam_start_cb: Roam start callback
  * @vdev: vdev pointer
  *
@@ -102,12 +90,6 @@ struct vdev_cqm_rssi_breach_event;
  * @roam_stats_event: roam_stats_event pointer
  * @idx: TLV idx for roam_stats_event
  *
- * @mlme_cm_roam_connect_complete_cb: Roam complete cb
- * @vdev: vdev object
- *
- * @mlme_cm_reset_scan_reject_params_cb: Reset scan reject params cb
- * @vdev: vdev pointer
- *
  * @mlme_cm_ft_preauth_cmpl_cb: Roam ft preauth complete cb
  * @vdev: vdev pointer
  * @rsp: preauth response pointer
@@ -121,22 +103,13 @@ struct vdev_cqm_rssi_breach_event;
  * @rsp: vendor handoff response pointer
  * @vendor_handoff_context: vendor handoff context
  *
- * @mlme_cm_perfd_reset_cpufreq_ctrl_cb: callback to reset CPU min freq
- *
  * @mlme_cm_link_reconfig_status_cb: send link reconfig status to userspace
- * @ctx: link recfg done data
+ * @vdev: vdev pointer
  *
- * @mlme_cm_populate_link_recfg_done_data: callback to populate link recfg
- * done data from os if
- * @vdev: vdev obj
- *
- * @mlme_cm_free_link_reconfig_done_data: callback to free link recfg
- * done data
- * @ctx: link recfg done data
+ * @mlme_cm_perfd_reset_cpufreq_ctrl_cb: callback to reset CPU min freq
  */
 struct mlme_cm_ops {
 	void (*mlme_cm_connect_active_notify_cb)(uint8_t vdev_id);
-	void (*mlme_cm_connect_start_notify_cb)(uint8_t vdev_id);
 	QDF_STATUS (*mlme_cm_connect_complete_cb)(
 					struct wlan_objmgr_vdev *vdev,
 					struct wlan_cm_connect_resp *rsp);
@@ -153,6 +126,7 @@ struct mlme_cm_ops {
 	QDF_STATUS (*mlme_cm_disconnect_start_cb)(
 					struct wlan_objmgr_vdev *vdev,
 					enum wlan_cm_source source);
+#ifdef CONN_MGR_ADV_FEATURE
 	QDF_STATUS (*mlme_cm_roam_sync_cb)(struct wlan_objmgr_vdev *vdev);
 	QDF_STATUS (*mlme_cm_pmksa_candidate_notify_cb)(
 						struct wlan_objmgr_vdev *vdev,
@@ -163,11 +137,7 @@ struct mlme_cm_ops {
 					   enum wlan_crypto_cipher_type cipher_type);
 	QDF_STATUS (*mlme_cm_link_reconfig_notify_cb)(
 					struct wlan_objmgr_vdev *vdev);
-	QDF_STATUS (*mlme_cm_mgmt_tx_status_cb)(struct wlan_objmgr_vdev *vdev,
-						uint64_t cookie,
-						const uint8_t *buf,
-						uint32_t len,
-						bool ack);
+#endif
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	QDF_STATUS (*mlme_cm_roam_start_cb)(struct wlan_objmgr_vdev *vdev);
 	QDF_STATUS (*mlme_cm_roam_abort_cb)(struct wlan_objmgr_vdev *vdev);
@@ -177,9 +147,6 @@ struct mlme_cm_ops {
 				enum dot11_mode_filter *dot11mode_filter);
 	void (*mlme_cm_roam_rt_stats_cb)(struct roam_stats_event *roam_stats,
 					 uint8_t idx);
-	QDF_STATUS (*mlme_cm_roam_connect_complete_cb)
-					(struct wlan_objmgr_vdev *vdev);
-	QDF_STATUS (*mlme_cm_reset_scan_reject_params_cb)(struct wlan_objmgr_vdev *vdev);
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	QDF_STATUS (*mlme_cm_ft_preauth_cmpl_cb)(
@@ -200,10 +167,8 @@ struct mlme_cm_ops {
 	void (*mlme_cm_perfd_reset_cpufreq_ctrl_cb)(void);
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO
-	QDF_STATUS (*mlme_cm_link_reconfig_status_cb)(void *ctx);
-	void * (*mlme_cm_populate_link_recfg_done_data)(
+	QDF_STATUS (*mlme_cm_link_reconfig_status_cb)(
 					struct wlan_objmgr_vdev *vdev);
-	void (*mlme_cm_free_link_reconfig_done_data)(void *ctx);
 #endif
 };
 
@@ -213,10 +178,6 @@ struct mlme_cm_ops {
  *                                       response to osif
  * @mlme_vdev_mgr_send_scan_done_complete_cb: Callback to indicate scan done
  *                                            complete to osif
- * @mlme_vdev_mgr_sta_csa_received: Callback to indicate STA CSA IE received
- *                                  event to osif
- * @mlme_vdev_mgr_cqm_rssi_breach_cb: Callback to indicate adaptive-hysteresis
- *                                    RSSI CQM breach event to osif
  */
 struct mlme_vdev_mgr_ops {
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
@@ -224,14 +185,6 @@ struct mlme_vdev_mgr_ops {
 							  uint8_t resp_status);
 #endif
 	void (*mlme_vdev_mgr_send_scan_done_complete_cb)(uint8_t vdev_id);
-	void (*mlme_vdev_mgr_sta_csa_received)(uint8_t vdev_id,
-					       struct csa_offload_params
-					       *csa_event);
-#ifdef FEATURE_CQM_RSSI
-	QDF_STATUS
-	(*mlme_vdev_mgr_cqm_rssi_breach_cb)(struct vdev_cqm_rssi_breach_event
-					     *event);
-#endif
 };
 
 /**
@@ -793,6 +746,7 @@ QDF_STATUS mlme_cm_bss_peer_create_req(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS mlme_cm_connect_req(struct wlan_objmgr_vdev *vdev,
 			       struct wlan_cm_vdev_connect_req *req);
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * mlme_cm_osif_connect_active_notify() - CNX manager ext connect active
  * notification.
@@ -801,15 +755,11 @@ QDF_STATUS mlme_cm_connect_req(struct wlan_objmgr_vdev *vdev,
  * Return: void
  */
 void mlme_cm_osif_connect_active_notify(uint8_t vdev_id);
-
-/**
- * mlme_cm_osif_connect_start_notify() - CNX manager ext connect start
- * notification.
- * @vdev_id: VDEV ID
- *
- * Return: void
- */
-void mlme_cm_osif_connect_start_notify(uint8_t vdev_id);
+#else
+static inline void mlme_cm_osif_connect_active_notify(uint8_t vdev_id)
+{
+}
+#endif
 
 /**
  * mlme_cm_connect_complete_ind() - Connection manager ext connect complete
@@ -990,6 +940,7 @@ QDF_STATUS mlme_cm_osif_get_vendor_handoff_params(struct wlan_objmgr_psoc *psoc,
 						  void *vendor_handoff_context);
 #endif
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * mlme_cm_osif_roam_sync_ind() - osif Roam sync indication
  * @vdev: vdev pointer
@@ -1030,22 +981,27 @@ QDF_STATUS mlme_cm_osif_send_keys(struct wlan_objmgr_vdev *vdev,
  * Return: QDF_STATUS
  */
 QDF_STATUS mlme_cm_osif_link_reconfig_notify(struct wlan_objmgr_vdev *vdev);
+#else
+static inline
+QDF_STATUS mlme_cm_osif_roam_sync_ind(struct wlan_objmgr_vdev *vdev)
+{
+	return QDF_STATUS_SUCCESS;
+}
 
-/**
- * mlme_cm_osif_mgmt_tx_status() - OSIF indication for mgmt tx status
- * @vdev: vdev pointer
- * @cookie: cookie from userspace mgmt-tx request
- * @buf: management frame buffer
- * @len: buffer length
- * @ack: whether FW reports ACK success
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlme_cm_osif_mgmt_tx_status(struct wlan_objmgr_vdev *vdev,
-				       uint64_t cookie,
-				       const uint8_t *buf,
-				       uint32_t len,
-				       bool ack);
+static inline
+QDF_STATUS mlme_cm_osif_send_keys(struct wlan_objmgr_vdev *vdev,
+				  uint8_t key_index, bool pairwise,
+				  enum wlan_crypto_cipher_type cipher_type)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS mlme_cm_osif_link_reconfig_notify(struct wlan_objmgr_vdev *vdev)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /**
@@ -1094,28 +1050,6 @@ QDF_STATUS
 mlme_cm_osif_roam_get_scan_params(struct wlan_objmgr_vdev *vdev,
 				  struct element_info *scan_ie,
 				  enum dot11_mode_filter *dot11mode_filter);
-
-/*
- * mlme_cm_osif_roam_connect_complete() - Roaming complete resp to osif
- * @vdev: pointer to vdev object
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev);
-
-/**
- * mlme_cm_osif_reset_scan_reject_params - osif reset scan reject params
- * @vdev: vdev pointer
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlme_cm_osif_reset_scan_reject_params(struct wlan_objmgr_vdev *vdev);
-#else
-static inline QDF_STATUS
-mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev)
-{
-	return QDF_STATUS_SUCCESS;
-}
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
@@ -1220,17 +1154,6 @@ bool mlme_max_chan_switch_is_set(struct wlan_objmgr_psoc *psoc);
  */
 void mlme_send_scan_done_complete_cb(uint8_t vdev_id);
 
-/**
- * mlme_sta_csa_received() - send STA CSA IE received indication to
- * upper layer
- * @vdev_id: vdev id
- * @csa_event: CSA offload parameters
- *
- * Return: none
- */
-void mlme_sta_csa_received(uint8_t vdev_id,
-			   struct csa_offload_params *csa_event);
-
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
 /**
  * mlme_vdev_ops_send_set_mac_address() - Send set MAC address request to FW
@@ -1258,20 +1181,6 @@ QDF_STATUS mlme_vdev_ops_send_set_mac_address(struct qdf_mac_addr mac_addr,
  */
 void mlme_vdev_mgr_notify_set_mac_addr_response(uint8_t vdev_id,
 						uint8_t resp_status);
-#endif
-
-#ifdef FEATURE_CQM_RSSI
-/**
- * mlme_vdev_mgr_notify_cqm_rssi_breach() - Notify adaptive-hysteresis RSSI
- *                                          CQM breach event
- * @event: CQM RSSI breach event
- *
- * API to notify a CQM RSSI breach event to osif
- *
- * Return: None
- */
-void mlme_vdev_mgr_notify_cqm_rssi_breach(struct vdev_cqm_rssi_breach_event
-					*event);
 #endif
 
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)

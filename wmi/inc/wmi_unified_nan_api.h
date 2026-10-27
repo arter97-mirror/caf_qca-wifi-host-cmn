@@ -45,59 +45,6 @@ QDF_STATUS wmi_unified_nan_req_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_unified_nan_disable_req_cmd(wmi_unified_t wmi_handle,
 					   struct nan_disable_req *nan_req);
 
-#if defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
-/**
- * wmi_unified_nan_stop_req_cmd() - to send nan stop request to target
- * @wmi_handle: wmi handle
- * @nan_req: pointer to NAN stop request structure
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
-					struct nan_disable_req *nan_req);
-
-/**
- * wmi_unified_nan_start_req() - Request to start NAN
- * @wmi_handle: wmi handle
- * @nan_req: Pointer to NAN enable request structure
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
-				     struct nan_enable_req *nan_req);
-
-/**
- * wmi_unified_nan_change_conf_req() - Request to change NAN configuration
- * @wmi_handle: wmi handle
- * @nan_req: Pointer to NAN change config request structure
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS wmi_unified_nan_change_conf_req(wmi_unified_t wmi_handle,
-					   struct nan_change_conf_req *nan_req);
-#else
-static inline QDF_STATUS
-wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
-			     struct nan_disable_req *nan_req)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
-			  struct nan_enable_req *nan_req)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-wmi_unified_nan_change_conf_req(wmi_unified_t wmi_handle,
-				struct nan_change_conf_req *nan_req)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 /**
  * wmi_unified_ndp_initiator_req_cmd_send - api to send initiator request to FW
  * @wmi_handle: wmi handle
@@ -142,32 +89,6 @@ QDF_STATUS wmi_unified_terminate_all_ndps_req_cmd(wmi_unified_t wmi_handle,
 						  uint32_t vdev_id);
 
 /**
- * wmi_unified_ndp_update_config_cmd_send - API to request Firmware for
- * updating the NDP configuration associated with the given vdev id.
- * @wmi_handle: wmi handle
- * @req: pointer to request buffer
- *
- * Return: status of operation
- */
-QDF_STATUS
-wmi_unified_ndp_update_config_cmd_send(wmi_unified_t wmi_handle,
-				       struct nan_datapath_update_config *req);
-
-/**
- * wmi_unified_nan_add_func_cmd() - Send NAN add function command
- * @wmi_handle: WMI handle
- * @params: Internal NAN function parameters
- *
- * Unified API for sending NAN add function command.
- *
- * Return: QDF_STATUS
- */
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
-QDF_STATUS wmi_unified_nan_add_func_cmd(wmi_unified_t wmi_handle,
-					struct nan_add_func_params *params);
-#endif
-
-/**
  * wmi_extract_ndp_initiator_rsp - api to extract initiator rsp from even buffer
  * @wmi_handle: wmi handle
  * @data: event buffer
@@ -178,21 +99,6 @@ QDF_STATUS wmi_unified_nan_add_func_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_extract_ndp_initiator_rsp(wmi_unified_t wmi_handle, uint8_t *data,
 			      struct nan_datapath_initiator_rsp *rsp);
-
-/**
- * wmi_unified_nan_del_func_cmd() - Send NAN del function command
- * @wmi_handle: WMI handle
- * @params: del function parameters. @params->type must be
- *          NAN_FUNC_TYPE_PUBLISH or NAN_FUNC_TYPE_SUBSCRIBE;
- *          NAN_FUNC_TYPE_FOLLOW_UP is not cancellable per the firmware ABI.
- *          @params->instance_id must be a valid firmware-assigned ID (1-255).
- *
- * Return: QDF_STATUS
- */
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
-QDF_STATUS wmi_unified_nan_del_func_cmd(wmi_unified_t wmi_handle,
-					struct nan_del_func_params *params);
-#endif
 
 /**
  * wmi_extract_ndp_ind - api to extract ndp indication struct from even buffer
@@ -217,7 +123,7 @@ QDF_STATUS wmi_extract_nan_msg(wmi_unified_t wmi_handle, uint8_t *data,
 			       struct nan_dump_msg *msg);
 
 /**
- * wmi_extract_ndp_confirm - api to extract ndp confirm struct from even buffer
+ * wmi_extract_ndp_confirm - api to extract ndp confim struct from even buffer
  * @wmi_handle: wmi handle
  * @data: event buffer
  * @ev: buffer to populate
@@ -280,65 +186,12 @@ wmi_extract_ndp_sch_update(wmi_unified_t wmi_handle, uint8_t *data,
  * @evt_buf: pointer to the event buffer
  * @temp_evt_params: Pointer to a temporary parameters structure to populate
  * @nan_msg_buf: Pointer to the NAN Message buffer encapsulated in the event
- * @nan_config: NAN capability config
  *
  * Return: status of operation
  */
 QDF_STATUS wmi_extract_nan_event_rsp(wmi_unified_t wmi_handle, void *evt_buf,
 				     struct nan_event_params *temp_evt_params,
-				     uint8_t **nan_msg_buf,
-				     uint32_t nan_config);
-
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
-/**
- * wmi_extract_nan_disable_rsp_event - extract nan disable rsp event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to the event buffer
- * @temp_evt_params: Pointer to a temporary parameters structure to populate
- *
- * Return: status of operation
- */
-QDF_STATUS wmi_extract_nan_disable_rsp_event(wmi_unified_t wmi_handle,
-				     void *evt_buf,
-				     struct nan_event_params *temp_evt_params);
-
-/**
- * wmi_extract_nan_disable_ind_event - extract nan disable ind event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to the event buffer
- * @temp_evt_params: Pointer to a temporary parameters structure to populate
- *
- * Return: status of operation
- */
-QDF_STATUS
-wmi_extract_nan_disable_ind_event(wmi_unified_t wmi_handle, void *evt_buf,
-				  struct nan_event_params *temp_evt_params);
-
-/**
- * wmi_extract_nan_enable_rsp_event - api to extract nan enable rsp event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to the event buffer
- * @evt_params: Pointer to a event parameters to populate
- *
- * Return: status of operation
- */
-QDF_STATUS wmi_extract_nan_enable_rsp_event(
-				wmi_unified_t wmi_handle,
-				void *evt_buf,
-				struct nan_enable_rsp_params *evt_params);
-
-/**
- * wmi_extract_ndp_channel_info - api to extract ndp channel info from event buffer
- * @wmi_handle: wmi handle
- * @data: event buffer
- * @ev: buffer to populate
- *
- * Return: status of operation
- */
-QDF_STATUS wmi_extract_ndp_channel_info(wmi_unified_t wmi_handle,
-				uint8_t *data,
-				struct nan_ndp_channel_info_event *ev);
-#endif
+				     uint8_t **nan_msg_buf);
 
 /**
  * wmi_extract_ndp_host_event - api to extract ndp event from event buffer
@@ -350,154 +203,4 @@ QDF_STATUS wmi_extract_ndp_channel_info(wmi_unified_t wmi_handle,
  */
 QDF_STATUS wmi_extract_ndp_host_event(wmi_unified_t wmi_handle, uint8_t *data,
 				      struct nan_datapath_host_event *evt);
-
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
-/**
- * wmi_extract_nan_next_dw_info() - Extract NAN next DW info event
- * @wmi_handle: WMI handle
- * @data: Event data buffer
- * @event: Output event structure
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS wmi_extract_nan_next_dw_info(wmi_unified_t wmi_handle,
-					uint8_t *data,
-					struct nan_next_dw_info_event *event);
-
-/**
- * wmi_extract_nan_cluster_event() - Extract NAN cluster event from WMI
- * @wmi_handle: WMI handle
- * @evt_buf: Event buffer from firmware
- * @cluster_event: Output structure to fill
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS wmi_extract_nan_cluster_event(wmi_unified_t wmi_handle,
-					 uint8_t *evt_buf,
-					 struct nan_cluster_event *cluster_event);
-/**
- * wmi_unified_nan_local_schedule_cmd_send - api to send local schedule to FW
- * @wmi_handle: wmi handle
- * @req: pointer to local schedule parameters
- *
- * Return: status of operation
- */
-QDF_STATUS
-wmi_unified_nan_local_schedule_cmd_send(wmi_unified_t wmi_handle,
-					struct nan_local_sched_params *req);
-
-/**
- * wmi_extract_nan_local_schedule_cnf - api to extract local schedule response
- * @wmi_handle: wmi handle
- * @data: event buffer
- * @rsp: buffer to populate
- *
- * Return: status of operation
- */
-QDF_STATUS
-wmi_extract_nan_local_schedule_cnf(wmi_unified_t wmi_handle, uint8_t *data,
-				   struct nan_local_sched_rsp *rsp);
-
-/**
- * wmi_unified_nan_peer_schedule_cmd_send - api to send peer schedule to FW
- * @wmi_handle: wmi handle
- * @req: pointer to peer schedule parameters
- *
- * Return: status of operation
- */
-QDF_STATUS
-wmi_unified_nan_peer_schedule_cmd_send(wmi_unified_t wmi_handle,
-				       struct nan_peer_sched_params *req);
-
-/**
- * wmi_extract_nan_peer_schedule_cnf - api to extract peer schedule response
- * @wmi_handle: wmi handle
- * @data: event buffer
- * @rsp: buffer to populate
- *
- * Return: status of operation
- */
-QDF_STATUS
-wmi_extract_nan_peer_schedule_cnf(wmi_unified_t wmi_handle, uint8_t *data,
-				  struct nan_peer_sched_rsp *rsp);
-
-/**
- * wmi_unified_nan_peer_params_cmd_send - api to send peer params to FW
- * @wmi_handle: wmi handle
- * @req: pointer to peer params request
- *
- * Return: status of operation
- */
-QDF_STATUS
-wmi_unified_nan_peer_params_cmd_send(wmi_unified_t wmi_handle,
-				     struct nan_peer_params_req *req);
-
-/**
- * wmi_extract_nan_peer_params_cnf - api to extract peer params response
- * @wmi_handle: wmi handle
- * @data: event buffer
- * @rsp: buffer to populate
- *
- * Return: status of operation
- */
-QDF_STATUS
-wmi_extract_nan_peer_params_cnf(wmi_unified_t wmi_handle, uint8_t *data,
-				struct nan_peer_params_rsp *rsp);
-
-/**
- * wmi_extract_nan_dfs_channel_availability_ind() - Extract NAN DFS channel
- *     availability indication event
- * @wmi_handle: WMI handle
- * @data: Event data buffer
- * @event: Output event structure
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-wmi_extract_nan_dfs_channel_availability_ind(
-	wmi_unified_t wmi_handle,
-	uint8_t *data,
-	struct nan_dfs_channel_availability_ind *event);
-#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
-
-#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
-/**
- * wmi_extract_nan_disc_service_rsp_event() - Extract discovery service response
- * @wmi_handle: WMI handle
- * @evt_buf: Event buffer from firmware
- * @params: Output structure to populate
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wmi_extract_nan_disc_service_rsp_event(wmi_unified_t wmi_handle, void *evt_buf,
-				       struct nan_disc_service_rsp_event
-				       *params);
-
-/**
- * wmi_extract_nan_disc_match_event() - Extract discovery match event
- * @wmi_handle: WMI handle
- * @evt_buf: Event buffer from firmware
- * @params: Output structure to populate
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wmi_extract_nan_disc_match_event(wmi_unified_t wmi_handle, void *evt_buf,
-				 struct nan_disc_match_event *params);
-
-/**
- * wmi_extract_nan_disc_terminated_evt() - Extract service
- * request terminated event
- * @wmi_handle: WMI handle
- * @evt_buf: Event buffer from firmware
- * @params: Output structure to populate
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wmi_extract_nan_disc_terminated_evt(wmi_unified_t wmi_handle, void *evt_buf,
-				    struct nan_disc_req_terminated_event
-				    *params);
-#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE */
 #endif /* _WMI_UNIFIED_NAN_API_H_ */

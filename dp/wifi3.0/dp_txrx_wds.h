@@ -186,9 +186,6 @@ static inline void dp_wds_ext_peer_learn(struct dp_soc *soc,
 					 &ta_peer->txrx_peer->wds_ext.init)) {
 		qdf_mem_copy(wds_ext_src_mac, &ta_peer->mac_addr.raw[0],
 			     QDF_MAC_ADDR_SIZE);
-		dp_info("wds_ext: peer_learn vdev_id %u peer_id %u init %lu",
-			ta_peer->vdev->vdev_id, ta_peer->peer_id,
-			ta_peer->txrx_peer->wds_ext.init);
 		soc->cdp_soc.ol_ops->rx_wds_ext_peer_learn(
 						soc->ctrl_psoc,
 						ta_peer->peer_id,
@@ -230,7 +227,7 @@ dp_rx_wds_add_or_update_ast(struct dp_soc *soc,
 	struct dp_pdev *pdev = ta_peer->vdev->pdev;
 	uint8_t wds_src_mac[QDF_MAC_ADDR_SIZE];
 	struct dp_peer *ta_base_peer;
-	struct cdp_peer_info sa_peer_info;
+
 
 	if (!(is_chfrag_start && is_ad4_valid))
 		return;
@@ -245,24 +242,6 @@ dp_rx_wds_add_or_update_ast(struct dp_soc *soc,
 		if (ta_base_peer) {
 			if (ta_peer->vdev->opmode == wlan_op_mode_ap)
 				dp_wds_ext_peer_learn(soc, ta_base_peer);
-
-			DP_PEER_INFO_PARAMS_INIT(&sa_peer_info,
-						 DP_VDEV_ALL,
-						 wds_src_mac,
-						 false,
-						 CDP_WILD_PEER_TYPE);
-
-			sa_peer = dp_peer_hash_find_wrapper(soc, &sa_peer_info,
-							    DP_MOD_ID_RX);
-			if (qdf_unlikely(sa_peer)) {
-				dp_info_rl("src: " QDF_MAC_ADDR_FMT " exists",
-					   QDF_MAC_ADDR_REF(wds_src_mac));
-				dp_peer_unref_delete(sa_peer,
-						     DP_MOD_ID_RX);
-				dp_peer_unref_delete(ta_base_peer,
-						     DP_MOD_ID_RX);
-				return;
-			}
 
 			dp_peer_add_ast(soc, ta_base_peer, wds_src_mac,
 					CDP_TXRX_AST_TYPE_WDS, flags);
@@ -297,7 +276,7 @@ dp_rx_wds_add_or_update_ast(struct dp_soc *soc,
 		 * invalidate this GSE cache entry and new AST entry gets
 		 * cached.
 		 */
-		if (soc->da_war_enabled) {
+		if (!soc->ast_override_support) {
 			qdf_mem_copy(wds_src_mac,
 				     (qdf_nbuf_data(nbuf) + QDF_MAC_ADDR_SIZE),
 				     QDF_MAC_ADDR_SIZE);
@@ -514,7 +493,7 @@ dp_rx_ipa_wds_srcport_learn(struct dp_soc *soc,
 	if (qdf_unlikely(!ta_peer))
 		return;
 
-	peer = dp_get_txrx_peer(ta_peer);
+	peer = (struct dp_txrx_peer *)ta_peer;
 
 	/*
 	 * Get the AST entry from HW SA index and mark it as active

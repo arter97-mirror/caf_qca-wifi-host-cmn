@@ -166,9 +166,9 @@ static inline uint32_t __qdf_mem_map_nbytes_single(qdf_device_t osdev,
 						  qdf_dma_addr_t *phy_addr)
 {
 	/* assume that the OS only provides a single fragment */
-	*phy_addr = dma_map_single(QDF_DMA_DEV(osdev), buf, nbytes,
+	*phy_addr = dma_map_single(osdev->dev, buf, nbytes,
 					__qdf_dma_dir_to_os(dir));
-	return dma_mapping_error(QDF_DMA_DEV(osdev), *phy_addr) ?
+	return dma_mapping_error(osdev->dev, *phy_addr) ?
 	QDF_STATUS_E_FAILURE : QDF_STATUS_SUCCESS;
 }
 
@@ -178,8 +178,7 @@ static inline void __qdf_mem_dma_cache_sync(qdf_device_t osdev,
 					    qdf_dma_dir_t dir,
 					    int nbytes)
 {
-	dma_cache_sync(QDF_DMA_DEV(osdev), buf, nbytes,
-		       __qdf_dma_dir_to_os(dir));
+	dma_cache_sync(osdev->dev, buf, nbytes, __qdf_dma_dir_to_os(dir));
 }
 #else
 static inline void __qdf_mem_dma_cache_sync(qdf_device_t osdev,
@@ -187,7 +186,7 @@ static inline void __qdf_mem_dma_cache_sync(qdf_device_t osdev,
 					    qdf_dma_dir_t dir,
 					    int nbytes)
 {
-	dma_sync_single_for_cpu(QDF_DMA_DEV(osdev), buf, nbytes,
+	dma_sync_single_for_cpu(osdev->dev, buf, nbytes,
 				__qdf_dma_dir_to_os(dir));
 }
 #endif
@@ -206,8 +205,8 @@ static inline void __qdf_mem_unmap_nbytes_single(qdf_device_t osdev,
 						 qdf_dma_addr_t phy_addr,
 						 qdf_dma_dir_t dir, int nbytes)
 {
-	dma_unmap_single(QDF_DMA_DEV(osdev), phy_addr, nbytes,
-			 __qdf_dma_dir_to_os(dir));
+	dma_unmap_single(osdev->dev, phy_addr, nbytes,
+				__qdf_dma_dir_to_os(dir));
 }
 #ifdef __KERNEL__
 
@@ -687,7 +686,7 @@ __qdf_mem_get_dma_pa(qdf_device_t osdev,
  * __qdf_mem_set_dma_pa() - Set DMA physical address
  * @osdev: parent device instance
  * @mem_info: Pointer to allocated memory information
- * @dma_pa: DMA physical address
+ * @dma_pa: DMA phsical address
  *
  * Return: none
  */
@@ -707,7 +706,7 @@ __qdf_mem_set_dma_pa(qdf_device_t osdev,
  * @size: Size to be allocated
  * @paddr: Physical address
  * @func: Function name of the call site
- * @line: line number rof the call site
+ * @line: line numbe rof the call site
  *
  * Return: pointer of allocated memory or null if memory alloc fails
  */
@@ -720,7 +719,7 @@ void *__qdf_mem_alloc_consistent(qdf_device_t osdev, void *dev,
  * @size: Number of bytes of memory to allocate.
  *
  * @func: Function name of the call site
- * @line: line number rof the call site
+ * @line: line numbe rof the call site
  *
  * This function will dynamicallly allocate the specified number of bytes of
  * memory.

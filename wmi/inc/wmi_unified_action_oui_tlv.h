@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016-2018 The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -30,12 +29,10 @@
 /**
  * wmi_get_action_oui_info_mask() - convert info mask to firmware specific
  * @info_mask: host specific info mask
- * @is_mac_exclusion_enabled: whether MAC exclusion functionality is enabled
  *
  * Return: firmware specific information mask
  */
-uint32_t wmi_get_action_oui_info_mask(uint32_t info_mask,
-				      bool is_mac_exclusion_enabled);
+uint32_t wmi_get_action_oui_info_mask(uint32_t info_mask);
 
 /**
  * wmi_get_action_oui_id() - convert action id to firmware specific
@@ -53,20 +50,15 @@ bool wmi_get_action_oui_id(enum action_oui_id action_id,
  * @extension: pointer to user supplied action oui extensions
  * @no_oui_extns: number of action oui extensions
  * @cmd_ext: output pointer to TLV
- * @is_action_oui_v2_enabled: whether action oui v2 is enabled
- * @is_mac_exclusion_enabled: whether MAC exclusion functionality is enabled
  *
  * This function parses the user supplied input data and populates the
- * array of variable structures TLV in WMI_PDEV_CONFIG_VENDOR_OUI_ACTION_CMDID.
- * When MAC exclusion is enabled, it includes MAC exclusion data in the TLV.
+ * array of variable structures TLV in WMI_PDEV_CONFIG_VENDOR_OUI_ACTION_CMDID
  *
  * Return: None
  */
 void wmi_fill_oui_extensions(struct action_oui_extension *extension,
 			     uint32_t no_oui_extns,
-			     wmi_vendor_oui_ext *cmd_ext,
-			     bool is_action_oui_v2_enabled,
-			     bool is_mac_exclusion_enabled);
+			     wmi_vendor_oui_ext *cmd_ext);
 
 /**
  * wmi_fill_oui_extensions_buffer() - populates data buffer in action oui cmd
@@ -75,23 +67,17 @@ void wmi_fill_oui_extensions(struct action_oui_extension *extension,
  * @no_oui_extns: number of action oui extensions
  * @rem_var_buf_len: remaining length of buffer to be populated
  * @var_buf: output pointer to hold variable length data
- * @is_action_oui_v2_enabled: whether action oui v2 is enabled
- * @is_mac_exclusion_enabled: whether MAC exclusion functionality is enabled
  *
  * This function parses the user supplied input data and populates the variable
- * buffer of type array byte TLV in WMI_PDEV_CONFIG_VENDOR_OUI_ACTION_CMDID.
- * When MAC exclusion is enabled, it includes MAC exclusion data in the buffer.
+ * buffer of type array byte TLV in WMI_PDEV_CONFIG_VENDOR_OUI_ACTION_CMDID
  *
  * Return: QDF_STATUS_SUCCESS for successful fill else QDF_STATUS_E_INVAL
  */
 QDF_STATUS
 wmi_fill_oui_extensions_buffer(struct action_oui_extension *extension,
 			       wmi_vendor_oui_ext *cmd_ext,
-			       uint32_t no_oui_extns,
-			       uint32_t rem_var_buf_len,
-			       uint8_t *var_buf,
-			       bool is_action_oui_v2_enabled,
-			       bool is_mac_exclusion_enabled);
+			       uint32_t no_oui_extns, uint32_t rem_var_buf_len,
+			       uint8_t *var_buf);
 
 /**
  * send_action_oui_cmd_tlv() - send action oui cmd to firmware

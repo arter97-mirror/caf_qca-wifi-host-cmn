@@ -1446,7 +1446,6 @@ dbglog_printf_no_line_break(uint32_t timestamp,
 
 #define USE_NUMERIC 0
 
-#ifdef WLAN_DIAG_DEBUG_FEATURE
 static A_BOOL
 dbglog_default_print_handler(uint32_t mod_id, uint16_t vap_id, uint32_t dbg_id,
 			     uint32_t timestamp, uint16_t numargs,
@@ -1610,7 +1609,6 @@ dbglog_debugfs_raw_data(wmi_unified_t wmi_handle, const uint8_t *buf,
 	return true;
 }
 #endif /* WLAN_DBGLOG_DEBUGFS */
-#endif /* WLAN_DIAG_DEBUG_FEATURE */
 
 /**
  * nl_srv_bcast_fw_logs() - Wrapper func to send bcast msgs to FW logs mcast grp
@@ -1630,7 +1628,6 @@ static int nl_srv_bcast_fw_logs(struct sk_buff *skb)
 #endif
 }
 
-#ifdef WLAN_DIAG_DEBUG_FEATURE
 /**
  * send_fw_diag_nl_data() - pack the data from fw diag event handler
  * @buffer:	buffer of diag event
@@ -1734,7 +1731,6 @@ process_fw_diag_event_data(uint8_t *datap, uint32_t num_data)
 
 	return 0;
 }
-#endif
 
 static int
 send_diag_netlink_data(const uint8_t *buffer, uint32_t len, uint32_t cmd)
@@ -1801,7 +1797,6 @@ send_diag_netlink_data(const uint8_t *buffer, uint32_t len, uint32_t cmd)
 	return res;
 }
 
-#ifdef WLAN_DIAG_DEBUG_FEATURE
 static int
 dbglog_process_netlink_data(wmi_unified_t wmi_handle, const uint8_t *buffer,
 			    uint32_t len, uint32_t dropped)
@@ -1867,7 +1862,6 @@ dbglog_process_netlink_data(wmi_unified_t wmi_handle, const uint8_t *buffer,
 	}
 	return res;
 }
-#endif
 
 /*
  * WMI diag data event handler, this function invoked as a CB
@@ -1893,40 +1887,47 @@ static int diag_fw_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 	if (cds_is_pm_fw_debug_enable())
 		qdf_debug("Received fw data of len: %d\n", datalen);
 
-	param_buf = (WMI_DIAG_EVENTID_param_tlvs *) data;
-	if (!param_buf) {
-		AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-				("Get NULL point message from FW\n"));
-		return A_ERROR;
-	}
-
-	datap = param_buf->bufp;
-	len = param_buf->num_bufp;
-
-	if (!get_version) {
-		if (len < 2 * (sizeof(uint32_t))) {
+	/* when fw assert occurs,host can't use TLV format. */
+	if (wma->is_fw_assert) {
+		datap = data;
+		len = datalen;
+		wma->is_fw_assert = 0;
+	} else {
+		param_buf = (WMI_DIAG_EVENTID_param_tlvs *) data;
+		if (!param_buf) {
 			AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-					("len is less than expected\n"));
+					("Get NULL point message from FW\n"));
 			return A_ERROR;
 		}
-		buffer = (uint32_t *)datap;
-		buffer++;       /* skip offset */
-		if (WLAN_DIAG_TYPE_CONFIG == DIAG_GET_TYPE(*buffer)) {
-			if (len < 3 * (sizeof(uint32_t))) {
+
+		datap = param_buf->bufp;
+		len = param_buf->num_bufp;
+
+		if (!get_version) {
+			if (len < 2*(sizeof(uint32_t))) {
 				AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
 						("len is less than expected\n"));
 				return A_ERROR;
 			}
-			buffer++;       /* skip  */
-			if (DIAG_VERSION_INFO == DIAG_GET_ID(*buffer)) {
-				if (len < 4 * (sizeof(uint32_t))) {
+			buffer = (uint32_t *) datap;
+			buffer++;       /* skip offset */
+			if (WLAN_DIAG_TYPE_CONFIG == DIAG_GET_TYPE(*buffer)) {
+				if (len < 3*(sizeof(uint32_t))) {
 					AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
 							("len is less than expected\n"));
 					return A_ERROR;
 				}
 				buffer++;       /* skip  */
-				/* get payload */
-				get_version = *buffer;
+				if (DIAG_VERSION_INFO == DIAG_GET_ID(*buffer)) {
+					if (len < 4*(sizeof(uint32_t))) {
+						AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+								("len is less than expected\n"));
+						return A_ERROR;
+					}
+					buffer++;       /* skip  */
+					/* get payload */
+					get_version = *buffer;
+				}
 			}
 		}
 	}
@@ -1962,7 +1963,6 @@ static int diag_fw_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 	return 0;
 }
 
-#ifdef WLAN_DIAG_DEBUG_FEATURE
 /*
  * WMI diag data event handler, this function invoked as a CB
  * when there DIAG_DATA to be forwarded from the FW.
@@ -1988,7 +1988,6 @@ fw_diag_data_event_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 
 	return process_fw_diag_event_data(datap, num_data);
 }
-#endif
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 static int
@@ -1998,7 +1997,6 @@ fw_opt_dp_diag_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 	uint8_t *datap;
 	uint32_t num_data;
 
-	wlan_ipa_fw_log_received_stats();
 	param_buf = (WMI_DEBUG_MESG_EVENTID_param_tlvs *)data;
 	if (!param_buf) {
 		AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
@@ -2013,7 +2011,6 @@ fw_opt_dp_diag_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 }
 #endif
 
-#ifdef WLAN_DIAG_DEBUG_FEATURE
 int dbglog_parse_debug_logs(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 {
 	tp_wma_handle wma = (tp_wma_handle) scn;
@@ -2034,16 +2031,22 @@ int dbglog_parse_debug_logs(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("NULL Pointer assigned\n"));
 		return A_ERROR;
 	}
+	/*when fw assert occurs,host can't use TLV format. */
+	if (wma->is_fw_assert) {
+		datap = data;
+		len = datalen;
+		wma->is_fw_assert = 0;
+	} else {
+		param_buf = (WMI_DEBUG_MESG_EVENTID_param_tlvs *) data;
+		if (!param_buf) {
+			AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+					("Get NULL point message from FW\n"));
+			return A_ERROR;
+		}
 
-	param_buf = (WMI_DEBUG_MESG_EVENTID_param_tlvs *)data;
-	if (!param_buf) {
-		AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-				("Get NULL point message from FW\n"));
-		return A_ERROR;
+		datap = param_buf->bufp;
+		len = param_buf->num_bufp;
 	}
-
-	datap = param_buf->bufp;
-	len = param_buf->num_bufp;
 
 	if (len < sizeof(dropped)) {
 		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Invalid length\n"));
@@ -2126,7 +2129,6 @@ int dbglog_parse_debug_logs(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 	/* Always returns zero */
 	return A_OK;
 }
-#endif
 
 void dbglog_reg_modprint(uint32_t mod_id, module_dbg_print printfn)
 {
@@ -4205,14 +4207,14 @@ static void dbglog_debugfs_remove(wmi_unified_t wmi_handle)
 #endif /* WLAN_DBGLOG_DEBUGFS */
 
 /**
- * cnss_diag_handle_cnss_cmd() - API to handle diag commands from cnss_diag
+ * cnss_diag_handle_crash_inject() - API to handle crash inject command
  * @slot: pointer to struct dbglog_slot
  *
- * API to handle CNSS diag command
+ * API to handle CNSS diag crash inject command
  *
  * Return: None
  */
-static void cnss_diag_handle_cnss_cmd(struct dbglog_slot *slot)
+static void cnss_diag_handle_crash_inject(struct dbglog_slot *slot)
 {
 	switch (slot->diag_type) {
 	case DIAG_TYPE_CRASH_INJECT:
@@ -4235,18 +4237,6 @@ static void cnss_diag_handle_cnss_cmd(struct dbglog_slot *slot)
 		wma_cli_set2_command(0, (int)GEN_PARAM_CRASH_INJECT,
 					slot->payload[0],
 					slot->payload[1], GEN_CMD);
-		break;
-	case DIAG_TYPE_DBG_LEVEL:
-		if (slot->length < 1) {
-			AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-					("Invalid payload length\n"));
-			return;
-		}
-		AR_DEBUG_PRINTF(ATH_DEBUG_INFO,
-				("%s : DIAG_TYPE_DBG_LEVEL: %u\n",
-				 __func__, slot->payload[0]));
-		wma_cli_set2_command(0, (int)WMI_DBGLOG_LOG_LEVEL,
-				     slot->payload[0], 0, DBG_CMD);
 		break;
 	default:
 		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Unknown cmd[%d] error\n",
@@ -4305,7 +4295,7 @@ static void cnss_diag_cmd_handler(const void *data, int data_len,
 		return;
 	}
 
-	cnss_diag_handle_cnss_cmd(slot);
+	cnss_diag_handle_crash_inject(slot);
 	return;
 }
 
@@ -4345,7 +4335,7 @@ static int cnss_diag_msg_callback(struct sk_buff *skb)
 	}
 
 	msg = NLMSG_DATA(nlh);
-	cnss_diag_handle_cnss_cmd((struct dbglog_slot *)msg);
+	cnss_diag_handle_crash_inject((struct dbglog_slot *)msg);
 
 	return 0;
 }
@@ -4571,7 +4561,6 @@ int dbglog_init(wmi_unified_t wmi_handle)
 			    dbglog_ibss_powersave_print_handler);
 	tgt_assert_enable = wmi_handle->tgt_force_assert_enable;
 
-#ifdef WLAN_DIAG_DEBUG_FEATURE
 	/* Register handler for F3 or debug messages */
 	res =
 		wmi_unified_register_event_handler(wmi_handle,
@@ -4588,7 +4577,6 @@ int dbglog_init(wmi_unified_t wmi_handle)
 						 WMI_RX_DIAG_WORK_CTX);
 	if (QDF_IS_STATUS_ERROR(res))
 		return A_ERROR;
-#endif
 
 	/* Register handler for new FW diag  Event, LOG, MSG combined */
 	res = wmi_unified_register_event_handler(wmi_handle, wmi_diag_event_id,

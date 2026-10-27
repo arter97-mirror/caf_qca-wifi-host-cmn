@@ -1418,7 +1418,7 @@ static void hal_reo_setup_5424(struct hal_soc *soc, void *reoparams,
 						REO_REG_REG_BASE)));
 	}
 
-	/* TODO: Check if the following registers should be setup by host:
+	/* TODO: Check if the following registers shoould be setup by host:
 	 * AGING_CONTROL
 	 * HIGH_MEMORY_THRESHOLD
 	 * GLOBAL_LINK_DESC_COUNT_THRESH_IX_0[1,2]
@@ -2433,7 +2433,6 @@ struct hal_hw_srng_config hw_srng_table_5424[] = {
 		.dmac_cmn_ring = TRUE,
 	},
 	{ /* SW2RXDMA_LINK_RELEASE */ 0},
-	{ /* TQM2SW_RELEASE */ 0},
 };
 
 /**

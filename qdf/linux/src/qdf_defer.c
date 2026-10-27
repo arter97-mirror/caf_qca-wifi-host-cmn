@@ -101,13 +101,6 @@ bool qdf_cancel_work(qdf_work_t *work)
 
 qdf_export_symbol(qdf_cancel_work);
 
-bool qdf_cancel_work_nosync(qdf_work_t *work)
-{
-	return __qdf_cancel_work_nosync(work);
-}
-
-qdf_export_symbol(qdf_cancel_work_nosync);
-
 qdf_workqueue_t *qdf_create_workqueue(char *name)
 {
 	return  __qdf_create_workqueue(name);

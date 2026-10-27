@@ -164,88 +164,6 @@ bool mlo_is_mld_vdevs_active(struct wlan_objmgr_vdev *vdev);
  */
 bool mlo_is_mld_connected(struct wlan_objmgr_vdev *vdev);
 
-#ifdef WLAN_FEATURE_ROAM_OFFLOAD
-/**
- * mlo_sta_allocate_shared_roam_objects() - Allocates shared
- * roaming-related objects for an MLO STA context
- * creates roam_ext_obj and initializes RSO config.
- * creates shared_mlme_roam create.
- * @vdev: Pointer to vdev object
- * @ml_dev: Pointer to MLO device context
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-mlo_sta_allocate_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
-				     struct wlan_mlo_dev_context *ml_dev);
-
-/**
- * mlo_sta_assign_shared_roam_objects() - Assign shared roaming objects to
- * vdev
- * Binds previously allocated shared roaming objects to vdev-local structures
- * Assigns @sta_ctx->roam_ext_obj to the connection manager @cm_ctx->ext_cm_ptr.
- * Assigns @sta_ctx->shared_mlme_roam to the legacy MLME private mlme_priv->mlme_roam.
- * @vdev: Pointer to vdev object
- * @ml_dev: Pointer to MLO device context
- *
- * Return: QDF_STATUS_SUCCESS on success, error code otherwise
- */
-QDF_STATUS
-mlo_sta_assign_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
-				   struct wlan_mlo_dev_context *ml_dev);
-
-/**
- * mlo_sta_free_shared_roam_objects() - Frees the shared roaming objects
- * owner by MLO STA context
- * @ml_dev: Pointer to MLO device context
- *
- * Return: None
- */
-void mlo_sta_free_shared_roam_objects(struct wlan_mlo_dev_context *ml_dev);
-
-/**
- * mlo_sta_clear_vdev_roam_pointers() - Clears vdev-local references
- * to shared roaming objects that are owned by the MLO STA
- * @vdev: Pointer to vdev object
- *
- * Return: None
- */
-void mlo_sta_clear_vdev_roam_pointers(struct wlan_objmgr_vdev *vdev);
-
-#else
-QDF_STATUS
-mlo_sta_allocate_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
-				     struct wlan_mlo_dev_context *ml_dev)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS
-mlo_sta_assign_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
-				   struct wlan_mlo_dev_context *ml_dev)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-void mlo_sta_free_shared_roam_objects(struct wlan_mlo_dev_context *ml_dev)
-{}
-
-static inline
-void mlo_sta_clear_vdev_roam_pointers(struct wlan_objmgr_vdev *vdev)
-{}
-#endif /* WLAN_FEATURE_ROAM_OFFLOAD */
-
-/**
- * mlo_get_assoc_vdev_from_idle_link - get assoc link from idle vdev of ML STA
- * @vdev: vdev object
- *
- * Return: MLD assoc link vdev
- */
-struct wlan_objmgr_vdev *
-mlo_get_assoc_vdev_from_idle_link(struct wlan_objmgr_vdev *vdev);
-
 #ifndef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * ucfg_mlo_is_mld_connected - Check whether MLD is connected
@@ -493,13 +411,13 @@ wlan_mlo_get_assoc_link_vdev(struct wlan_objmgr_vdev *vdev);
 /**
  * mlo_update_connected_links_bmap: update connected links bitmap
  * @mlo_dev_ctx: mlo dev context ptr
- * @ml_partner_info: ml partner info ptr
+ * @ml_partner_info: ml parnter info ptr
  *
  * Return: none
  */
 void
 mlo_update_connected_links_bmap(struct wlan_mlo_dev_context *mlo_dev_ctx,
-				struct mlo_partner_info *ml_partner_info);
+				struct mlo_partner_info ml_partner_info);
 
 /**
  * mlo_clear_connected_links_bmap() - clear connected links bitmap
@@ -890,15 +808,6 @@ bool mlo_is_sta_csa_synced(struct wlan_mlo_dev_context *mlo_dev_ctx,
 QDF_STATUS mlo_sta_csa_save_params(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				   uint8_t link_id,
 				   struct csa_offload_params *csa_param);
-
-/**
- * mlo_mgr_get_def_dp_link_vdev - Get default dp link vdev id
- * @vdev: vdev object
- *
- * Return: default dp link vdev id
- */
-uint8_t mlo_mgr_get_def_dp_link_vdev(struct wlan_objmgr_vdev *vdev);
-
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * mlo_sta_handle_csa_standby_link - Handle csa parameters for standby link
@@ -914,6 +823,7 @@ QDF_STATUS mlo_sta_handle_csa_standby_link(
 			uint8_t link_id,
 			struct csa_offload_params *csa_param,
 			struct wlan_objmgr_vdev *vdev);
+
 /**
  * mlo_mgr_validate_connection_partner_links() - Validate the partner links
  * info in mlo dev ctx.
@@ -934,15 +844,6 @@ QDF_STATUS mlo_sta_handle_csa_standby_link(
 void
 mlo_mgr_validate_connection_partner_links(struct wlan_objmgr_vdev *vdev,
 					  struct mlo_partner_info *partner_info);
-/**
- * mlo_mgr_standby_link_csa_notify - wrapper api to invoke hdd callback for
- *                                   chan switch notification.
- * @link_mac_address: standby link mac address
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlo_mgr_standby_link_csa_notify(
-			struct qdf_mac_addr *link_mac_address);
 
 #else
 static inline
@@ -960,15 +861,7 @@ mlo_mgr_validate_connection_partner_links(struct wlan_objmgr_vdev *vdev,
 					  struct mlo_partner_info *partner_info)
 {
 }
-
-static inline
-QDF_STATUS mlo_mgr_standby_link_csa_notify(
-			struct qdf_mac_addr *link_mac_address)
-{
-	return QDF_STATUS_SUCCESS;
-}
 #endif
-
 /**
  * mlo_sta_up_active_notify - mlo sta up active notify
  * @vdev: vdev obj mgr
@@ -1052,15 +945,13 @@ void mlo_process_ml_reconfig_ie(struct wlan_objmgr_vdev *vdev,
  * @vdev: vdev pointer
  * @session_id: session ID
  * @vdev_pause_dur: vdev pause duration
- * @type: pause type
  *
  * Return: None
  */
 void wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			      struct wlan_objmgr_vdev *vdev,
 			      uint16_t session_id,
-			      uint16_t vdev_pause_dur,
-			      enum mlo_vdev_pause_type type);
+			      uint16_t vdev_pause_dur);
 
 /**
  * mlo_get_cache_link_assoc_rsp() - get link assoc rsp from cache
@@ -1139,27 +1030,6 @@ QDF_STATUS
 mlo_get_link_state_context(struct wlan_objmgr_psoc *psoc,
 			   get_ml_link_state_cb *resp_cb,
 			   void **context, uint8_t vdev_id);
-
-/**
- * mlo_get_standby_mlo_link_chan_in_freq_range() - Get channel info from
- * standby MLO link
- * @psoc: Pointer to PSOC object
- * @device_mode: Device mode to match with mlo vdev
- * @start_freq: Start frequency of range
- * @end_freq: End frequency of range
- *
- * This function checks for standby MLO links (links without vdev_id) and
- * returns channel information if a standby link is found in the given
- * frequency range. This is used for FCC constraint handling to preserve
- * existing standby link connections.
- *
- * Return: pointer to link_chan or return NULL
- */
-struct wlan_channel *
-mlo_get_standby_mlo_link_chan_in_freq_range(struct wlan_objmgr_psoc *psoc,
-					    enum QDF_OPMODE device_mode,
-					    qdf_freq_t start_freq,
-					    qdf_freq_t end_freq);
 #else
 static inline
 void mlo_clear_bridge_sta_ctx(struct wlan_objmgr_vdev *vdev)
@@ -1199,12 +1069,6 @@ QDF_STATUS mlo_connect(struct wlan_objmgr_vdev *vdev,
 		       struct wlan_cm_connect_req *req)
 {
 	return wlan_cm_start_connect(vdev, req);
-}
-
-static inline struct wlan_objmgr_vdev *
-wlan_mlo_get_assoc_link_vdev(struct wlan_objmgr_vdev *vdev)
-{
-	return vdev;
 }
 
 static inline
@@ -1269,13 +1133,6 @@ bool mlo_is_ml_connection_in_progress(struct wlan_objmgr_psoc *psoc,
 }
 
 static inline
-struct wlan_objmgr_vdev *
-mlo_get_assoc_vdev_from_idle_link(struct wlan_objmgr_vdev *vdev)
-{
-	return vdev;
-}
-
-static inline
 bool mlo_is_mld_sta(struct wlan_objmgr_vdev *vdev)
 {
 	return false;
@@ -1299,7 +1156,7 @@ mlo_update_connect_req_links(struct wlan_objmgr_vdev *vdev, uint8_t value)
 
 static inline void
 mlo_update_connected_links_bmap(struct wlan_mlo_dev_context *mlo_dev_ctx,
-				struct mlo_partner_info *ml_parnter_info)
+				struct mlo_partner_info ml_parnter_info)
 { }
 
 static inline bool
@@ -1423,18 +1280,8 @@ static inline
 void wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			      struct wlan_objmgr_vdev *vdev,
 			      uint16_t session_id,
-			      uint16_t vdev_pause_dur,
-			      enum mlo_vdev_pause_type type)
+			      uint16_t vdev_pause_dur)
 {}
-
-static inline struct wlan_channel *
-mlo_get_standby_mlo_link_chan_in_freq_range(struct wlan_objmgr_psoc *psoc,
-					    enum QDF_OPMODE device_mode,
-					    qdf_freq_t start_freq,
-					    qdf_freq_t end_freq)
-{
-	return NULL;
-}
 #endif
 
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM
@@ -1509,25 +1356,6 @@ bool mlo_is_chan_switch_in_progress(struct wlan_objmgr_vdev *vdev);
  */
 QDF_STATUS
 mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev);
-
-uint8_t mlo_get_ml_links_info(struct wlan_objmgr_psoc *psoc,
-			      uint8_t vdev_id,
-			      struct ml_link_info *link_info);
-/**
- * mlo_mgr_flush_connected_profile_scan_entry: Flush local entries of connected
- * ssid
- * @vdev: Pointer to the vdev object manager
- *
- * This function is used to flush (remove or invalidate) the scan entry
- * corresponding to the currently connected ssid profile.
- * This is necessary to ensure that stale or incorrect scan information is
- * removed, especially in scenarios like MLO reconfig or disconnections,
- * where the network topology or link capabilities might change.
- *
- * Return: void
- */
-void
-mlo_mgr_flush_connected_profile_scan_entry(struct wlan_objmgr_vdev *vdev);
 #else
 static inline
 void mlo_defer_set_keys(struct wlan_objmgr_vdev *vdev,
@@ -1565,11 +1393,6 @@ mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }
-
-static inline void
-mlo_mgr_flush_connected_profile_scan_entry(struct wlan_objmgr_vdev *vdev)
-{
-}
 #endif
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
@@ -1592,28 +1415,6 @@ int mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
  * Return: Number of associated links
  */
 uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx);
-
-/**
- * mlo_mgr_set_per_link_chan_info: Set wlan channel info per link id
- * @vdev: vdev obj
- * @link_id: link id
- * @ch_width: chan width to set
- *
- * Return: zero for success, non-zero for failure
- */
-int mlo_mgr_set_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
-				   enum phy_ch_width ch_width);
-
-/**
- * mlo_clear_sta_key_mgmt() - Clear pending key mgmt context in MLO STA
- * @vdev: vdev obj
- *
- * Zeros out the sta_key_mgmt array in the MLO STA context to discard
- * any pending key management state, e.g. on roam synch from firmware.
- *
- * Return: void
- */
-void mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev);
 #else
 static inline int
 mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
@@ -1627,55 +1428,5 @@ mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx)
 {
 	return 0;
 }
-
-static inline int
-mlo_mgr_set_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
-			       enum phy_ch_width ch_width)
-{
-	return -EINVAL;
-}
-
-static inline void
-mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev)
-{
-}
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
-
-#ifdef WLAN_FEATURE_11BN_ECU
-/**
- * mlo_set_ecu_ebpcc() - set the Enhanced BSS Parameter Change Count per link
- * @vdev: vdev object
- * @link_id: Link ID to set EBPCC for
- * @ebpcc: Enhanced BSS Parameter Change Count value to store
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlo_set_ecu_ebpcc(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
-			     uint8_t ebpcc);
-
-/**
- * mlo_get_ecu_ebpcc() - get the Enhanced BSS Parameter Change Count per link
- * @vdev: vdev object
- * @link_id: Link ID to get EBPCC for
- * @ebpcc: pointer to store the Enhanced BSS Parameter Change Count
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlo_get_ecu_ebpcc(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
-			     uint8_t *ebpcc);
-#else
-static inline QDF_STATUS
-mlo_set_ecu_ebpcc(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
-		  uint8_t ebpcc)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-mlo_get_ecu_ebpcc(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
-		  uint8_t *ebpcc)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-#endif /* WLAN_FEATURE_11BN_ECU */
 #endif

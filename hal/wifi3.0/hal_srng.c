@@ -26,11 +26,7 @@
 #include <qdf_tracepoint.h>
 #include "qdf_ssr_driver_dump.h"
 
-#ifdef CONFIG_BORON
-struct tcl_assist_cmd gtcl_assist_symbol __used;
-#else
 struct tcl_data_cmd gtcl_data_symbol __attribute__((used));
-#endif
 
 #ifdef QCA_WIFI_QCA8074
 void hal_qca6290_attach(struct hal_soc *hal);
@@ -83,9 +79,6 @@ void hal_fig_attach(struct hal_soc *hal);
 #endif
 #ifdef QCA_WIFI_WCN7750
 void hal_wcn7750_attach(struct hal_soc *hal);
-#endif
-#ifdef QCA_WIFI_WCN8750
-void hal_wcn8750_attach(struct hal_soc *hal);
 #endif
 #ifdef QCA_WIFI_QCC2072
 void hal_qcc2072_attach(struct hal_soc *hal);
@@ -182,15 +175,15 @@ static struct hal_srng *hal_get_srng(struct hal_soc *hal, int ring_id)
 #define OFFSET_FROM_HP_TO_TP 4
 static void hal_update_srng_hp_tp_address(struct hal_soc *hal_soc,
 					  int shadow_config_index,
-					  int ring_type, int ring_num,
-					  uint8_t lmac_id)
+					  int ring_type,
+					  int ring_num)
 {
 	struct hal_srng *srng;
 	int ring_id;
 	struct hal_hw_srng_config *ring_config =
 		HAL_SRNG_CONFIG(hal_soc, ring_type);
 
-	ring_id = hal_get_srng_ring_id(hal_soc, ring_type, ring_num, lmac_id);
+	ring_id = hal_get_srng_ring_id(hal_soc, ring_type, ring_num, 0);
 	if (ring_id < 0)
 		return;
 
@@ -318,7 +311,7 @@ QDF_STATUS hal_set_one_shadow_config(void *hal_soc,
 
 	/* update hp/tp addr in the hal_soc structure*/
 	hal_update_srng_hp_tp_address(hal_soc, shadow_config_index, ring_type,
-				      ring_num, 0);
+				      ring_num);
 
 	hal_debug("target_reg %x, shadow register 0x%x shadow_index 0x%x, ring_type %d, ring num %d",
 		  target_register,
@@ -330,92 +323,6 @@ QDF_STATUS hal_set_one_shadow_config(void *hal_soc,
 }
 
 qdf_export_symbol(hal_set_one_shadow_config);
-
-#ifdef DP_FEATURE_DIRECT_REFILL
-static inline bool hal_srng_is_direct_refill(struct hal_soc *hal_soc,
-					     int ring_type, int ring_num,
-					     uint8_t lmac_id)
-{
-	if (!pld_is_direct_refill_supported(hal_soc->qdf_dev->dev))
-		return false;
-
-	if (ring_type == RXDMA_BUF && ring_num == HAL_DIRECT_REFILL_RING_NUM &&
-	    lmac_id == HAL_DIRECT_REFILL_RING_LMAC_ID)
-		return true;
-
-	return false;
-}
-
-static QDF_STATUS
-hal_set_one_lmac_shadow_config(void *hal_soc_hdl, int ring_type,
-			       int ring_num, uint8_t lmac_id)
-{
-	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
-	struct hal_hw_srng_config *srng_config;
-	uint32_t target_register;
-	int shadow_config_index;
-
-	/* Below is the only LMAC ring for which shadow is configured */
-	if (!hal_srng_is_direct_refill(hal_soc, ring_type, ring_num, lmac_id))
-		return QDF_STATUS_SUCCESS;
-
-	srng_config = HAL_SRNG_CONFIG(hal_soc, ring_type);
-	shadow_config_index = hal_soc->num_shadow_registers_configured;
-	if (shadow_config_index >= MAX_SHADOW_REGISTERS) {
-		QDF_ASSERT(0);
-		return QDF_STATUS_E_RESOURCES;
-	}
-
-	hal_soc->num_shadow_registers_configured++;
-
-	target_register = HAL_PMM_SCRATCH_REG_IX_26;
-
-	hal_soc->shadow_config[shadow_config_index].addr = target_register;
-
-	/* update hp/tp addr in the hal_soc structure*/
-	hal_update_srng_hp_tp_address(hal_soc, shadow_config_index, ring_type,
-				      ring_num, lmac_id);
-
-	hal_debug("target_reg %x, shadow register 0x%x shadow_index 0x%x, ring_type %d, ring num %d lmac_id %u",
-		  target_register,
-		  SHADOW_REGISTER(shadow_config_index),
-		  shadow_config_index,
-		  ring_type, ring_num, lmac_id);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline void hal_assign_lmac_ring_shadow(struct hal_soc *hal_soc,
-					       int ring_type)
-{
-	struct hal_hw_srng_config *srng_config =
-					HAL_SRNG_CONFIG(hal_soc, ring_type);
-	int ring_num;
-	uint8_t lmac_id;
-
-	/* As of now, only RXDMA_BUF type LMAC srng support shadow */
-	if (ring_type != RXDMA_BUF)
-		return;
-
-	for (lmac_id = 0; lmac_id < HAL_MAX_LMACS; lmac_id++)
-		for (ring_num = 0; ring_num < srng_config->max_rings;
-		     ring_num++)
-			hal_set_one_lmac_shadow_config(hal_soc, ring_type,
-						       ring_num, lmac_id);
-}
-#else
-static inline void hal_assign_lmac_ring_shadow(struct hal_soc *hal_soc,
-					       int ring_type)
-{
-}
-
-static inline bool hal_srng_is_direct_refill(struct hal_soc *hal_soc,
-					     int ring_type, int ring_num,
-					     uint8_t lmac_id)
-{
-	return false;
-}
-#endif
 
 QDF_STATUS hal_construct_srng_shadow_regs(void *hal_soc)
 {
@@ -431,10 +338,8 @@ QDF_STATUS hal_construct_srng_shadow_regs(void *hal_soc)
 		    ring_type == CE_DST_STATUS)
 			continue;
 
-		if (srng_config->lmac_ring) {
-			hal_assign_lmac_ring_shadow(hal_soc, ring_type);
+		if (srng_config->lmac_ring)
 			continue;
-		}
 
 		for (ring_num = 0; ring_num < srng_config->max_rings;
 		     ring_num++)
@@ -560,18 +465,10 @@ static void hal_target_based_configure(struct hal_soc *hal)
 			hal_wcn7750_attach(hal);
 		break;
 #endif
-#ifdef QCA_WIFI_WCN8750
-		case TARGET_TYPE_WCN8750:
-			hal->use_register_windowing = true;
-			hal->static_window_map = true;
-			hal_wcn8750_attach(hal);
-		break;
-#endif
 #ifdef QCA_WIFI_QCC2072
 	case TARGET_TYPE_QCC2072:
 		hal->use_register_windowing = true;
 		hal_qcc2072_attach(hal);
-		break;
 #endif
 #ifdef INCLUDE_HAL_KIWI
 	case TARGET_TYPE_KIWI:
@@ -1302,8 +1199,7 @@ void hal_record_suspend_write(uint8_t ring_id, uint32_t value, uint32_t count)
 }
 #endif
 
-#if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN7750) || \
-	defined(QCA_WIFI_WCN8750)
+#if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN7750)
 void hal_delayed_reg_write(struct hal_soc *hal_soc,
 			   struct hal_srng *srng,
 			   void __iomem *addr,
@@ -1409,119 +1305,6 @@ inline bool hal_alloc_srng_history(struct hal_soc *hal)
 }
 #endif
 
-#ifdef CONFIG_IO_COHERENCY
-static inline
-QDF_STATUS hal_alloc_shadow_rd_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
-{
-	uint32_t sz = sizeof(*hal->shadow_rdptr_mem_vaddr) * HAL_SRNG_ID_MAX;
-
-	hal->shadow_rdptr_mem_vaddr = (uint32_t *)qdf_mem_malloc(sz);
-
-	if (!hal->shadow_rdptr_mem_vaddr) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  "%s: hal->shadow_rdptr_mem_vaddr allocation failed",
-			  __func__);
-		return QDF_STATUS_E_NOMEM;
-	}
-	hal->shadow_rdptr_mem_paddr =
-			qdf_mem_virt_to_phys(hal->shadow_rdptr_mem_vaddr);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS hal_alloc_shadow_wr_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
-{
-	uint32_t sz = sizeof(*hal->shadow_wrptr_mem_vaddr) * HAL_MAX_LMAC_RINGS;
-
-	hal->shadow_wrptr_mem_vaddr = (uint32_t *)qdf_mem_malloc(sz);
-
-	if (!hal->shadow_wrptr_mem_vaddr) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  "%s: hal->shadow_wrptr_mem_vaddr allocation failed",
-			  __func__);
-		return QDF_STATUS_E_NOMEM;
-	}
-	hal->shadow_wrptr_mem_paddr =
-		qdf_mem_virt_to_phys(hal->shadow_wrptr_mem_vaddr);
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-void hal_free_shadow_rd_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
-{
-	if (hal->shadow_rdptr_mem_vaddr)
-		qdf_mem_free(hal->shadow_rdptr_mem_vaddr);
-}
-
-static inline
-void hal_free_shadow_wr_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
-{
-	if (hal->shadow_wrptr_mem_vaddr)
-		qdf_mem_free(hal->shadow_wrptr_mem_vaddr);
-}
-
-#else
-static inline
-QDF_STATUS hal_alloc_shadow_rd_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
-{
-	hal->shadow_rdptr_mem_vaddr =
-		(uint32_t *)qdf_mem_alloc_consistent(qdf_dev, qdf_dev->dev,
-			sizeof(*hal->shadow_rdptr_mem_vaddr) * HAL_SRNG_ID_MAX,
-			&hal->shadow_rdptr_mem_paddr);
-
-	if (!hal->shadow_rdptr_mem_vaddr) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  "%s: hal->shadow_rdptr_mem_vaddr allocation failed",
-			  __func__);
-		return QDF_STATUS_E_NOMEM;
-	}
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS hal_alloc_shadow_wr_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
-{
-	hal->shadow_wrptr_mem_vaddr =
-		(uint32_t *)qdf_mem_alloc_consistent(qdf_dev, qdf_dev->dev,
-			sizeof(*hal->shadow_wrptr_mem_vaddr) *
-			HAL_MAX_LMAC_RINGS,
-			&hal->shadow_wrptr_mem_paddr);
-
-	if (!hal->shadow_wrptr_mem_vaddr) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  "%s: hal->shadow_wrptr_mem_vaddr allocation failed",
-			  __func__);
-		return QDF_STATUS_E_NOMEM;
-	}
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-void hal_free_shadow_rd_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
-{
-	if (hal->shadow_rdptr_mem_vaddr) {
-		qdf_mem_free_consistent(qdf_dev, qdf_dev->dev,
-					sizeof(*hal->shadow_rdptr_mem_vaddr) *
-					HAL_SRNG_ID_MAX,
-					hal->shadow_rdptr_mem_vaddr,
-					hal->shadow_rdptr_mem_paddr, 0);
-	}
-}
-
-static inline
-void hal_free_shadow_wr_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
-{
-	if (hal->shadow_wrptr_mem_vaddr) {
-		qdf_mem_free_consistent(qdf_dev, qdf_dev->dev,
-					sizeof(*hal->shadow_wrptr_mem_vaddr) *
-					HAL_MAX_LMAC_RINGS,
-					hal->shadow_wrptr_mem_vaddr,
-					hal->shadow_wrptr_mem_paddr, 0);
-	}
-}
-#endif /* CONFIG_IO_COHERENCY */
-
 void *hal_attach(struct hif_opaque_softc *hif_handle, qdf_device_t qdf_dev)
 {
 	struct hal_soc *hal;
@@ -1540,16 +1323,28 @@ void *hal_attach(struct hif_opaque_softc *hif_handle, qdf_device_t qdf_dev)
 	hal->dev_base_addr_cmem = hif_get_dev_ba_cmem(hif_handle); /* CMEM */
 	hal->dev_base_addr_pmm = hif_get_dev_ba_pmm(hif_handle); /* PMM */
 	hal->qdf_dev = qdf_dev;
-
-	if (QDF_STATUS_SUCCESS != hal_alloc_shadow_rd_ptr(hal, qdf_dev))
+	hal->shadow_rdptr_mem_vaddr = (uint32_t *)qdf_mem_alloc_consistent(
+		qdf_dev, qdf_dev->dev, sizeof(*(hal->shadow_rdptr_mem_vaddr)) *
+		HAL_SRNG_ID_MAX, &(hal->shadow_rdptr_mem_paddr));
+	if (!hal->shadow_rdptr_mem_paddr) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			"%s: hal->shadow_rdptr_mem_paddr allocation failed",
+			__func__);
 		goto fail1;
-
+	}
 	qdf_mem_zero(hal->shadow_rdptr_mem_vaddr,
 		     sizeof(*(hal->shadow_rdptr_mem_vaddr)) * HAL_SRNG_ID_MAX);
 
-	if (QDF_STATUS_SUCCESS != hal_alloc_shadow_wr_ptr(hal, qdf_dev))
+	hal->shadow_wrptr_mem_vaddr =
+		(uint32_t *)qdf_mem_alloc_consistent(qdf_dev, qdf_dev->dev,
+		sizeof(*(hal->shadow_wrptr_mem_vaddr)) * HAL_MAX_LMAC_RINGS,
+		&(hal->shadow_wrptr_mem_paddr));
+	if (!hal->shadow_wrptr_mem_vaddr) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			"%s: hal->shadow_wrptr_mem_vaddr allocation failed",
+			__func__);
 		goto fail2;
-
+	}
 	qdf_mem_zero(hal->shadow_wrptr_mem_vaddr,
 		sizeof(*(hal->shadow_wrptr_mem_vaddr)) * HAL_MAX_LMAC_RINGS);
 
@@ -1594,9 +1389,15 @@ fail4:
 	qdf_minidump_remove(hal, sizeof(*hal), "hal_soc");
 	qdf_mem_free(hal->ops);
 fail3:
-	hal_free_shadow_wr_ptr(hal, qdf_dev);
+	qdf_mem_free_consistent(qdf_dev, qdf_dev->dev,
+				sizeof(*hal->shadow_wrptr_mem_vaddr) *
+				HAL_MAX_LMAC_RINGS,
+				hal->shadow_wrptr_mem_vaddr,
+				hal->shadow_wrptr_mem_paddr, 0);
 fail2:
-	hal_free_shadow_rd_ptr(hal, qdf_dev);
+	qdf_mem_free_consistent(qdf_dev, qdf_dev->dev,
+		sizeof(*(hal->shadow_rdptr_mem_vaddr)) * HAL_SRNG_ID_MAX,
+		hal->shadow_rdptr_mem_vaddr, hal->shadow_rdptr_mem_paddr, 0);
 fail1:
 	qdf_mem_common_free(hal);
 fail0:
@@ -1631,8 +1432,12 @@ void hal_detach(void *hal_soc)
 	qdf_mem_free(hal->ops);
 
 	hal_free_srng_history(hal);
-	hal_free_shadow_wr_ptr(hal, hal->qdf_dev);
-	hal_free_shadow_rd_ptr(hal, hal->qdf_dev);
+	qdf_mem_free_consistent(hal->qdf_dev, hal->qdf_dev->dev,
+		sizeof(*(hal->shadow_rdptr_mem_vaddr)) * HAL_SRNG_ID_MAX,
+		hal->shadow_rdptr_mem_vaddr, hal->shadow_rdptr_mem_paddr, 0);
+	qdf_mem_free_consistent(hal->qdf_dev, hal->qdf_dev->dev,
+		sizeof(*(hal->shadow_wrptr_mem_vaddr)) * HAL_MAX_LMAC_RINGS,
+		hal->shadow_wrptr_mem_vaddr, hal->shadow_wrptr_mem_paddr, 0);
 	qdf_mem_common_free(hal);
 
 	return;
@@ -1766,17 +1571,6 @@ void hal_srng_dst_set_hp_paddr_confirm(struct hal_srng *srng, uint64_t paddr)
 
 qdf_export_symbol(hal_srng_dst_set_hp_paddr_confirm);
 
-void hal_srng_dst_get_hp_paddr(struct hal_srng *srng, uint64_t *headp)
-{
-	uint32_t lsb, msb;
-
-	lsb = SRNG_DST_REG_READ(srng, HP_ADDR_LSB);
-	msb = SRNG_DST_REG_READ(srng, HP_ADDR_MSB);
-	*headp = ((uint64_t)msb) << 32 | lsb;
-}
-
-qdf_export_symbol(hal_srng_dst_get_hp_paddr);
-
 void hal_srng_dst_init_hp(struct hal_soc_handle *hal_soc,
 			  struct hal_srng *srng,
 			  uint32_t *vaddr)
@@ -1815,7 +1609,7 @@ void hal_srng_dst_update_hp_addr(struct hal_soc_handle *hal_soc,
 
 	if (srng->u.dst_ring.hp_addr) {
 		hal_get_hw_hptp(hal_soc, hal_ring_hdl, &hw_hp, &hw_tp,
-				COMP_RING_TYPE);
+				WBM2SW_RELEASE);
 		*srng->u.dst_ring.hp_addr = hw_hp;
 		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_DEBUG,
 			  "hw_hp=%d", hw_hp);
@@ -2061,10 +1855,7 @@ void *hal_srng_setup_idx(void *hal_soc, int ring_type, int ring_num, int mac_id,
 			qdf_mem_zero(srng->u.src_ring.tp_addr,
 				     sizeof(*hal->shadow_rdptr_mem_vaddr));
 
-		if (hal_srng_is_direct_refill(hal_soc, ring_type, ring_num,
-					      mac_id)) {
-			/* Do nothing for the direct refill srng */
-		} else if (ring_config->lmac_ring) {
+		if (ring_config->lmac_ring) {
 			/* For LMAC rings, head pointer updates will be done
 			 * through FW by writing to a shared memory location
 			 */
@@ -2248,6 +2039,14 @@ uint32_t hal_srng_max_entries(void *hal_soc, int ring_type)
 }
 qdf_export_symbol(hal_srng_max_entries);
 
+enum hal_srng_dir hal_srng_get_dir(void *hal_soc, int ring_type)
+{
+	struct hal_soc *hal = (struct hal_soc *)hal_soc;
+	struct hal_hw_srng_config *ring_config =
+		HAL_SRNG_CONFIG(hal, ring_type);
+
+	return ring_config->ring_dir;
+}
 
 void hal_srng_dump(struct hal_srng *srng)
 {
@@ -2278,9 +2077,7 @@ void hal_get_srng_params(hal_soc_handle_t hal_soc_hdl,
 	ring_params->ring_dir = srng->ring_dir;
 	ring_params->entry_size = srng->entry_size;
 
-	ring_params->ring_base_paddr =
-		(srng->flags & HAL_SRNG_HOST_MEM_BASE_DISABLE) ?
-				0 : srng->ring_base_paddr;
+	ring_params->ring_base_paddr = srng->ring_base_paddr;
 	ring_params->ring_base_vaddr = srng->ring_base_vaddr;
 	ring_params->num_entries = srng->num_entries;
 	ring_params->msi_addr = srng->msi_addr;

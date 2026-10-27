@@ -35,8 +35,6 @@
 #define MLO_LINKSPECIFIC_ASSOC_RESP_FC1 0x00
 #define MLO_LINKSPECIFIC_PROBE_RESP_FC0 0x50
 #define MLO_LINKSPECIFIC_PROBE_RESP_FC1 0x00
-#define MLO_LINKSPECIFIC_BEACON_FC0     0x80
-#define MLO_LINKSPECIFIC_BEACON_FC1     0x00
 
 /**
  * util_gen_link_assoc_req() - Generate link specific assoc request
@@ -581,66 +579,6 @@ util_get_bvmlie_persta_partner_info(uint8_t *mlieseq,
 				    struct mlo_partner_info *partner_info,
 				    uint8_t subtype);
 
-#ifdef WLAN_FEATURE_11BN
-/**
- * util_get_bvmlie_persta_uhr_cap() - Get UHR capabilities from a per-STA
- * profile in a Basic Multi-Link element.
- * @mlieseq: Starting address of the Basic Multi-Link element sequence
- * @mlieseqlen: Total length of the Multi-Link element sequence
- * @link_id: Link ID of the requested per-STA profile
- * @uhr_cap: Output UHR capability payload. The caller owns the allocated
- * buffer and must free uhr_cap->ptr with qdf_mem_free().
- *
- * Return: QDF_STATUS_SUCCESS if the UHR Capabilities IE is found, an error
- * status otherwise.
- */
-QDF_STATUS
-util_get_bvmlie_persta_uhr_cap(uint8_t *mlieseq, qdf_size_t mlieseqlen,
-			       uint8_t link_id, struct element_info *uhr_cap);
-
-/**
- * util_get_bvmlie_persta_uhr_op() - Get UHR operation from a per-STA profile
- * in a Basic Multi-Link element.
- * @mlieseq: Starting address of the Basic Multi-Link element sequence
- * @mlieseqlen: Total length of the Multi-Link element sequence
- * @link_id: Link ID of the requested per-STA profile
- * @uhr_op: Output UHR operation payload. The caller owns the allocated buffer
- * and must free uhr_op->ptr with qdf_mem_free().
- *
- * Return: QDF_STATUS_SUCCESS if the UHR Operation IE is found, an error
- * status otherwise.
- */
-QDF_STATUS
-util_get_bvmlie_persta_uhr_op(uint8_t *mlieseq, qdf_size_t mlieseqlen,
-			      uint8_t link_id, struct element_info *uhr_op);
-
-/**
- * util_get_bvmlie_persta_profile_buf() - Locate and defragment the per-STA
- * profile for a given link ID in a Basic Multi-Link element, for direct
- * lookup of multiple Capability/Operation elements against it.
- * @mlieseq: Starting address of the Basic Multi-Link element sequence
- * @mlieseqlen: Total length of the Multi-Link element sequence
- * @link_id: Link ID of the requested per-STA profile
- * @payload_copy: Output; set to an allocated buffer holding the
- * defragmented ML IE payload on success. *sta_prof points inside this
- * buffer, so the caller must keep it alive for as long as *sta_prof is
- * read, and must free it with qdf_mem_free() exactly once when done.
- * @sta_prof: Output; set to the start of the per-STA profile's STA Profile
- * field, suitable for wlan_get_ie_ptr_from_eid()/
- * wlan_get_ext_ie_ptr_from_ext_id() lookups.
- * @sta_prof_len: Output; length of *sta_prof.
- *
- * Return: QDF_STATUS_SUCCESS if the per-STA profile for @link_id was found,
- * an error status otherwise (in which case *payload_copy is left NULL and
- * nothing needs to be freed).
- */
-QDF_STATUS
-util_get_bvmlie_persta_profile_buf(uint8_t *mlieseq, qdf_size_t mlieseqlen,
-				   uint8_t link_id, uint8_t **payload_copy,
-				   uint8_t **sta_prof,
-				   qdf_size_t *sta_prof_len);
-#endif /* WLAN_FEATURE_11BN */
-
 /**
  * util_get_prvmlie_mldid - Get the MLD ID from a given Probe Request
  * variant Multi-Link element , of the STA that transmits ML Probe Request
@@ -754,19 +692,6 @@ util_get_rvmlie_persta_link_info(uint8_t *mlieseq,
 QDF_STATUS util_get_pav_mlie_link_info(uint8_t *mlieseq,
 				       qdf_size_t mlieseqlen,
 				       struct ml_pa_info *pa_info);
-
-/**
- * util_find_extn_eid() - Find the occurrence of an element with given
- * extension element ID in an element buffer
- * @eid: Element ID to look for
- * @extn_eid: Extension Element ID to look for
- * @frame: Buffer containing the element(s) to be searched
- * @len: Length of the buffer
- *
- * Return: element pointer if found, NULL otherwise
- */
-uint8_t *util_find_extn_eid(uint8_t eid, uint8_t extn_eid,
-			    uint8_t *frame, qdf_size_t len);
 #else
 static inline QDF_STATUS
 util_gen_link_assoc_req(uint8_t *frame, qdf_size_t frame_len, bool isreassoc,
@@ -904,121 +829,5 @@ QDF_STATUS util_get_pav_mlie_link_info(uint8_t *mlieseq,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 
-static inline
-uint8_t *util_find_extn_eid(uint8_t eid, uint8_t extn_eid,
-			    uint8_t *frame, qdf_size_t len)
-{
-	return NULL;
-}
 #endif /* WLAN_FEATURE_11BE_MLO */
-
-#ifdef WLAN_FEATURE_11BN_ECU
-/**
- * util_get_bvmlie_ecu_param_change_count() - Get the Enhanced BSS Parameter
- * Change Count from a Basic variant Multi-Link element
- * @mlieseq: Starting address of the Multi-Link element or Multi-Link element
- * fragment sequence
- * @mlieseqlen: Total length of the Multi-Link element or Multi-Link element
- * fragment sequence
- * @ecu_param_change_count_present: Pointer to the location where a boolean
- * status should be updated indicating whether the Enhanced BSS Parameter
- * Change Count was found or not. This should be ignored by the caller if the
- * function returns error.
- * @ecu_param_change_count: Pointer to the location where the 4-bit Enhanced
- * BSS Parameter Change Count value should be updated. This should be ignored
- * by the caller if the function returns error, or if the function indicates
- * that the field was not found.
- * @ecu_type: Pointer to the location where the 3-bit Critical Update Type
- * value should be updated. This should be ignored by the caller if the
- * function returns error, or if the function indicates that the field was
- * not found.
- *
- * Get the Enhanced BSS Parameter Change Count (EBPCC) and Critical Update
- * Type from the Common Info field of a Basic variant Multi-Link element or
- * element fragment sequence, per IEEE P802.11bn/D1.4 S9.4.2.323.2.3.
- * The EBPCC is present only when the Enhanced Critical Update Information
- * Present bit (bit 7) is set in the ML Control Presence Bitmap.
- *
- * Return: QDF_STATUS_SUCCESS in the case of success, QDF_STATUS value giving
- * the reason for error in the case of failure
- */
-QDF_STATUS
-util_get_bvmlie_ecu_param_change_count(uint8_t *mlieseq, qdf_size_t mlieseqlen,
-				       bool *ecu_param_change_count_present,
-				       uint8_t *ecu_param_change_count,
-				       uint8_t *ecu_type);
-
-/**
- * util_get_bvmlie_persta_ecu_info() - Get per-STA ECU info from Basic variant
- * Multi-Link element Per-STA Profile subelements
- * @mlieseq: Starting address of the Multi-Link element or Multi-Link element
- * fragment sequence
- * @mlieseqlen: Total length of the Multi-Link element or Multi-Link element
- * fragment sequence
- * @persta_ecu_info: Pointer to array where per-STA ECU info should be stored.
- * This should be ignored by the caller if the function returns error.
- * @num_persta_ecu_info: Pointer to location where the number of valid entries
- * in persta_ecu_info should be updated. This should be ignored by the caller
- * if the function returns error.
- *
- * Get per-STA Enhanced BSS Parameter Change Count (EBPCC) from Per-STA Profile
- * subelements in a Basic variant Multi-Link element or element fragment
- * sequence.
- *
- * Return: QDF_STATUS_SUCCESS in the case of success, QDF_STATUS value giving
- * the reason for error in the case of failure
- */
-QDF_STATUS
-util_get_bvmlie_persta_ecu_info(uint8_t *mlieseq, qdf_size_t mlieseqlen,
-				struct mlo_persta_ecu_info *persta_ecu_info,
-				uint8_t *num_persta_ecu_info);
-
-/**
- * util_gen_link_beacon() - Generate link specific beacon
- * @frame: Pointer to original beacon frame body (after 802.11 header),
- * starting from the fixed fields (Timestamp, Beacon Interval, Capability).
- * @frame_len: Length of original beacon frame body
- * @link_id: Link ID for the secondary link
- * @link_addr: Secondary link's MAC address
- * @link_frame: Buffer for the generated link-specific beacon. This will
- * include the 802.11 header. Should be ignored on failure.
- * @link_frame_maxsize: Maximum size of the generated link-specific beacon
- * @link_frame_len: Pointer to location where the populated length of the
- * generated link-specific beacon should be written. Should be ignored on
- * failure.
- *
- * Generate a link-specific logically equivalent beacon for the secondary link
- * from the original beacon containing a Basic variant Multi-Link element.
- *
- * Return: QDF_STATUS_SUCCESS in the case of success, QDF_STATUS value giving
- * the reason for error in the case of failure.
- */
-QDF_STATUS
-util_gen_link_beacon(uint8_t *frame, qdf_size_t frame_len,
-		     uint8_t link_id,
-		     struct qdf_mac_addr link_addr,
-		     uint8_t *link_frame,
-		     qdf_size_t link_frame_maxsize,
-		     qdf_size_t *link_frame_len);
-#else
-static inline QDF_STATUS
-util_get_bvmlie_ecu_param_change_count(uint8_t *mlieseq, qdf_size_t mlieseqlen,
-				       bool *ecu_param_change_count_present,
-				       uint8_t *ecu_param_change_count,
-				       uint8_t *ecu_type)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-util_gen_link_beacon(uint8_t *frame, qdf_size_t frame_len,
-		     uint8_t link_id,
-		     struct qdf_mac_addr link_addr,
-		     uint8_t *link_frame,
-		     qdf_size_t link_frame_maxsize,
-		     qdf_size_t *link_frame_len)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-#endif /* WLAN_FEATURE_11BN_ECU */
 #endif /* _WLAN_UTILS_MLO_H_ */

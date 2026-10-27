@@ -154,7 +154,7 @@ struct direct_buf_rx_ring_debug {
 
 /**
  * struct direct_buf_rx_module_debug - Debug of a module subscribed to DBR
- * @dbr_ring_debug: Array of ring debug structures corresponding to each srng
+ * @dbr_ring_debug: Array of ring debug structers corresponding to each srng
  * @poisoning_enabled: Whether buffer poisoning is enabled for this module
  * @poison_value: Value with which buffers should be poisoned
  * @debugfs_entry: Debugfs entry for this module
@@ -173,7 +173,7 @@ struct direct_buf_rx_module_debug {
  * @mod_id: Module ID
  * @pdev_id: pdev ID
  * @srng_id: SRNG ID
- * @dbr_config: Pointer to direct buf rx module configuration struct
+ * @dbr_config: Pointer to dirct buf rx module configuration struct
  * @dbr_ring_cap: Pointer to direct buf rx ring capabilities struct
  * @dbr_ring_cfg: Pointer to direct buf rx ring config struct
  * @dbr_buf_pool: Pointer to direct buf rx buffer pool struct

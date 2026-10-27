@@ -35,11 +35,11 @@
      defined(HIF_IPCI))
 #include "ce_tasklet.h"
 #include "ce_api.h"
-#include "ce_internal.h"
 #endif
 #include "qdf_trace.h"
 #include "qdf_status.h"
 #include "hif_debug.h"
+#include "mp_dev.h"
 #if defined(QCA_WIFI_QCA8074) || defined(QCA_WIFI_QCA6018) || \
 	defined(QCA_WIFI_QCA5018) || defined(QCA_WIFI_QCA9574) || \
 	defined(QCA_WIFI_QCA5332) || defined(QCA_WIFI_QCA5424)
@@ -55,10 +55,17 @@
 #include <linux/cpumask.h>
 
 #include <pld_common.h>
+#if defined(HIF_PCI) || defined(HIF_SNOC) || defined(HIF_AHB) || \
+    defined(HIF_IPCI)
+#include "ce_internal.h"
+#endif
 #include <qdf_tracepoint.h>
 #include "qdf_ssr_driver_dump.h"
 
-bool g_target_access_allowed = true;
+void hif_dump(struct hif_opaque_softc *hif_ctx, uint8_t cmd_id, bool start)
+{
+	hif_trigger_dump(hif_ctx, cmd_id, start);
+}
 
 /**
  * hif_get_target_id(): hif_get_target_id
@@ -388,11 +395,6 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.name = "FIG_V1",
 	},
 	{
-		.id = FIG_V2,
-		.subid = 0,
-		.name = "FIG_V2",
-	},
-	{
 		.id = PEACH_V1,
 		.subid = 0,
 		.name = "PEACH_V1",
@@ -428,21 +430,6 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.name = "WCN7750_V1",
 	},
 	{
-		.id = WCN7750_V2,
-		.subid = 0,
-		.name = "WCN7750_V2",
-	},
-	{
-		.id = WCN7750_V3,
-		.subid = 0,
-		.name = "WCN7750_V3",
-	},
-	{
-		.id = WCN8750_V1,
-		.subid = 0,
-		.name = "WCN8750_V1",
-	},
-	{
 		.id = QCC2072_V1,
 		.subid = 0,
 		.name = "QCC2072_V1",
@@ -451,11 +438,6 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.id = WCN6450_V1,
 		.subid = 0,
 		.name = "WCN6450_V1",
-	},
-	{
-		.id = WCN6450_V2,
-		.subid = 0,
-		.name = "WCN6450_V2",
 	},
 	{
 		.id = QCA6490_v2_1,
@@ -469,11 +451,6 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 	},
 	{
 		.id = QCA6490_V2_2,
-		.subid = 0,
-		.name = "QCA6490",
-	},
-	{
-		.id = QCA6490_V3,
 		.subid = 0,
 		.name = "QCA6490",
 	},
@@ -526,23 +503,7 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.id = WCN3990_CLARENCE,
 		.subid = 0,
 		.name = "WCN3990",
-	},
-	{
-		.id = WCN3990_ALDABRA,
-		.subid = 0,
-		.name = "WCN3990",
-	},
-	{
-		.id = WCN3990_PORUS,
-		.subid = 0,
-		.name = "WCN3990",
-	},
-	{
-		.id = WCN7760_COLOGNE,
-		.subid = 0,
-		.name = "WCN7760",
 	}
-
 };
 
 /**
@@ -551,7 +512,7 @@ static const struct qwlan_hw qwlan_hw_list[] = {
  *
  * Return: human readable name for the underlying wifi hardware.
  */
-const char *hif_get_hw_name(struct hif_target_info *info)
+static const char *hif_get_hw_name(struct hif_target_info *info)
 {
 	int i;
 
@@ -1319,7 +1280,7 @@ hif_affinity_mgr_init(struct hif_softc *scn, struct wlan_objmgr_psoc *psoc)
 }
 #endif
 
-#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
+#ifdef FEATURE_DIRECT_LINK
 /**
  * hif_init_direct_link_rcv_pipe_num(): Initialize the direct link receive
  *  pipe number
@@ -1339,30 +1300,6 @@ void hif_init_direct_link_rcv_pipe_num(struct hif_softc *scn)
 }
 #endif
 
-#if (defined(HIF_PCI) || defined(HIF_SNOC) || defined(HIF_AHB) || \
-	defined(HIF_IPCI))
-static inline
-void hif_ce_desc_history_log_reg(struct hif_softc *scn)
-{
-	return hif_ce_desc_history_log_register(scn);
-}
-
-static inline
-void hif_ce_desc_history_log_unreg(void)
-{
-	return hif_ce_desc_history_log_unregister();
-}
-#else
-static inline
-void hif_ce_desc_history_log_reg(struct hif_softc *scn)
-{
-}
-
-static inline
-void hif_ce_desc_history_log_unreg(void)
-{
-}
-#endif
 struct hif_opaque_softc *hif_open(qdf_device_t qdf_ctx,
 				  uint32_t mode,
 				  enum qdf_bus_type bus_type,
@@ -1414,10 +1351,12 @@ struct hif_opaque_softc *hif_open(qdf_device_t qdf_ctx,
 	hif_latency_detect_init(scn);
 	hif_affinity_mgr_init(scn, psoc);
 	hif_init_direct_link_rcv_pipe_num(scn);
-	hif_ce_desc_history_log_reg(scn);
+#if (defined(HIF_PCI) || defined(HIF_SNOC) || defined(HIF_AHB) || \
+		 defined(HIF_IPCI))
+	hif_ce_desc_history_log_register(scn);
+#endif
 	hif_desc_history_log_register();
 	qdf_ssr_driver_dump_register_region("hif", scn, sizeof(*scn));
-	hif_set_target_access_allowed(true);
 
 out:
 	return GET_HIF_OPAQUE_HDL(scn);
@@ -1458,7 +1397,10 @@ void hif_close(struct hif_opaque_softc *hif_ctx)
 
 	qdf_ssr_driver_dump_unregister_region("hif");
 	hif_desc_history_log_unregister();
-	hif_ce_desc_history_log_unreg();
+#if (defined(HIF_PCI) || defined(HIF_SNOC) || defined(HIF_AHB) || \
+			 defined(HIF_IPCI))
+	hif_ce_desc_history_log_unregister();
+#endif
 	hif_latency_detect_deinit(scn);
 
 	if (scn->athdiag_procfs_inited) {
@@ -1526,84 +1468,6 @@ static inline int hif_get_num_pending_work(struct hif_softc *scn)
 }
 #endif
 
-#if defined(QCA_WIFI_KIWI) && !defined(QCA_WIFI_WCN6450)
-/**
- * hif_print_ce() - print CE HP TP values
- * @scn: HIF context
- * @print_type: print type
- *
- * Returns: QDF_STATUS_SUCCESS if all the rings are empty
- *	QDF error code, if any ring is not empty
- */
-QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type)
-{
-	struct HIF_CE_state *hif_ce_state = (struct HIF_CE_state *)scn;
-	struct ce_tasklet_entry *tasklet_entry;
-	struct CE_state *CE_state;
-	uint32_t hp = 0, tp = 0;
-	uint8_t ce_id = 0;
-	uint8_t non_empty = 0;
-
-	if (print_type == DIAG_PRINT) {
-		if (!hif_get_fw_diag_ce_id(scn, &ce_id)) {
-			CE_state = scn->ce_id_to_state[ce_id];
-			if (CE_state->status_ring) {
-				hal_get_sw_hptp(scn->hal_soc,
-						CE_state->status_ring->srng_ctx,
-						&tp, &hp);
-				hif_info("diag ce=%d HP=%d, TP=%d",
-					 ce_id, hp, tp);
-			}
-		}
-		return QDF_STATUS_SUCCESS;
-	}
-
-	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
-		tasklet_entry = &hif_ce_state->tasklets[ce_id];
-		if (print_type ||
-		    (qdf_atomic_test_bit(TASKLET_STATE_SCHED,
-					 &tasklet_entry->intr_tq.state) ||
-		     qdf_atomic_test_bit(TASKLET_STATE_RUN,
-					 &tasklet_entry->intr_tq.state))) {
-			CE_state = scn->ce_id_to_state[ce_id];
-			if (CE_state->service_dl)
-				continue;
-			if (CE_state->status_ring) {
-				hal_get_sw_hptp(scn->hal_soc,
-						CE_state->status_ring->srng_ctx,
-						&tp, &hp);
-				hif_info("ce=%d sts%sHP=%d, TP=%d",
-					 ce_id, print_type ? " " : " pending ",
-					 hp, tp);
-				if (hp != tp)
-					non_empty++;
-			} else if (CE_state->src_ring) {
-				hal_get_sw_hptp(scn->hal_soc,
-						CE_state->src_ring->srng_ctx,
-						&tp, &hp);
-				hif_info("ce=%d src%sHP=%d, TP=%d",
-					 ce_id, print_type ? " " : " pending ",
-					 hp, tp);
-				if (hp != tp)
-					non_empty++;
-			}
-		}
-	}
-
-	if (print_type && non_empty) {
-		hif_info("full print shows %d rings are not empty", non_empty);
-		return QDF_STATUS_E_FAULT;
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-#else
-QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 QDF_STATUS hif_try_complete_tasks(struct hif_softc *scn)
 {
 	uint32_t task_drain_wait_cnt = 0;
@@ -1633,19 +1497,12 @@ QDF_STATUS hif_try_complete_tasks(struct hif_softc *scn)
 						oom_work);
 			return QDF_STATUS_E_FAULT;
 		}
-
 		hif_info("waiting for tasklets %d grp tasklets %d work %d oom_work %d",
 			 tasklet, grp_tasklet, work, oom_work);
-
-		if (tasklet)
-			hif_print_ce(scn, BUSY_PRINT);
-
 		msleep(10);
 	}
 
-	hif_info("CE HP-TP data:");
-
-	return hif_print_ce(scn, FULL_PRINT);
+	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS hif_try_complete_dp_tasks(struct hif_opaque_softc *hif_ctx)
@@ -1985,24 +1842,6 @@ static void hif_reg_write_work(void *arg)
 	qdf_atomic_sub(num_processed, &scn->active_work_cnt);
 }
 
-static inline void
-__hif_flush_delayed_reg_write_work(struct hif_softc *scn)
-{
-	qdf_flush_work(&scn->reg_write_work);
-	qdf_disable_work(&scn->reg_write_work);
-}
-
-/**
- * hif_flush_delayed_reg_write_work() - flush pending reg write work
- * @scn: hif_softc pointer
- *
- * Return: None
- */
-void hif_flush_delayed_reg_write_work(struct hif_softc *scn)
-{
-	__hif_flush_delayed_reg_write_work(scn);
-}
-
 /**
  * hif_delayed_reg_write_deinit() - De-Initialize delayed reg write processing
  * @scn: hif_softc pointer
@@ -2014,7 +1853,8 @@ void hif_flush_delayed_reg_write_work(struct hif_softc *scn)
  */
 static void hif_delayed_reg_write_deinit(struct hif_softc *scn)
 {
-	__hif_flush_delayed_reg_write_work(scn);
+	qdf_flush_work(&scn->reg_write_work);
+	qdf_disable_work(&scn->reg_write_work);
 	qdf_flush_workqueue(0, scn->reg_write_wq);
 	qdf_destroy_workqueue(0, scn->reg_write_wq);
 	qdf_mem_free(scn->reg_write_queue);
@@ -2172,7 +2012,7 @@ static QDF_STATUS hif_hal_detach(struct hif_softc *scn)
 	defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_QCN9224) || \
 	defined(QCA_WIFI_QCA9574)) || defined(QCA_WIFI_QCA5332) || \
 	defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCA5424) || \
-	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_WCN8750)
+	defined(QCA_WIFI_QCC2072)
 static QDF_STATUS hif_hal_attach(struct hif_softc *scn)
 {
 	if (ce_srng_based(scn)) {
@@ -2474,6 +2314,11 @@ int hif_get_device_type(uint32_t device_id,
 		*target_type = TARGET_TYPE_ADRASTEA;
 		break;
 
+	case AR9888_DEVICE_ID:
+		*hif_type = HIF_TYPE_AR9888;
+		*target_type = TARGET_TYPE_AR9888;
+		break;
+
 	case AR6320_DEVICE_ID:
 		switch (revision_id) {
 		case AR6320_FW_1_1:
@@ -2497,11 +2342,77 @@ int hif_get_device_type(uint32_t device_id,
 		}
 		break;
 
+	case AR9887_DEVICE_ID:
+		*hif_type = HIF_TYPE_AR9888;
+		*target_type = TARGET_TYPE_AR9888;
+		hif_info(" *********** AR9887 **************");
+		break;
+
+	case QCA9984_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCA9984;
+		*target_type = TARGET_TYPE_QCA9984;
+		hif_info(" *********** QCA9984 *************");
+		break;
+
+	case QCA9888_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCA9888;
+		*target_type = TARGET_TYPE_QCA9888;
+		hif_info(" *********** QCA9888 *************");
+		break;
+
+	case AR900B_DEVICE_ID:
+		*hif_type = HIF_TYPE_AR900B;
+		*target_type = TARGET_TYPE_AR900B;
+		hif_info(" *********** AR900B *************");
+		break;
+
+	case QCA8074_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCA8074;
+		*target_type = TARGET_TYPE_QCA8074;
+		hif_info(" *********** QCA8074  *************");
+		break;
+
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
 		*hif_type = HIF_TYPE_QCA6290;
 		*target_type = TARGET_TYPE_QCA6290;
 		hif_info(" *********** QCA6290EMU *************");
+		break;
+
+	case QCN9000_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCN9000;
+		*target_type = TARGET_TYPE_QCN9000;
+		hif_info(" *********** QCN9000 *************");
+		break;
+
+	case QCN9224_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCN9224;
+		*target_type = TARGET_TYPE_QCN9224;
+		hif_info(" *********** QCN9224 *************");
+		break;
+
+	case QCN6122_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCN6122;
+		*target_type = TARGET_TYPE_QCN6122;
+		hif_info(" *********** QCN6122 *************");
+		break;
+
+	case QCN9160_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCN9160;
+		*target_type = TARGET_TYPE_QCN9160;
+		hif_info(" *********** QCN9160 *************");
+		break;
+
+	case QCN6432_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCN6432;
+		*target_type = TARGET_TYPE_QCN6432;
+		hif_info(" *********** QCN6432 *************");
+		break;
+
+	case QCA5424_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCA5424;
+		*target_type = TARGET_TYPE_QCA5424;
+		hif_info(" *********** QCA5424 *************");
 		break;
 
 	case QCN7605_DEVICE_ID:
@@ -2541,12 +2452,6 @@ int hif_get_device_type(uint32_t device_id,
 		hif_info(" *********** WCN7750 *************");
 		break;
 
-	case WCN8750_DEVICE_ID:
-		*hif_type = HIF_TYPE_WCN8750;
-		*target_type = TARGET_TYPE_WCN8750;
-		hif_info(" *********** WCN8750 *************");
-		break;
-
 	case QCC2072_DEVICE_ID:
 		*hif_type = HIF_TYPE_QCC2072;
 		*target_type = TARGET_TYPE_QCC2072;
@@ -2575,6 +2480,42 @@ int hif_get_device_type(uint32_t device_id,
 		*hif_type = HIF_TYPE_FIG;
 		*target_type = TARGET_TYPE_FIG;
 		hif_info(" *********** FIG *************");
+		break;
+
+	case QCA8074V2_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCA8074V2;
+		*target_type = TARGET_TYPE_QCA8074V2;
+		hif_info(" *********** QCA8074V2 *************");
+		break;
+
+	case QCA6018_DEVICE_ID:
+	case RUMIM2M_DEVICE_ID_NODE0:
+	case RUMIM2M_DEVICE_ID_NODE1:
+	case RUMIM2M_DEVICE_ID_NODE2:
+	case RUMIM2M_DEVICE_ID_NODE3:
+	case RUMIM2M_DEVICE_ID_NODE4:
+	case RUMIM2M_DEVICE_ID_NODE5:
+		*hif_type = HIF_TYPE_QCA6018;
+		*target_type = TARGET_TYPE_QCA6018;
+		hif_info(" *********** QCA6018 *************");
+		break;
+
+	case QCA5018_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCA5018;
+		*target_type = TARGET_TYPE_QCA5018;
+		hif_info(" *********** qca5018 *************");
+		break;
+
+	case QCA5332_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCA5332;
+		*target_type = TARGET_TYPE_QCA5332;
+		hif_info(" *********** QCA5332 *************");
+		break;
+
+	case QCA9574_DEVICE_ID:
+		*hif_type = HIF_TYPE_QCA9574;
+		*target_type = TARGET_TYPE_QCA9574;
+		hif_info(" *********** QCA9574 *************");
 		break;
 
 	case WCN6450_DEVICE_ID:
@@ -2982,6 +2923,30 @@ void hif_prealloc_put_multi_pages(struct hif_softc *scn, uint32_t desc_type,
 #endif
 
 /**
+ * hif_batch_send() - API to access hif specific function
+ * ce_batch_send.
+ * @osc: HIF Context
+ * @msdu: list of msdus to be sent
+ * @transfer_id: transfer id
+ * @len: downloaded length
+ * @sendhead:
+ *
+ * Return: list of msds not sent
+ */
+qdf_nbuf_t hif_batch_send(struct hif_opaque_softc *osc, qdf_nbuf_t msdu,
+		uint32_t transfer_id, u_int32_t len, uint32_t sendhead)
+{
+	void *ce_tx_hdl = hif_get_ce_handle(osc, CE_HTT_TX_CE);
+
+	if (!ce_tx_hdl)
+		return NULL;
+
+	return ce_batch_send((struct CE_handle *)ce_tx_hdl, msdu, transfer_id,
+			len, sendhead);
+}
+qdf_export_symbol(hif_batch_send);
+
+/**
  * hif_update_tx_ring() - API to access hif specific function
  * ce_update_tx_ring.
  * @osc: HIF Context
@@ -2997,6 +2962,29 @@ void hif_update_tx_ring(struct hif_opaque_softc *osc, u_int32_t num_htt_cmpls)
 }
 qdf_export_symbol(hif_update_tx_ring);
 
+
+/**
+ * hif_send_single() - API to access hif specific function
+ * ce_send_single.
+ * @osc: HIF Context
+ * @msdu : msdu to be sent
+ * @transfer_id: transfer id
+ * @len : downloaded length
+ *
+ * Return: msdu sent status
+ */
+QDF_STATUS hif_send_single(struct hif_opaque_softc *osc, qdf_nbuf_t msdu,
+			   uint32_t transfer_id, u_int32_t len)
+{
+	void *ce_tx_hdl = hif_get_ce_handle(osc, CE_HTT_TX_CE);
+
+	if (!ce_tx_hdl)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	return ce_send_single((struct CE_handle *)ce_tx_hdl, msdu, transfer_id,
+			len);
+}
+qdf_export_symbol(hif_send_single);
 #endif
 
 /**
@@ -3413,10 +3401,7 @@ hif_affinity_mgr_set_qrg_irq_affinity(struct hif_softc *scn, uint32_t irq,
 				      qdf_cpu_mask *cpu_mask)
 {
 	struct hif_cpu_affinity *cfg;
-	if (hif_affinity_override_enabled(scn)) {
-		hif_info_rl("Skip affinity mgr: affn override enabled");
-		return QDF_STATUS_SUCCESS;
-	}
+
 	if (!scn->affinity_mgr_supported)
 		return hif_irq_set_affinity_hint(irq, cpu_mask);
 
@@ -3510,25 +3495,3 @@ void hif_set_load_balance_enabled_flag(struct hif_opaque_softc *hif_ctx)
 	scn->is_load_balance_enabled = true;
 }
 #endif
-
-#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
-void hif_set_affn_override_enabled(struct hif_opaque_softc *hif_ctx, bool value)
-{
-	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
-
-	scn->is_affinity_override_enabled = value;
-}
-#endif
-
-/**
- * hif_set_target_access_allowed() - Set target access value
- * @access_allowed: True if access to target is allowed false otherwise
- *
- * Return: None
- */
-void hif_set_target_access_allowed(bool access_allowed)
-{
-	g_target_access_allowed = access_allowed;
-
-	hif_info("Target access allowed: %u", access_allowed);
-}

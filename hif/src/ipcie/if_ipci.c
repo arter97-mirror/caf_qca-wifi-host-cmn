@@ -35,6 +35,7 @@
 #include "qdf_status.h"
 #include "qdf_atomic.h"
 #include "pld_common.h"
+#include "mp_dev.h"
 #include "hif_debug.h"
 
 #include "ce_tasklet.h"
@@ -639,7 +640,7 @@ static void hif_ipci_ce_irq_set_affinity_hint(struct hif_softc *scn)
 	struct hif_ipci_softc *ipci_sc = HIF_GET_IPCI_SOFTC(scn);
 	struct CE_attr *host_ce_conf;
 	int ce_id;
-	qdf_cpu_mask ce_cpu_mask;
+	qdf_cpu_mask ce_cpu_mask, updated_mask;
 	int perf_cpu_cluster = hif_get_perf_cluster_bitmap();
 	int package_id;
 
@@ -662,13 +663,13 @@ static void hif_ipci_ce_irq_set_affinity_hint(struct hif_softc *scn)
 		if ((host_ce_conf[ce_id].flags & CE_ATTR_DISABLE_INTR) ||
 		    hif_is_datapath_ce(scn->ce_id_to_state[ce_id]))
 			continue;
-
-		qdf_cpumask_copy(&ipci_sc->ce_irq_cpu_mask[ce_id],
-				 &ce_cpu_mask);
-
+		qdf_cpumask_copy(&updated_mask, &ce_cpu_mask);
 		ret = hif_affinity_mgr_set_ce_irq_affinity(scn, ipci_sc->ce_msi_irq_num[ce_id],
 							   ce_id,
-							   &ipci_sc->ce_irq_cpu_mask[ce_id]);
+							   &updated_mask);
+		qdf_cpumask_clear(&ipci_sc->ce_irq_cpu_mask[ce_id]);
+		qdf_cpumask_copy(&ipci_sc->ce_irq_cpu_mask[ce_id],
+				 &updated_mask);
 		if (ret)
 			hif_err_rl("Set affinity %*pbl fails for CE IRQ %d",
 				   qdf_cpumask_pr_args(
@@ -832,7 +833,6 @@ static bool hif_is_pld_based_target(struct hif_ipci_softc *sc,
 	case QCA6750_DEVICE_ID:
 #endif
 	case WCN6450_DEVICE_ID:
-	case WCN8750_DEVICE_ID:
 	case WCN7750_DEVICE_ID:
 		return true;
 	}
@@ -1032,8 +1032,7 @@ int hif_prevent_link_low_power_states(struct hif_opaque_softc *hif)
 			qdf_udelay(EP_VOTE_POLL_TIME_US);
 			count++;
 		} else {
-			qdf_usleep_range(EP_WAKE_RESET_DELAY_US - 10,
-					 EP_WAKE_RESET_DELAY_US);
+			qdf_sleep_us(EP_WAKE_RESET_DELAY_US);
 		}
 		curr_time = qdf_system_ticks_to_msecs(qdf_system_ticks());
 	}
@@ -1060,8 +1059,7 @@ int hif_prevent_link_low_power_states(struct hif_opaque_softc *hif)
 			qdf_udelay(EP_WAKE_RESET_DELAY_US);
 			count++;
 		} else {
-			qdf_usleep_range(EP_WAKE_DELAY_US - 50,
-					 EP_WAKE_DELAY_US);
+			qdf_sleep_us(EP_WAKE_DELAY_US);
 		}
 
 		curr_time = qdf_system_ticks_to_msecs(qdf_system_ticks());
@@ -1121,61 +1119,5 @@ int hif_ipci_disable_grp_irqs(struct hif_softc *scn)
 		ipci_scn->grp_irqs_disabled = true;
 
 	return status;
-}
-#endif
-#ifdef IPA_OPT_WIFI_DP
-int hif_prevent_l1(struct hif_opaque_softc *hif)
-{
-	int status;
-
-	status = hif_force_wake_request(hif);
-	if (status)
-		hif_err("Force wake request error");
-
-	return status;
-}
-
-void hif_allow_l1(struct hif_opaque_softc *hif)
-{
-	int status;
-
-	status = hif_force_wake_release(hif);
-	if (status)
-		hif_err("Force wake release error");
-}
-
-QDF_STATUS hif_disable_rtpm(struct hif_opaque_softc *hif,
-			    uint32_t id)
-{
-	struct hif_softc *hif_softc = (struct hif_softc *)hif;
-	QDF_STATUS ret;
-
-	ret = hif_rtpm_get(HIF_RTPM_GET_SYNC,
-			   id);
-	if (ret == QDF_STATUS_SUCCESS)
-		qdf_atomic_inc(&hif_softc->opt_wifi_dp_rtpm_cnt);
-
-	hif_info("opt_dp: pcie link up count %d",
-		 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
-	return ret;
-}
-
-QDF_STATUS hif_enable_rtpm(struct hif_opaque_softc *hif,
-			   uint32_t id)
-{
-	struct hif_softc *hif_softc = (struct hif_softc *)hif;
-	QDF_STATUS ret = QDF_STATUS_SUCCESS;
-
-	if (qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt) > 0) {
-		ret = hif_rtpm_put(HIF_RTPM_PUT_ASYNC,
-				   id);
-		if (ret == QDF_STATUS_SUCCESS)
-			qdf_atomic_dec(&hif_softc->opt_wifi_dp_rtpm_cnt);
-	}
-
-	hif_info("opt_dp: pcie link down count %d",
-		 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
-
-	return ret;
 }
 #endif

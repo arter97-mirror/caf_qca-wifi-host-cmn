@@ -29,7 +29,6 @@
 	__QDF_TRACE_FL(QDF_TRACE_LEVEL_INFO_HIGH, QDF_MODULE_ID_DP_REO, ## params)
 #define dp_reo_debug(params...) QDF_TRACE_DEBUG(QDF_MODULE_ID_DP_REO, params)
 
-#ifndef CONFIG_BORON
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 /**
  * dp_reo_cmd_srng_event_record() - Record reo cmds posted
@@ -203,4 +202,3 @@ void dp_cleanup_reo_cmd_module(struct dp_soc *soc)
 	dp_reo_desc_freelist_destroy(soc);
 }
 #endif
-#endif /* CONFIG_BORON */

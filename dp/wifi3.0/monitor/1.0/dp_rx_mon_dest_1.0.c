@@ -96,7 +96,6 @@ dp_tx_capture_get_user_id(struct dp_pdev *dp_pdev, void *rx_desc_tlv)
 #endif
 
 #ifdef QCA_MONITOR_PKT_SUPPORT
-#ifdef WLAN_SOFTUMAC_SUPPORT
 /**
  * dp_rx_mon_link_desc_return() - Return a MPDU link descriptor to HW
  *			      (WBM), following error handling
@@ -152,7 +151,6 @@ done:
 	hal_srng_access_end(hal_soc, hal_ring_hdl);
 	return status;
 }
-#endif
 
 /**
  * dp_rx_mon_mpdu_pop() - Return a MPDU link descriptor to HW
@@ -167,16 +165,15 @@ done:
  * @ppdu_id: ppdu id of processing ppdu
  * @head: head of descs list to be freed
  * @tail: tail of decs list to be freed
- * @rx_bufs_used: number of msdu in MPDU to be popped
  *
- * Return: QDF_STATUS;
+ * Return: number of msdu in MPDU to be popped
  */
-static inline QDF_STATUS
+static inline uint32_t
 dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 	hal_rxdma_desc_t rxdma_dst_ring_desc, qdf_nbuf_t *head_msdu,
 	qdf_nbuf_t *tail_msdu, uint32_t *npackets, uint32_t *ppdu_id,
 	union dp_rx_desc_list_elem_t **head,
-	union dp_rx_desc_list_elem_t **tail, uint32_t *rx_bufs_used)
+	union dp_rx_desc_list_elem_t **tail)
 {
 	struct dp_pdev *dp_pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
 	void *rx_desc_tlv, *first_rx_desc_tlv = NULL;
@@ -187,6 +184,7 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 	uint16_t num_msdus;
 	uint32_t rx_buf_size, rx_pkt_offset;
 	struct hal_buf_info buf_info;
+	uint32_t rx_bufs_used = 0;
 	uint32_t msdu_ppdu_id, msdu_cnt;
 	uint8_t *data = NULL;
 	uint32_t i;
@@ -200,11 +198,9 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 	struct dp_mon_pdev *mon_pdev;
 	struct dp_mon_mac *mon_mac;
 
-	*rx_bufs_used = 0;
-
 	if (qdf_unlikely(!dp_pdev)) {
 		dp_rx_mon_dest_debug("%pK: pdev is null for mac_id = %d", soc, mac_id);
-		return QDF_STATUS_E_INVAL;
+		return rx_bufs_used;
 	}
 
 	mon_pdev = dp_pdev->monitor_pdev;
@@ -248,7 +244,7 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 		if (qdf_unlikely(mon_mac->mon_last_linkdesc_paddr ==
 		    buf_info.paddr)) {
 			mon_mac->rx_mon_stats.dup_mon_linkdesc_cnt++;
-			return QDF_STATUS_E_EXISTS;
+			return rx_bufs_used;
 		}
 
 		rx_msdu_link_desc =
@@ -286,7 +282,6 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 				mon_mac->rx_mon_stats.dup_mon_buf_cnt++;
 				mon_mac->mon_last_linkdesc_paddr =
 					buf_info.paddr;
-				rx_desc->in_err_state = 1;
 				continue;
 			}
 
@@ -334,9 +329,10 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 					goto next_msdu;
 				}
 
-				msdu_ppdu_id = hal_rx_reo_ent_phy_ppdu_id_get(
-							soc->hal_soc,
-							rxdma_dst_ring_desc);
+				msdu_ppdu_id = hal_rx_hw_desc_get_ppduid_get(
+						soc->hal_soc,
+						rx_desc_tlv,
+						rxdma_dst_ring_desc);
 				is_first_msdu = false;
 
 				dp_rx_mon_dest_debug("%pK: msdu_ppdu_id=%x",
@@ -351,12 +347,12 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 					(msdu_ppdu_id - *ppdu_id) <
 						NOT_PPDU_ID_WRAP_AROUND)) {
 					*ppdu_id = msdu_ppdu_id;
-					return QDF_STATUS_E_PENDING;
+					return rx_bufs_used;
 				} else if ((*ppdu_id > msdu_ppdu_id) && (
 					(*ppdu_id - msdu_ppdu_id) >
 						NOT_PPDU_ID_WRAP_AROUND)) {
 					*ppdu_id = msdu_ppdu_id;
-					return QDF_STATUS_E_PENDING;
+					return rx_bufs_used;
 				}
 
 				dp_tx_capture_get_user_id(dp_pdev,
@@ -411,6 +407,26 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 					+ frag_len;
 
 			dp_rx_mon_buffer_set_pktlen(msdu, rx_buf_size);
+#if 0
+			/* Disable it.see packet on msdu done set to 0 */
+			/*
+			 * Check if DMA completed -- msdu_done is the
+			 * last bit to be written
+			 */
+			if (!hal_rx_attn_msdu_done_get(rx_desc_tlv)) {
+
+				QDF_TRACE(QDF_MODULE_ID_DP,
+					  QDF_TRACE_LEVEL_ERROR,
+					  "%s:%d: Pkt Desc",
+					  __func__, __LINE__);
+
+				QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_DP,
+					QDF_TRACE_LEVEL_ERROR,
+					rx_desc_tlv, 128);
+
+				qdf_assert_always(0);
+			}
+#endif
 			dp_rx_mon_dest_debug("%pK: rx_pkt_offset=%d, l2_hdr_offset=%d, msdu_len=%d, frag_len %u",
 					     soc, rx_pkt_offset, l2_hdr_offset,
 					     msdu_list.msdu_info[i].msdu_len,
@@ -429,7 +445,7 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 
 next_msdu:
 			mon_mac->mon_last_buf_cookie = msdu_list.sw_cookie[i];
-			(*rx_bufs_used)++;
+			rx_bufs_used++;
 			dp_rx_add_to_free_desc_list(head,
 				tail, rx_desc);
 		}
@@ -459,7 +475,7 @@ next_msdu:
 					   &mon_mac->ppdu_info,
 					   head_msdu, tail_msdu);
 
-	return QDF_STATUS_SUCCESS;
+	return rx_bufs_used;
 }
 
 #if !defined(DISABLE_MON_CONFIG) && \
@@ -589,7 +605,6 @@ static int dp_rx_mon_drop_one_mpdu(struct dp_pdev *pdev,
  * @head: HEAD if the rx_desc list to be freed
  * @tail: TAIL of the rx_desc list to be freed
  * @rx_bufs_dropped: Number of msdus dropped
- * @ctx: dropping context
  *
  * Return: QDF_STATUS_SUCCESS, if the mpdu was to be dropped
  *	   QDF_STATUS_E_INVAL/QDF_STATUS_E_FAILURE, if the mpdu was not dropped
@@ -599,17 +614,14 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 			    hal_rxdma_desc_t rxdma_dst_ring_desc,
 			    union dp_rx_desc_list_elem_t **head,
 			    union dp_rx_desc_list_elem_t **tail,
-			    uint32_t *rx_bufs_dropped,
-			    enum dp_rx_mon_drop_ctx ctx)
+			    uint32_t *rx_bufs_dropped)
 {
 	struct dp_soc *soc = pdev->soc;
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
 	uint8_t src_link_id;
 	QDF_STATUS status;
-	struct dp_mon_mac *dst_entry_mon_mac;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
 
-	if (mon_pdev && mon_pdev->mon_dst_filter_reset)
+	if (mon_mac->mon_chan_band == REG_BAND_UNKNOWN)
 		goto drop_mpdu;
 
 	status = hal_rx_reo_ent_get_src_link_id(soc->hal_soc,
@@ -618,12 +630,7 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 	if (QDF_IS_STATUS_ERROR(status))
 		return QDF_STATUS_E_INVAL;
 
-	dst_entry_mon_mac = dp_get_mon_mac(pdev, src_link_id);
-	if (ctx == DP_MON_DST_ENTRY_DROP_SCHEDULED_TIMER &&
-	    dst_entry_mon_mac->mon_chan_band != REG_BAND_UNKNOWN)
-		return QDF_STATUS_E_INVAL;
-	else if (ctx == DP_MON_DST_ENTRY_DROP_SCHEDULED_PROCESSING &&
-		 src_link_id == mon_mac->mac_id)
+	if (src_link_id == mon_mac->mac_id)
 		return QDF_STATUS_E_INVAL;
 
 drop_mpdu:
@@ -639,142 +646,9 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 			    hal_rxdma_desc_t rxdma_dst_ring_desc,
 			    union dp_rx_desc_list_elem_t **head,
 			    union dp_rx_desc_list_elem_t **tail,
-			    uint32_t *rx_bufs_dropped,
-			    enum dp_rx_mon_drop_ctx ctx)
+			    uint32_t *rx_bufs_dropped)
 {
 	return QDF_STATUS_E_FAILURE;
-}
-#endif
-
-#ifdef WLAN_FEATURE_DP_MON_DEST_RING_HISTORY
-static inline QDF_STATUS
-dp_rx_mon_add_mismatch_entry(struct dp_soc *soc, uint32_t ppdu_id,
-			     hal_rxdma_desc_t rxdma_dst_ring_desc,
-			     uint32_t mac_id)
-{
-	uint32_t idx, msdu_cnt;
-	void *old_link_desc;
-	void *current_link_desc;
-	struct hal_rx_msdu_list msdu_list;
-	uint16_t num_msdus;
-	qdf_nbuf_t nbuf;
-	union dp_rx_desc_list_elem_t *head = NULL;
-	union dp_rx_desc_list_elem_t *tail = NULL;
-	struct hal_buf_info buf_info;
-	struct dp_pdev *pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
-	int count = 0, i;
-	struct dp_rx_desc *rx_desc;
-	struct dp_mon_dest_stats_record *record;
-	struct rx_desc_pool *rx_desc_pool;
-	struct dp_mon_dest_ring_history *mon_dest_history;
-
-	mon_dest_history = soc->mon_dest_ring_history[mac_id];
-	if (qdf_unlikely(!mon_dest_history))
-		return QDF_STATUS_E_FAILURE;
-
-	hal_rx_reo_ent_buf_paddr_get(soc->hal_soc,
-				     rxdma_dst_ring_desc,
-				     &buf_info, &msdu_cnt);
-	current_link_desc = dp_rx_cookie_2_mon_link_desc(pdev,
-							 &buf_info,
-							 mac_id);
-	if (!current_link_desc) {
-		dp_err_rl("invalid link desc");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	idx = dp_history_get_next_index(&mon_dest_history->index, 32);
-	record = &mon_dest_history->entry[idx];
-	old_link_desc = record->link_desc_va;
-	if (!old_link_desc)
-		goto fill_entry;
-
-	hal_rx_msdu_list_get(soc->hal_soc, old_link_desc,
-			     &msdu_list, &num_msdus);
-	for (i = 0; i < num_msdus; i++) {
-		rx_desc = dp_rx_get_mon_desc(soc,
-					     msdu_list.sw_cookie[i]);
-		if (!rx_desc) {
-			dp_err_rl("invalid rx desc");
-			continue;
-		}
-
-		if (rx_desc->unmapped == 0) {
-			rx_desc_pool = dp_rx_get_mon_desc_pool(soc,
-							       mac_id,
-							       pdev->pdev_id);
-			dp_rx_mon_buffer_unmap(soc, rx_desc,
-					       rx_desc_pool->buf_size);
-			rx_desc->unmapped = 1;
-		}
-
-		nbuf = DP_RX_MON_GET_NBUF_FROM_DESC(rx_desc);
-		qdf_nbuf_free(nbuf);
-		count++;
-		dp_rx_add_to_free_desc_list(&head, &tail, rx_desc);
-	}
-
-	dp_rx_buffers_replenish(soc, mac_id,
-				dp_rxdma_get_mon_buf_ring(pdev,
-							  mac_id),
-				dp_rx_get_mon_desc_pool(soc, mac_id,
-							pdev->pdev_id),
-				count, &head, &tail, false);
-
-fill_entry:
-	record->link_desc_va = current_link_desc;
-	record->ppdu_id = ppdu_id;
-	record->timestamp = qdf_get_log_timestamp();
-	qdf_mem_copy(record->ppdu_list,
-		     mon_dest_history->current_ppdu_list,
-		     sizeof(mon_dest_history->current_ppdu_list));
-	qdf_atomic_set(&mon_dest_history->ppdu_index, 0);
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-void dp_rx_mon_add_ppdu_id_list(struct dp_soc *soc, uint32_t ppdu_id,
-				uint32_t mac_id)
-{
-	struct dp_mon_dest_ring_history *dest_ring_hist;
-	int idx;
-
-	dest_ring_hist = soc->mon_dest_ring_history[mac_id];
-	idx = qdf_atomic_read(
-			&dest_ring_hist->ppdu_index);
-	dest_ring_hist->current_ppdu_list[idx] = ppdu_id;
-	qdf_atomic_inc(&dest_ring_hist->ppdu_index);
-	if (qdf_atomic_read(&dest_ring_hist->ppdu_index) >
-	    MON_DEST_RING_STUCK_MAX_CNT)
-		qdf_atomic_set(&dest_ring_hist->ppdu_index, 0);
-}
-
-static inline
-void dp_rx_mon_reset_ppdu_id_list(struct dp_soc *soc, uint32_t mac_id)
-{
-	struct dp_mon_dest_ring_history *dest_ring_hist;
-
-	dest_ring_hist = soc->mon_dest_ring_history[mac_id];
-	qdf_atomic_set(&dest_ring_hist->ppdu_index, 0);
-}
-#else
-static inline QDF_STATUS
-dp_rx_mon_add_mismatch_entry(struct dp_soc *soc, uint32_t ppdu_id,
-			     hal_rxdma_desc_t rxdma_dst_ring_desc,
-			     uint32_t mac_id)
-{
-	return QDF_STATUS_E_FAILURE;
-}
-
-static inline
-void dp_rx_mon_add_ppdu_id_list(struct dp_soc *soc, uint32_t ppdu_id,
-				uint32_t mac_id)
-{
-}
-
-static inline
-void dp_rx_mon_reset_ppdu_id_list(struct dp_soc *soc, uint32_t mac_id)
-{
 }
 #endif
 
@@ -795,7 +669,6 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 	struct cdp_pdev_mon_stats *rx_mon_stats;
 	struct dp_mon_pdev *mon_pdev;
 	struct dp_mon_mac *mon_mac;
-	QDF_STATUS status;
 
 	if (!pdev) {
 		dp_rx_mon_dest_debug("%pK: pdev is null for mac_id = %d", soc, mac_id);
@@ -842,63 +715,37 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 		tail_msdu = (qdf_nbuf_t)NULL;
 
 		if (QDF_STATUS_SUCCESS ==
-		    dp_rx_mon_check_n_drop_mpdu(
-				pdev, mac_id,
-				rxdma_dst_ring_desc,
-				&head, &tail,
-				&rx_bufs_dropped,
-				DP_MON_DST_ENTRY_DROP_SCHEDULED_PROCESSING)) {
+		    dp_rx_mon_check_n_drop_mpdu(pdev, mac_id,
+						rxdma_dst_ring_desc,
+						&head, &tail,
+						&rx_bufs_dropped)) {
 			/* Increment stats */
 			rx_bufs_used += rx_bufs_dropped;
 			hal_srng_dst_get_next(hal_soc, mon_dst_srng);
 			continue;
 		}
 
-		status =
+		mpdu_rx_bufs_used =
 			dp_rx_mon_mpdu_pop(soc, mac_id,
 					   rxdma_dst_ring_desc,
 					   &head_msdu, &tail_msdu,
 					   &npackets, &ppdu_id,
-					   &head, &tail,
-					   &mpdu_rx_bufs_used);
+					   &head, &tail);
 
 		rx_bufs_used += mpdu_rx_bufs_used;
-		if (mpdu_rx_bufs_used) {
+
+		if (mpdu_rx_bufs_used)
 			mon_mac->mon_dest_ring_stuck_cnt = 0;
-			dp_rx_mon_reset_ppdu_id_list(soc, mac_id);
-		} else {
+		else
 			mon_mac->mon_dest_ring_stuck_cnt++;
-			dp_rx_mon_add_ppdu_id_list(
-				soc,
-				mon_mac->ppdu_info.com_info.ppdu_id,
-				mac_id);
-		}
 
 		if (mon_mac->mon_dest_ring_stuck_cnt >
 		    MON_DEST_RING_STUCK_MAX_CNT) {
-			dp_info("destination ring stuck: %d", status);
+			dp_info("destination ring stuck");
 			dp_info("ppdu_id status=%d dest=%d",
 				mon_mac->ppdu_info.com_info.ppdu_id, ppdu_id);
 			rx_mon_stats->mon_rx_dest_stuck++;
 			mon_mac->ppdu_info.com_info.ppdu_id = ppdu_id;
-
-			if (status == QDF_STATUS_E_EXISTS) {
-				hal_srng_dst_get_next(hal_soc, mon_dst_srng);
-				mon_mac->mon_dest_ring_stuck_cnt = 0;
-				break;
-			}
-
-			status = dp_rx_mon_add_mismatch_entry(
-							soc, ppdu_id,
-							rxdma_dst_ring_desc,
-							mac_id);
-			if (status == QDF_STATUS_SUCCESS) {
-				hal_srng_dst_get_next(hal_soc,
-						      mon_dst_srng);
-				mon_mac->mon_dest_ring_stuck_cnt = 0;
-				break;
-			}
-
 			continue;
 		}
 
@@ -919,10 +766,7 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 
 		if (qdf_likely((head_msdu) && (tail_msdu))) {
 			rx_mon_stats->dest_mpdu_done++;
-			status = dp_rx_mon_deliver(soc, mac_id,
-						   head_msdu, tail_msdu);
-			if (status != QDF_STATUS_SUCCESS)
-				rx_mon_stats->dest_mpdu_deliver_fail++;
+			dp_rx_mon_deliver(soc, mac_id, head_msdu, tail_msdu);
 		}
 
 		rxdma_dst_ring_desc =
@@ -945,7 +789,6 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 	}
 }
 
-#if defined(QCA_MONITOR_PKT_SUPPORT) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS
 dp_rx_pdev_mon_buf_buffers_alloc(struct dp_pdev *pdev, uint32_t mac_id,
 				 bool delayed_replenish)
@@ -974,55 +817,23 @@ dp_rx_pdev_mon_buf_buffers_alloc(struct dp_pdev *pdev, uint32_t mac_id,
 	 * the complete RXDMA monitor buffer ring.
 	 */
 	if (delayed_replenish) {
-		num_entries = 1;
+		num_entries = soc_cfg_ctx->delayed_replenish_entries + 1;
 		status = dp_pdev_rx_buffers_attach(soc, mac_id, mon_buf_ring,
 						   rx_desc_pool,
 						   num_entries - 1);
 	} else {
 		union dp_rx_desc_list_elem_t *tail = NULL;
 		union dp_rx_desc_list_elem_t *desc_list = NULL;
-		uint32_t count;
 
-		count = dp_rx_buffers_replenish(soc, mac_id,
-						mon_buf_ring,
-						rx_desc_pool,
-						num_entries,
-						&desc_list,
-						&tail, false);
-		if (!count)
-			status = QDF_STATUS_E_FAILURE;
+		status = dp_rx_buffers_replenish(soc, mac_id,
+						 mon_buf_ring,
+						 rx_desc_pool,
+						 num_entries,
+						 &desc_list,
+						 &tail, false);
 	}
 
 	return status;
-}
-
-QDF_STATUS
-dp_rx_pdev_mon_buf_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_id)
-{
-	uint8_t pdev_id = pdev->pdev_id;
-	struct dp_soc *soc = pdev->soc;
-	struct dp_srng *mon_buf_ring;
-	uint32_t num_entries;
-	struct rx_desc_pool *rx_desc_pool;
-	uint32_t rx_desc_pool_size;
-	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx = soc->wlan_cfg_ctx;
-
-	mon_buf_ring = &soc->rxdma_mon_buf_ring[mac_id];
-
-	num_entries = mon_buf_ring->num_entries;
-
-	rx_desc_pool = &soc->rx_desc_mon[mac_id];
-
-	dp_debug("Mon RX Desc Pool[%d] entries=%u",
-		 pdev_id, num_entries);
-
-	rx_desc_pool_size = wlan_cfg_get_dp_soc_rx_sw_desc_weight(soc_cfg_ctx) *
-		num_entries;
-
-	if (dp_rx_desc_pool_is_allocated(rx_desc_pool) == QDF_STATUS_SUCCESS)
-		return QDF_STATUS_SUCCESS;
-
-	return dp_rx_desc_pool_alloc(soc, rx_desc_pool_size, rx_desc_pool);
 }
 
 void
@@ -1068,7 +879,23 @@ dp_rx_pdev_mon_buf_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_id)
 	/* Attach full monitor mode resources */
 	dp_full_mon_attach(pdev);
 }
-#endif
+
+static void
+dp_rx_pdev_mon_buf_desc_pool_deinit(struct dp_pdev *pdev, uint32_t mac_id)
+{
+	uint8_t pdev_id = pdev->pdev_id;
+	struct dp_soc *soc = pdev->soc;
+	struct rx_desc_pool *rx_desc_pool;
+
+	rx_desc_pool = &soc->rx_desc_mon[mac_id];
+
+	dp_debug("Mon RX Desc buf Pool[%d] deinit", pdev_id);
+
+	dp_rx_desc_pool_deinit(soc, rx_desc_pool, mac_id);
+
+	/* Detach full monitor mode resources */
+	dp_full_mon_detach(pdev);
+}
 
 static void
 dp_rx_pdev_mon_buf_desc_pool_free(struct dp_pdev *pdev, uint32_t mac_id)
@@ -1082,6 +909,51 @@ dp_rx_pdev_mon_buf_desc_pool_free(struct dp_pdev *pdev, uint32_t mac_id)
 	dp_debug("Mon RX Buf Desc Pool Free pdev[%d]", pdev_id);
 
 	dp_rx_desc_pool_free(soc, rx_desc_pool);
+}
+
+void dp_rx_pdev_mon_buf_buffers_free(struct dp_pdev *pdev, uint32_t mac_id)
+{
+	uint8_t pdev_id = pdev->pdev_id;
+	struct dp_soc *soc = pdev->soc;
+	struct rx_desc_pool *rx_desc_pool;
+
+	rx_desc_pool = &soc->rx_desc_mon[mac_id];
+
+	dp_debug("Mon RX Buf buffers Free pdev[%d]", pdev_id);
+
+	if (rx_desc_pool->rx_mon_dest_frag_enable)
+		dp_rx_desc_frag_free(soc, rx_desc_pool);
+	else
+		dp_rx_desc_nbuf_free(soc, rx_desc_pool, true);
+}
+
+QDF_STATUS
+dp_rx_pdev_mon_buf_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_id)
+{
+	uint8_t pdev_id = pdev->pdev_id;
+	struct dp_soc *soc = pdev->soc;
+	struct dp_srng *mon_buf_ring;
+	uint32_t num_entries;
+	struct rx_desc_pool *rx_desc_pool;
+	uint32_t rx_desc_pool_size;
+	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx = soc->wlan_cfg_ctx;
+
+	mon_buf_ring = &soc->rxdma_mon_buf_ring[mac_id];
+
+	num_entries = mon_buf_ring->num_entries;
+
+	rx_desc_pool = &soc->rx_desc_mon[mac_id];
+
+	dp_debug("Mon RX Desc Pool[%d] entries=%u",
+		 pdev_id, num_entries);
+
+	rx_desc_pool_size = wlan_cfg_get_dp_soc_rx_sw_desc_weight(soc_cfg_ctx) *
+		num_entries;
+
+	if (dp_rx_desc_pool_is_allocated(rx_desc_pool) == QDF_STATUS_SUCCESS)
+		return QDF_STATUS_SUCCESS;
+
+	return dp_rx_desc_pool_alloc(soc, rx_desc_pool_size, rx_desc_pool);
 }
 
 #if !defined(DISABLE_MON_CONFIG) && defined(MON_ENABLE_DROP_FOR_MAC)
@@ -1130,12 +1002,10 @@ dp_mon_dest_srng_drop_for_mac(struct dp_pdev *pdev, uint32_t mac_id,
 		(reap_cnt < MON_DROP_REAP_LIMIT || force_flush)) {
 		if (is_rxdma_dst_ring_common && !force_flush) {
 			if (QDF_STATUS_SUCCESS ==
-			    dp_rx_mon_check_n_drop_mpdu(
-				    pdev, mac_id,
-				    rxdma_dst_ring_desc,
-				    &head, &tail,
-				    &rx_bufs_dropped,
-				    DP_MON_DST_ENTRY_DROP_SCHEDULED_TIMER)) {
+			    dp_rx_mon_check_n_drop_mpdu(pdev, mac_id,
+							rxdma_dst_ring_desc,
+							&head, &tail,
+							&rx_bufs_dropped)) {
 				/* Increment stats */
 				rx_bufs_used += rx_bufs_dropped;
 			} else {
@@ -1335,12 +1205,126 @@ dp_rx_pdev_mon_dest_desc_pool_free(struct dp_pdev *pdev, int mac_for_pdev)
 	dp_rx_pdev_mon_buf_desc_pool_free(pdev, mac_for_pdev);
 	dp_hw_link_desc_pool_banks_free(soc, mac_for_pdev);
 }
+
+static void
+dp_rx_pdev_mon_dest_desc_pool_deinit(struct dp_pdev *pdev, int mac_for_pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+
+	if (!soc->wlan_cfg_ctx->rxdma1_enable)
+		return;
+
+	dp_rx_pdev_mon_buf_desc_pool_deinit(pdev, mac_for_pdev);
+}
+
+static void
+dp_rx_pdev_mon_dest_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_for_pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+
+	if (!soc->wlan_cfg_ctx->rxdma1_enable ||
+	    !wlan_cfg_is_delay_mon_replenish(soc->wlan_cfg_ctx))
+		return;
+
+	dp_rx_pdev_mon_buf_desc_pool_init(pdev, mac_for_pdev);
+	dp_link_desc_ring_replenish(soc, mac_for_pdev, true);
+}
+
+static void
+dp_rx_pdev_mon_dest_buffers_free(struct dp_pdev *pdev, int mac_for_pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+
+	if (!soc->wlan_cfg_ctx->rxdma1_enable)
+		return;
+
+	dp_rx_pdev_mon_buf_buffers_free(pdev, mac_for_pdev);
+}
+
+static QDF_STATUS
+dp_rx_pdev_mon_dest_buffers_alloc(struct dp_pdev *pdev, int mac_for_pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx = soc->wlan_cfg_ctx;
+	bool delayed_replenish;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	delayed_replenish = soc_cfg_ctx->delayed_replenish_entries ? 1 : 0;
+	if (!soc->wlan_cfg_ctx->rxdma1_enable ||
+	    !wlan_cfg_is_delay_mon_replenish(soc->wlan_cfg_ctx))
+		return status;
+
+	status = dp_rx_pdev_mon_buf_buffers_alloc(pdev, mac_for_pdev,
+						  delayed_replenish);
+	if (!QDF_IS_STATUS_SUCCESS(status))
+		dp_err("dp_rx_pdev_mon_buf_desc_pool_alloc() failed");
+
+	return status;
+}
+
+static QDF_STATUS
+dp_rx_pdev_mon_dest_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_for_pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	if (!soc->wlan_cfg_ctx->rxdma1_enable ||
+	    !wlan_cfg_is_delay_mon_replenish(soc->wlan_cfg_ctx))
+		return status;
+
+	/* Allocate sw rx descriptor pool for monitor RxDMA buffer ring */
+	status = dp_rx_pdev_mon_buf_desc_pool_alloc(pdev, mac_for_pdev);
+	if (!QDF_IS_STATUS_SUCCESS(status)) {
+		dp_err("dp_rx_pdev_mon_buf_desc_pool_alloc() failed");
+		goto fail;
+	}
+
+	/* Allocate link descriptors for the monitor link descriptor ring */
+	status = dp_hw_link_desc_pool_banks_alloc(soc, mac_for_pdev);
+	if (!QDF_IS_STATUS_SUCCESS(status)) {
+		dp_err("dp_hw_link_desc_pool_banks_alloc() failed");
+		goto mon_buf_dealloc;
+	}
+
+	return status;
+
+mon_buf_dealloc:
+	dp_rx_pdev_mon_status_desc_pool_free(pdev, mac_for_pdev);
+fail:
+	return status;
+}
 #else
 static void
 dp_rx_pdev_mon_dest_desc_pool_free(struct dp_pdev *pdev, int mac_for_pdev)
 {
 }
 
+static void
+dp_rx_pdev_mon_dest_desc_pool_deinit(struct dp_pdev *pdev, int mac_for_pdev)
+{
+}
+
+static void
+dp_rx_pdev_mon_dest_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_for_pdev)
+{
+}
+
+static void
+dp_rx_pdev_mon_dest_buffers_free(struct dp_pdev *pdev, int mac_for_pdev)
+{
+}
+
+static QDF_STATUS
+dp_rx_pdev_mon_dest_buffers_alloc(struct dp_pdev *pdev, int mac_for_pdev)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+dp_rx_pdev_mon_dest_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_for_pdev)
+{
+	return QDF_STATUS_SUCCESS;
+}
 
 #if !defined(DISABLE_MON_CONFIG) && defined(MON_ENABLE_DROP_FOR_MAC)
 uint32_t
@@ -1356,8 +1340,7 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 			    hal_rxdma_desc_t rxdma_dst_ring_desc,
 			    union dp_rx_desc_list_elem_t **head,
 			    union dp_rx_desc_list_elem_t **tail,
-			    uint32_t *rx_bufs_dropped,
-			    enum dp_rx_mon_drop_ctx ctx)
+			    uint32_t *rx_bufs_dropped)
 {
 	return QDF_STATUS_E_FAILURE;
 }
@@ -1494,6 +1477,8 @@ dp_rx_pdev_mon_cmn_desc_pool_deinit(struct dp_pdev *pdev, int mac_id)
 	int mac_for_pdev = dp_get_lmac_id_for_pdev_id(soc, mac_id, pdev_id);
 
 	dp_rx_pdev_mon_status_desc_pool_deinit(pdev, mac_for_pdev);
+
+	dp_rx_pdev_mon_dest_desc_pool_deinit(pdev, mac_for_pdev);
 }
 
 static void
@@ -1505,6 +1490,8 @@ dp_rx_pdev_mon_cmn_desc_pool_init(struct dp_pdev *pdev, int mac_id)
 	mac_for_pdev = dp_get_lmac_id_for_pdev_id(soc, mac_id, pdev->pdev_id);
 	dp_rx_pdev_mon_status_desc_pool_init(pdev, mac_for_pdev);
 	dp_mon_link_desc_ring_replenish(soc, mac_for_pdev);
+
+	dp_rx_pdev_mon_dest_desc_pool_init(pdev, mac_for_pdev);
 }
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
@@ -1594,6 +1581,13 @@ dp_rx_pdev_mon_buffers_free(struct dp_pdev *pdev)
 							  pdev_id);
 		dp_rx_pdev_mon_status_buffers_free(pdev, mac_for_pdev);
 	}
+
+	for (mac_id = 0; mac_id < soc_cfg_ctx->num_rxdma_dst_rings_per_pdev;
+	     mac_id++) {
+		mac_for_pdev = dp_get_lmac_id_for_pdev_id(pdev->soc, mac_id,
+							  pdev_id);
+		dp_rx_pdev_mon_dest_buffers_free(pdev, mac_for_pdev);
+	}
 	pdev->monitor_pdev->pdev_mon_init = 0;
 }
 
@@ -1618,8 +1612,19 @@ dp_rx_pdev_mon_buffers_alloc(struct dp_pdev *pdev)
 		}
 	}
 
+	for (mac_id = 0; mac_id < soc_cfg_ctx->num_rxdma_dst_rings_per_pdev;
+	     mac_id++) {
+		mac_for_pdev = dp_get_lmac_id_for_pdev_id(pdev->soc, mac_id,
+							  pdev_id);
+		status = dp_rx_pdev_mon_dest_buffers_alloc(pdev, mac_for_pdev);
+		if (!QDF_IS_STATUS_SUCCESS(status))
+			goto mon_stat_buf_dealloc;
+	}
+
 	return status;
 
+mon_stat_buf_dealloc:
+	dp_rx_pdev_mon_status_buffers_free(pdev, mac_for_pdev);
 mon_status_buf_fail:
 	return status;
 }
@@ -1650,8 +1655,14 @@ dp_rx_pdev_mon_cmn_desc_pool_alloc(struct dp_pdev *pdev, int mac_id)
 		goto mon_status_dealloc;
 	}
 
+	status = dp_rx_pdev_mon_dest_desc_pool_alloc(pdev, mac_for_pdev);
+	if (!QDF_IS_STATUS_SUCCESS(status))
+		goto link_desc_bank_free;
+
 	return status;
 
+link_desc_bank_free:
+	dp_mon_hw_link_desc_bank_free(soc, mac_for_pdev);
 mon_status_dealloc:
 	dp_rx_pdev_mon_status_desc_pool_free(pdev, mac_for_pdev);
 fail:
@@ -1735,224 +1746,6 @@ void dp_rx_msdus_set_payload(struct dp_soc *soc, qdf_nbuf_t msdu,
 	qdf_nbuf_pull_head(msdu, rx_pkt_offset + l2_hdr_offset);
 }
 
-#ifndef NO_RX_PKT_HDR_TLV
-/**
- * dp_rx_mon_restitch_mpdu_from_non_raw() - Restitch MPDU from MSDUs
- * in decap mode
- * @soc: core txrx main context
- * @mac_id: mac id
- * @head_msdu: pointer to head msdu
- * @last_msdu: pointer to last msdu
- * @rx_status: pointer to rx status
- * @buf_info: pointer to buffer info
- *
- * Return: pointer to stitched skb
- */
-static inline qdf_nbuf_t
-dp_rx_mon_restitch_mpdu_from_non_raw(struct dp_soc *soc,
-				     uint32_t mac_id,
-				     qdf_nbuf_t head_msdu,
-				     qdf_nbuf_t last_msdu,
-				     struct cdp_mon_status *rx_status,
-				     struct hal_rx_mon_dest_buf_info
-				     *buf_info)
-{
-	qdf_nbuf_t msdu, mpdu_buf, prev_buf, msdu_orig, head_frag_list;
-	uint32_t wifi_hdr_len, sec_hdr_len, msdu_llc_len,
-		mpdu_buf_len, decap_hdr_pull_bytes, frag_list_sum_len, dir,
-		is_amsdu, is_first_frag, amsdu_pad;
-	void *rx_desc;
-	char *hdr_desc;
-	unsigned char *dest;
-	struct ieee80211_frame *wh;
-	struct ieee80211_qoscntl *qos;
-	struct dp_pdev *dp_pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
-	uint8_t l2_hdr_offset;
-
-	mpdu_buf = NULL;
-
-	/* Decap mode:
-	 * Calculate the amount of header in decapped packet to knock off based
-	 * on the decap type and the corresponding number of raw bytes to copy
-	 * status header
-	 */
-	rx_desc = qdf_nbuf_data(head_msdu);
-
-	hdr_desc = hal_rx_desc_get_80211_hdr(soc->hal_soc, rx_desc);
-
-	if (!hdr_desc)
-		goto mpdu_stitch_fail;
-
-	dp_rx_mon_dest_debug("%pK: decap format not raw", soc);
-
-	/* Base size */
-	wifi_hdr_len = sizeof(struct ieee80211_frame);
-	wh = (struct ieee80211_frame *)hdr_desc;
-
-	dir = wh->i_fc[1] & IEEE80211_FC1_DIR_MASK;
-
-	if (dir == IEEE80211_FC1_DIR_DSTODS)
-		wifi_hdr_len += 6;
-
-	is_amsdu = 0;
-	if (wh->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_QOS) {
-		qos = (struct ieee80211_qoscntl *)
-			(hdr_desc + wifi_hdr_len);
-		wifi_hdr_len += 2;
-
-		is_amsdu = (qos->i_qos[0] & IEEE80211_QOS_AMSDU);
-	}
-
-	/* Calculate security header length based on 'Protected'
-	 * and 'EXT_IV' flag
-	 */
-	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
-		char *iv = (char *)wh + wifi_hdr_len;
-
-		if (iv[3] & KEY_EXTIV)
-			sec_hdr_len = 8;
-		else
-			sec_hdr_len = 4;
-	} else {
-		sec_hdr_len = 0;
-	}
-	wifi_hdr_len += sec_hdr_len;
-
-	/*Calculate +HTC/ORDER header length based on 'Order'
-	 */
-	if (wh->i_fc[1] & IEEE80211_FC1_ORDER)
-		wifi_hdr_len += 4;
-
-	/* MSDU related stuff LLC - AMSDU subframe header etc */
-	msdu_llc_len = is_amsdu ? (14 + 8) : 8;
-
-	mpdu_buf_len = wifi_hdr_len + msdu_llc_len;
-
-	/* "Decap" header to remove from MSDU buffer */
-	decap_hdr_pull_bytes = 14;
-
-	/* Allocate a new nbuf for holding the 802.11 header retrieved from the
-	 * status of the now decapped first msdu. Leave enough headroom for
-	 * accommodating any radio-tap /prism like PHY header
-	 */
-	mpdu_buf = qdf_nbuf_alloc(soc->osdev,
-				  MAX_MONITOR_HEADER + mpdu_buf_len,
-				  MAX_MONITOR_HEADER, 4, FALSE);
-
-	if (!mpdu_buf)
-		goto mpdu_stitch_done;
-
-	/* Copy the MPDU related header and enc headers into the first buffer
-	 * - Note that there can be a 2 byte pad between heaader and enc header
-	 */
-
-	prev_buf = mpdu_buf;
-	dest = qdf_nbuf_put_tail(prev_buf, wifi_hdr_len);
-	if (!dest)
-		goto mpdu_stitch_fail;
-
-	qdf_mem_copy(dest, hdr_desc, wifi_hdr_len);
-	hdr_desc += wifi_hdr_len;
-
-	/* The first LLC len is copied into the MPDU buffer */
-	frag_list_sum_len = 0;
-
-	msdu_orig = head_msdu;
-	is_first_frag = 1;
-	amsdu_pad = 0;
-
-	while (msdu_orig) {
-
-		/* TODO: intra AMSDU padding - do we need it ??? */
-
-		msdu = msdu_orig;
-
-		if (is_first_frag) {
-			head_frag_list  = msdu;
-		} else {
-			/* Reload the hdr ptr only on non-first MSDUs */
-			rx_desc = qdf_nbuf_data(msdu_orig);
-			hdr_desc = hal_rx_desc_get_80211_hdr(soc->hal_soc,
-							     rx_desc);
-		}
-
-		/* Copy this buffers MSDU related status into the prev buffer */
-
-		if (is_first_frag)
-			is_first_frag = 0;
-
-		/* Update protocol and flow tag for MSDU */
-		dp_rx_mon_update_protocol_flow_tag(soc, dp_pdev,
-						   msdu_orig, rx_desc);
-
-		dest = qdf_nbuf_put_tail(prev_buf,
-					 msdu_llc_len + amsdu_pad);
-
-		if (!dest)
-			goto mpdu_stitch_fail;
-
-		dest += amsdu_pad;
-		qdf_mem_copy(dest, hdr_desc, msdu_llc_len);
-
-		l2_hdr_offset = hal_rx_frag_msdu_get_l2_hdr_offset(soc,
-								   buf_info,
-								   rx_desc,
-								   true);
-		dp_rx_msdus_set_payload(soc, msdu, l2_hdr_offset);
-
-		/* Push the MSDU buffer beyond the decap header */
-		qdf_nbuf_pull_head(msdu, decap_hdr_pull_bytes);
-		frag_list_sum_len += msdu_llc_len + qdf_nbuf_len(msdu)
-			+ amsdu_pad;
-
-		/* Set up intra-AMSDU pad to be added to start of next buffer -
-		 * AMSDU pad is 4 byte pad on AMSDU subframe
-		 */
-		amsdu_pad = (msdu_llc_len + qdf_nbuf_len(msdu)) & 0x3;
-		amsdu_pad = amsdu_pad ? (4 - amsdu_pad) : 0;
-
-		/* TODO FIXME How do we handle MSDUs that have fraglist - Should
-		 * probably iterate all the frags cloning them along the way and
-		 * and also updating the prev_buf pointer
-		 */
-
-		/* Move to the next */
-		prev_buf = msdu;
-		msdu_orig = qdf_nbuf_next(msdu_orig);
-	}
-
-	frag_list_sum_len -= msdu_llc_len;
-
-	/* TODO: Convert this to suitable adf routines */
-	qdf_nbuf_append_ext_list(mpdu_buf, head_frag_list,
-				 frag_list_sum_len);
-
-	dp_rx_mon_dest_debug("%pK: mpdu_buf %pK mpdu_buf->len %u",
-			     soc, mpdu_buf, mpdu_buf->len);
-
-mpdu_stitch_done:
-	return mpdu_buf;
-
-mpdu_stitch_fail:
-	if (mpdu_buf)
-		qdf_nbuf_free(mpdu_buf);
-
-	return NULL;
-}
-#else
-static inline qdf_nbuf_t
-dp_rx_mon_restitch_mpdu_from_non_raw(struct dp_soc *soc,
-				     uint32_t mac_id,
-				     qdf_nbuf_t head_msdu,
-				     qdf_nbuf_t last_msdu,
-				     struct cdp_mon_status *rx_status,
-				     struct hal_rx_mon_dest_buf_info
-				     *buf_info)
-{
-	return NULL;
-}
-#endif /* NO_RX_PKT_HDR_TLV */
-
 static inline qdf_nbuf_t
 dp_rx_mon_restitch_mpdu_from_msdus(struct dp_soc *soc,
 				   uint32_t mac_id,
@@ -1962,8 +1755,14 @@ dp_rx_mon_restitch_mpdu_from_msdus(struct dp_soc *soc,
 {
 	qdf_nbuf_t msdu, mpdu_buf, prev_buf, msdu_orig, head_frag_list;
 	qdf_nbuf_t first_rx_msdu;
-	uint32_t frag_list_sum_len, is_first_frag;
+	uint32_t wifi_hdr_len, sec_hdr_len, msdu_llc_len,
+		mpdu_buf_len, decap_hdr_pull_bytes, frag_list_sum_len, dir,
+		is_amsdu, is_first_frag, amsdu_pad;
 	void *rx_desc;
+	char *hdr_desc;
+	unsigned char *dest;
+	struct ieee80211_frame *wh;
+	struct ieee80211_qoscntl *qos;
 	struct dp_pdev *dp_pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
 	struct dp_mon_pdev *mon_pdev;
 	struct hal_rx_mon_dest_buf_info buf_info;
@@ -2065,13 +1864,191 @@ dp_rx_mon_restitch_mpdu_from_msdus(struct dp_soc *soc,
 		goto mpdu_stitch_done;
 	}
 
-	mpdu_buf = dp_rx_mon_restitch_mpdu_from_non_raw(soc, mac_id, head_msdu,
-							last_msdu, rx_status,
-							&buf_info);
-	if (!mpdu_buf)
+	/* Decap mode:
+	 * Calculate the amount of header in decapped packet to knock off based
+	 * on the decap type and the corresponding number of raw bytes to copy
+	 * status header
+	 */
+	rx_desc = qdf_nbuf_data(head_msdu);
+
+	hdr_desc = hal_rx_desc_get_80211_hdr(soc->hal_soc, rx_desc);
+
+	if (!hdr_desc)
 		goto mpdu_stitch_fail;
 
+	dp_rx_mon_dest_debug("%pK: decap format not raw", soc);
+
+	/* Base size */
+	wifi_hdr_len = sizeof(struct ieee80211_frame);
+	wh = (struct ieee80211_frame *)hdr_desc;
+
+	dir = wh->i_fc[1] & IEEE80211_FC1_DIR_MASK;
+
+	if (dir == IEEE80211_FC1_DIR_DSTODS)
+		wifi_hdr_len += 6;
+
+	is_amsdu = 0;
+	if (wh->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_QOS) {
+		qos = (struct ieee80211_qoscntl *)
+			(hdr_desc + wifi_hdr_len);
+		wifi_hdr_len += 2;
+
+		is_amsdu = (qos->i_qos[0] & IEEE80211_QOS_AMSDU);
+	}
+
+	/* Calculate security header length based on 'Protected'
+	 * and 'EXT_IV' flag
+	 */
+	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
+		char *iv = (char *)wh + wifi_hdr_len;
+
+		if (iv[3] & KEY_EXTIV)
+			sec_hdr_len = 8;
+		else
+			sec_hdr_len = 4;
+	} else {
+		sec_hdr_len = 0;
+	}
+	wifi_hdr_len += sec_hdr_len;
+
+	/*Calculate +HTC/ORDER header length based on 'Order'
+	 */
+	if (wh->i_fc[1] & IEEE80211_FC1_ORDER)
+		wifi_hdr_len += 4;
+
+	/* MSDU related stuff LLC - AMSDU subframe header etc */
+	msdu_llc_len = is_amsdu ? (14 + 8) : 8;
+
+	mpdu_buf_len = wifi_hdr_len + msdu_llc_len;
+
+	/* "Decap" header to remove from MSDU buffer */
+	decap_hdr_pull_bytes = 14;
+
+	/* Allocate a new nbuf for holding the 802.11 header retrieved from the
+	 * status of the now decapped first msdu. Leave enough headroom for
+	 * accommodating any radio-tap /prism like PHY header
+	 */
+	mpdu_buf = qdf_nbuf_alloc(soc->osdev,
+				  MAX_MONITOR_HEADER + mpdu_buf_len,
+				  MAX_MONITOR_HEADER, 4, FALSE);
+
+	if (!mpdu_buf)
+		goto mpdu_stitch_done;
+
+	/* Copy the MPDU related header and enc headers into the first buffer
+	 * - Note that there can be a 2 byte pad between heaader and enc header
+	 */
+
+	prev_buf = mpdu_buf;
+	dest = qdf_nbuf_put_tail(prev_buf, wifi_hdr_len);
+	if (!dest)
+		goto mpdu_stitch_fail;
+
+	qdf_mem_copy(dest, hdr_desc, wifi_hdr_len);
+	hdr_desc += wifi_hdr_len;
+
+#if 0
+	dest = qdf_nbuf_put_tail(prev_buf, sec_hdr_len);
+	adf_os_mem_copy(dest, hdr_desc, sec_hdr_len);
+	hdr_desc += sec_hdr_len;
+#endif
+
+	/* The first LLC len is copied into the MPDU buffer */
+	frag_list_sum_len = 0;
+
+	msdu_orig = head_msdu;
+	is_first_frag = 1;
+	amsdu_pad = 0;
+
+	while (msdu_orig) {
+
+		/* TODO: intra AMSDU padding - do we need it ??? */
+
+		msdu = msdu_orig;
+
+		if (is_first_frag) {
+			head_frag_list  = msdu;
+		} else {
+			/* Reload the hdr ptr only on non-first MSDUs */
+			rx_desc = qdf_nbuf_data(msdu_orig);
+			hdr_desc = hal_rx_desc_get_80211_hdr(soc->hal_soc,
+							     rx_desc);
+		}
+
+		/* Copy this buffers MSDU related status into the prev buffer */
+
+		if (is_first_frag)
+			is_first_frag = 0;
+
+		/* Update protocol and flow tag for MSDU */
+		dp_rx_mon_update_protocol_flow_tag(soc, dp_pdev,
+						   msdu_orig, rx_desc);
+
+		dest = qdf_nbuf_put_tail(prev_buf,
+					 msdu_llc_len + amsdu_pad);
+
+		if (!dest)
+			goto mpdu_stitch_fail;
+
+		dest += amsdu_pad;
+		qdf_mem_copy(dest, hdr_desc, msdu_llc_len);
+
+		l2_hdr_offset = hal_rx_frag_msdu_get_l2_hdr_offset(soc,
+								   &buf_info,
+								   rx_desc,
+								   true);
+		dp_rx_msdus_set_payload(soc, msdu, l2_hdr_offset);
+
+		/* Push the MSDU buffer beyond the decap header */
+		qdf_nbuf_pull_head(msdu, decap_hdr_pull_bytes);
+		frag_list_sum_len += msdu_llc_len + qdf_nbuf_len(msdu)
+			+ amsdu_pad;
+
+		/* Set up intra-AMSDU pad to be added to start of next buffer -
+		 * AMSDU pad is 4 byte pad on AMSDU subframe
+		 */
+		amsdu_pad = (msdu_llc_len + qdf_nbuf_len(msdu)) & 0x3;
+		amsdu_pad = amsdu_pad ? (4 - amsdu_pad) : 0;
+
+		/* TODO FIXME How do we handle MSDUs that have fraglist - Should
+		 * probably iterate all the frags cloning them along the way and
+		 * and also updating the prev_buf pointer
+		 */
+
+		/* Move to the next */
+		prev_buf = msdu;
+		msdu_orig = qdf_nbuf_next(msdu_orig);
+	}
+
+#if 0
+	/* Add in the trailer section - encryption trailer + FCS */
+	qdf_nbuf_put_tail(prev_buf, HAL_RX_FCS_LEN);
+	frag_list_sum_len += HAL_RX_FCS_LEN;
+#endif
+
+	frag_list_sum_len -= msdu_llc_len;
+
+	/* TODO: Convert this to suitable adf routines */
+	qdf_nbuf_append_ext_list(mpdu_buf, head_frag_list,
+				 frag_list_sum_len);
+
+	dp_rx_mon_dest_debug("%pK: mpdu_buf %pK mpdu_buf->len %u",
+			     soc, mpdu_buf, mpdu_buf->len);
+
 mpdu_stitch_done:
+	/* Check if this buffer contains the PPDU end status for TSF */
+	/* Need revist this code to see where we can get tsf timestamp */
+#if 0
+	/* PPDU end TLV will be retrieved from monitor status ring */
+	last_mpdu =
+		(*(((u_int32_t *)&rx_desc->attention)) &
+		RX_ATTENTION_0_LAST_MPDU_MASK) >>
+		RX_ATTENTION_0_LAST_MPDU_LSB;
+
+	if (last_mpdu)
+		rx_status->rs_tstamp.tsf = rx_desc->ppdu_end.tsf_timestamp;
+
+#endif
 	return mpdu_buf;
 
 mpdu_stitch_fail:
@@ -2635,4 +2612,136 @@ void dp_rx_mon_update_pf_tag_to_buf_headroom(struct dp_soc *soc,
 	}
 }
 #endif
+#endif
+
+#ifdef QCA_MONITOR_PKT_SUPPORT
+QDF_STATUS dp_mon_htt_dest_srng_setup(struct dp_soc *soc,
+				      struct dp_pdev *pdev,
+				      int mac_id,
+				      int mac_for_pdev)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	if (soc->wlan_cfg_ctx->rxdma1_enable) {
+		status = htt_srng_setup(soc->htt_handle, mac_for_pdev,
+					soc->rxdma_mon_buf_ring[mac_id]
+					.hal_srng,
+					RXDMA_MONITOR_BUF);
+
+		if (status != QDF_STATUS_SUCCESS) {
+			dp_mon_err("Failed to send htt srng setup message for Rxdma mon buf ring");
+			return status;
+		}
+
+		status = htt_srng_setup(soc->htt_handle, mac_for_pdev,
+					soc->rxdma_mon_dst_ring[mac_id]
+					.hal_srng,
+					RXDMA_MONITOR_DST);
+
+		if (status != QDF_STATUS_SUCCESS) {
+			dp_mon_err("Failed to send htt srng setup message for Rxdma mon dst ring");
+			return status;
+		}
+
+		status = htt_srng_setup(soc->htt_handle, mac_for_pdev,
+					soc->rxdma_mon_desc_ring[mac_id]
+					.hal_srng,
+					RXDMA_MONITOR_DESC);
+
+		if (status != QDF_STATUS_SUCCESS) {
+			dp_mon_err("Failed to send htt srng message for Rxdma mon desc ring");
+			return status;
+		}
+	}
+
+	return status;
+}
+#endif /* QCA_MONITOR_PKT_SUPPORT */
+
+#ifdef QCA_MONITOR_PKT_SUPPORT
+void dp_mon_dest_rings_deinit(struct dp_pdev *pdev, int lmac_id)
+{
+	struct dp_soc *soc = pdev->soc;
+
+	if (soc->wlan_cfg_ctx->rxdma1_enable) {
+		dp_srng_deinit(soc, &soc->rxdma_mon_buf_ring[lmac_id],
+			       RXDMA_MONITOR_BUF, 0);
+		dp_srng_deinit(soc, &soc->rxdma_mon_dst_ring[lmac_id],
+			       RXDMA_MONITOR_DST, 0);
+		dp_srng_deinit(soc, &soc->rxdma_mon_desc_ring[lmac_id],
+			       RXDMA_MONITOR_DESC, 0);
+	}
+}
+
+void dp_mon_dest_rings_free(struct dp_pdev *pdev, int lmac_id)
+{
+	struct dp_soc *soc = pdev->soc;
+
+	if (soc->wlan_cfg_ctx->rxdma1_enable) {
+		dp_srng_free(soc, &soc->rxdma_mon_buf_ring[lmac_id]);
+		dp_srng_free(soc, &soc->rxdma_mon_dst_ring[lmac_id]);
+		dp_srng_free(soc, &soc->rxdma_mon_desc_ring[lmac_id]);
+	}
+}
+
+QDF_STATUS dp_mon_dest_rings_init(struct dp_pdev *pdev, int lmac_id)
+{
+	struct dp_soc *soc = pdev->soc;
+
+	if (soc->wlan_cfg_ctx->rxdma1_enable) {
+		if (dp_srng_init(soc, &soc->rxdma_mon_buf_ring[lmac_id],
+				 RXDMA_MONITOR_BUF, 0, lmac_id)) {
+			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_buf_ring ", soc);
+			goto fail1;
+		}
+
+		if (dp_srng_init(soc, &soc->rxdma_mon_dst_ring[lmac_id],
+				 RXDMA_MONITOR_DST, 0, lmac_id)) {
+			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_dst_ring", soc);
+			goto fail1;
+		}
+
+		if (dp_srng_init(soc, &soc->rxdma_mon_desc_ring[lmac_id],
+				 RXDMA_MONITOR_DESC, 0, lmac_id)) {
+			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_desc_ring", soc);
+			goto fail1;
+		}
+	}
+	return QDF_STATUS_SUCCESS;
+
+fail1:
+	return QDF_STATUS_E_NOMEM;
+}
+
+QDF_STATUS dp_mon_dest_rings_alloc(struct dp_pdev *pdev, int lmac_id)
+{
+	int entries;
+	struct dp_soc *soc = pdev->soc;
+	struct wlan_cfg_dp_pdev_ctxt *pdev_cfg_ctx = pdev->wlan_cfg_ctx;
+
+	if (soc->wlan_cfg_ctx->rxdma1_enable) {
+		entries = wlan_cfg_get_dma_mon_buf_ring_size(pdev_cfg_ctx);
+		if (dp_srng_alloc(soc, &soc->rxdma_mon_buf_ring[lmac_id],
+				  RXDMA_MONITOR_BUF, entries, 0)) {
+			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_buf_ring ", soc);
+			goto fail1;
+		}
+		entries = wlan_cfg_get_dma_rx_mon_dest_ring_size(pdev_cfg_ctx);
+		if (dp_srng_alloc(soc, &soc->rxdma_mon_dst_ring[lmac_id],
+				  RXDMA_MONITOR_DST, entries, 0)) {
+			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_dst_ring", soc);
+			goto fail1;
+		}
+		entries = wlan_cfg_get_dma_mon_desc_ring_size(pdev_cfg_ctx);
+		if (dp_srng_alloc(soc, &soc->rxdma_mon_desc_ring[lmac_id],
+				  RXDMA_MONITOR_DESC, entries, 0)) {
+			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_desc_ring", soc);
+			goto fail1;
+		}
+	}
+	return QDF_STATUS_SUCCESS;
+
+fail1:
+	return QDF_STATUS_E_NOMEM;
+}
 #endif

@@ -206,27 +206,6 @@ int wlan_cp_stats_twt_get_peer_session_params(
 					struct wlan_objmgr_psoc *psoc,
 					struct twt_session_stats_info *params);
 #endif
-
-/**
- * wlan_cp_stats_set_enhanced_stats_support() - set enhanced_stats_support
- * @psoc: psoc
- * @is_enhanced_stats_support: bool
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_cp_stats_set_enhanced_stats_support(struct wlan_objmgr_psoc *psoc,
-					 bool is_enhanced_stats_support);
-
-/**
- * wlan_cp_stats_get_enhanced_stats_support() - get enhanced_stats_support
- * @psoc: psoc
- *
- * Return: True if enhanced_stats is supported
- */
-bool
-wlan_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc);
-
 #ifdef WLAN_CHIPSET_STATS
 /**
  * wlan_cp_stats_get_chipset_stats_enable() - Returns INI
@@ -238,37 +217,6 @@ wlan_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc);
  *	   False if Chipset Stats is not supported or disabled
  */
 bool wlan_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc);
-
-/**
- * wlan_cp_stats_is_debug_logging_enabled() - Checks whether debug logging for
- * chipset statistics is enabled via the INI chipset_stats_debug_log_enable.
- *
- * @psoc: psoc object
- *
- * Return: True if INI chipset_stats_debug_log_enable is enabled
- * False if INI chipset_stats_debug_log_enable disabled
- */
-bool wlan_cp_stats_is_debug_logging_enabled(struct wlan_objmgr_psoc *psoc);
-
-/**
- * wlan_cp_stats_get_user_delay_value_ms() - Returns INI
- * USER_DELAY_VALUE_MS
- *
- * @psoc: psoc object
- *
- * Return: user_delay_value_ms ini value
- */
-size_t wlan_cp_stats_get_user_delay_value_ms(struct wlan_objmgr_psoc *psoc);
-
-/**
- * wlan_cp_stats_get_user_delay_interval() - Returns INI
- * USER_DELAY_INTERVAL
- *
- * @psoc: psoc object
- *
- * Return: user_delay_interval ini value
- */
-size_t wlan_cp_stats_get_user_delay_interval(struct wlan_objmgr_psoc *psoc);
 
 /**
  * wlan_cp_stats_cstats_qmi_event_handler() - chipset stats QMI event handler
@@ -293,58 +241,10 @@ int wlan_cp_stats_cstats_qmi_event_handler(void *cb_ctx, uint16_t type,
  */
 void wlan_cp_stats_init_cfg(struct wlan_objmgr_psoc *psoc,
 			    struct cp_stats_context *csc);
-
-/**
- * wlan_cp_stats_init_user_delay_value_ms_cfg() - update cp_stats_context with
- * ini value
- *
- * @psoc: pointer to psoc
- * @csc: pointer to cp_stats_context
- *
- * Return : void
- */
-void wlan_cp_stats_init_user_delay_value_ms_cfg(struct wlan_objmgr_psoc *psoc,
-						struct cp_stats_context *csc);
-
-/**
- * wlan_cp_stats_init_user_delay_interval_cfg() - update cp_stats_context with
- * ini value
- *
- * @psoc: pointer to psoc
- * @csc: pointer to cp_stats_context
- *
- * Return : void
- */
-void wlan_cp_stats_init_user_delay_interval_cfg(struct wlan_objmgr_psoc *psoc,
-						struct cp_stats_context *csc);
 #else
 static inline void wlan_cp_stats_init_cfg(struct wlan_objmgr_psoc *psoc,
 					  struct cp_stats_context *csc)
 {
-}
-
-static inline void
-wlan_cp_stats_init_user_delay_value_ms_cfg(struct wlan_objmgr_psoc *psoc,
-					   struct cp_stats_context *csc)
-{
-}
-
-static inline void
-wlan_cp_stats_init_user_delay_interval_cfg(struct wlan_objmgr_psoc *psoc,
-					   struct cp_stats_context *csc)
-{
-}
-
-static inline size_t
-wlan_cp_stats_get_user_delay_value_ms(struct wlan_objmgr_psoc *psoc)
-{
-	return 0;
-}
-
-static inline size_t
-wlan_cp_stats_get_user_delay_interval(struct wlan_objmgr_psoc *psoc)
-{
-	return 0;
 }
 #endif /* WLAN_CHIPSET_STATS */
 

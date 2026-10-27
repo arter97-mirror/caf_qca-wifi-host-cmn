@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -110,7 +110,7 @@ dp_wdi_event_handler(
 	struct dp_soc *soc_t = (struct dp_soc *)soc;
 	txrx_pdev = dp_get_pdev_for_mac_id(soc_t, pdev_id);
 
-	if (!event || event >= WDI_EVENT_LAST || event < WDI_EVENT_BASE) {
+	if (!event) {
 		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
 			"Invalid WDI event in %s", __func__);
 		return;
@@ -207,7 +207,7 @@ dp_wdi_event_unsub(
 	wdi_event_subscribe *event_cb_sub_handle,
 	uint32_t event)
 {
-	uint32_t event_index;
+	uint32_t event_index = event - WDI_EVENT_BASE;
 	struct dp_pdev *txrx_pdev =
 		dp_get_pdev_from_soc_pdev_id_wifi3((struct dp_soc *)soc,
 						   pdev_id);
@@ -219,14 +219,6 @@ dp_wdi_event_unsub(
 			"Invalid callback or pdev in %s", __func__);
 		return -EINVAL;
 	}
-
-	if (!event || event >= WDI_EVENT_LAST || event < WDI_EVENT_BASE) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "Invalid event in %s", __func__);
-		return -EINVAL;
-	}
-
-	event_index = event - WDI_EVENT_BASE;
 
 	dp_monitor_set_pktlog_wifi3(txrx_pdev, event, false);
 

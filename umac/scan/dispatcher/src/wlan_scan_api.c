@@ -24,8 +24,11 @@
 #include "cfg_ucfg_api.h"
 #include "wlan_scan_api.h"
 #include "../../core/src/wlan_scan_manager.h"
+#ifdef WLAN_POLICY_MGR_ENABLE
 #include <wlan_policy_mgr_api.h>
 #include "wlan_policy_mgr_public_struct.h"
+#endif
+
 #ifdef WLAN_AUX_SUPPORT
 #include "wlan_mlme_api.h"
 #endif
@@ -180,6 +183,7 @@ QDF_STATUS wlan_scan_cfg_set_scan_mode_6g(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef WLAN_POLICY_MGR_ENABLE
 void wlan_scan_update_pno_dwell_time(struct wlan_objmgr_vdev *vdev,
 				     struct pno_scan_req_params *req,
 				     struct scan_default_params *scan_def)
@@ -202,6 +206,7 @@ void wlan_scan_update_pno_dwell_time(struct wlan_objmgr_vdev *vdev,
 		req->passive_dwell_time = scan_def->conc_passive_dwell;
 	}
 }
+#endif
 
 void wlan_scan_cfg_get_conc_active_dwelltime(struct wlan_objmgr_psoc *psoc,
 					     uint32_t *dwell_time)
@@ -261,7 +266,7 @@ wlan_scan_cfg_get_dfs_chan_scan_allowed(struct wlan_objmgr_psoc *psoc,
 	if (!scan_obj)
 		return;
 
-	*enable_dfs_scan = !!scan_obj->scan_def.allow_dfs_chan_in_scan;
+	*enable_dfs_scan = scan_obj->scan_def.allow_dfs_chan_in_scan;
 }
 
 void
@@ -737,6 +742,7 @@ void wlan_scan_get_feature_info(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * wlan_scan_update_hint_bssid() - Update rnr hint bssid info
  * @psoc: objmgr psoc
@@ -873,6 +879,7 @@ void wlan_scan_update_low_latency_profile_chnlist(
 			  ll_sap_freq);
 	req->scan_req.chan_list.num_chan = num_scan_channels;
 }
+#endif
 
 QDF_STATUS
 wlan_scan_get_entry_by_mac_addr(struct wlan_objmgr_pdev *pdev,
@@ -895,6 +902,39 @@ wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 	return scm_scan_get_entry_by_bssid(pdev, bssid);
 }
 
+bool wlan_scan_is_localy_gen_non_tx_mbssid_entry(struct wlan_objmgr_pdev *pdev,
+						 struct qdf_mac_addr *bssid)
+{
+	struct scan_cache_entry *entry = NULL;
+	bool is_non_txt_mbssid_gen = false;
+
+	/* check if scan entry locally generated */
+	entry = wlan_scan_get_entry_by_bssid(pdev, bssid);
+	if (entry) {
+		is_non_txt_mbssid_gen =
+			entry->is_non_tx_mbssid_gen ? true : false;
+		util_scan_free_cache_entry(entry);
+	}
+	return is_non_txt_mbssid_gen;
+}
+
+bool wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
+					  struct qdf_mac_addr *bssid)
+{
+	struct scan_cache_entry *entry = NULL;
+	bool is_gen_entry = false;
+
+	/* check if scan entry locally generated */
+	entry = wlan_scan_get_entry_by_bssid(pdev, bssid);
+	if (entry) {
+		is_gen_entry =
+			entry->is_gen_entry ? true : false;
+		util_scan_free_cache_entry(entry);
+	}
+
+	return is_gen_entry;
+}
+
 QDF_STATUS
 wlan_scan_get_mld_addr_by_link_addr(struct wlan_objmgr_pdev *pdev,
 				    struct qdf_mac_addr *link_addr,
@@ -914,24 +954,9 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
 struct scan_cache_entry *
 wlan_scan_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 				      struct qdf_mac_addr *bssid,
-				      uint8_t vdev_id,
-				      qdf_freq_t ch_freq)
+				      uint8_t vdev_id)
 {
-	return scm_scan_get_entry_by_bssid_and_security(pdev, bssid, vdev_id,
-							ch_freq);
-}
-
-QDF_STATUS
-wlan_scan_fetch_chan_linkid_params_for_rnr(struct wlan_objmgr_pdev *pdev,
-					   struct qdf_mac_addr *bssid,
-					   uint8_t *entry_chan_num,
-					   uint8_t *entry_op_class,
-					   uint8_t *entry_link_id)
-{
-	return scm_fetch_entry_chan_linkid_params_for_rnr(pdev, bssid,
-							  entry_chan_num,
-							  entry_op_class,
-							  entry_link_id);
+	return scm_scan_get_entry_by_bssid_and_security(pdev, bssid, vdev_id);
 }
 
 #ifdef WLAN_AUX_SUPPORT
@@ -979,10 +1004,4 @@ void wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
 void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev)
 {
 	scm_set_obss_scan_enable(vdev);
-}
-
-QDF_STATUS wlan_scan_flush_results(struct wlan_objmgr_pdev *pdev,
-				   struct scan_filter *filter)
-{
-	return scm_flush_results(pdev, filter);
 }

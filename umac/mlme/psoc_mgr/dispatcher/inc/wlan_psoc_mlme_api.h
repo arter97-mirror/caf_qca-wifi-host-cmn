@@ -124,21 +124,6 @@ void wlan_psoc_set_phy_config(struct wlan_objmgr_psoc *psoc,
 			      struct psoc_phy_config *phy_config);
 
 /**
- * wlan_psoc_set_phy_config_nss() - Set the NSS configuration for
- * 2G and 5G bands
- * @psoc: Pointer to the PSOC object
- * @tx_nss_2g: Transmit NSS value for 2.4GHz band
- * @tx_nss_5g: Transmit NSS value for 5/6GHz band
- *
- * This function updates the NSS (Number of Spatial Streams) configuration
- * for 2.4GHz and 5/6GHz bands in the PSOC's physical configuration.
- *
- * Return: None
- */
-void wlan_psoc_set_phy_config_nss(struct wlan_objmgr_psoc *psoc,
-				  uint8_t tx_nss_2g, uint8_t tx_nss_5g);
-
-/**
  * mlme_psoc_open() - MLME component Open
  * @psoc: pointer to psoc object
  *
@@ -177,34 +162,4 @@ wlan_psoc_mlme_get_11be_capab(struct wlan_objmgr_psoc *psoc, bool *val);
  */
 QDF_STATUS
 wlan_psoc_mlme_set_11be_capab(struct wlan_objmgr_psoc *psoc, bool val);
-
-/**
- * wlan_psoc_mlme_get_11bn_capab() - Get the 11bn capability for target
- * @psoc: psoc handle
- * @val: pointer to the output variable
- *
- * return: QDF_STATUS
- */
-QDF_STATUS
-wlan_psoc_mlme_get_11bn_capab(struct wlan_objmgr_psoc *psoc, bool *val);
-
-/**
- * wlan_psoc_mlme_set_11bn_capab() - Set the 11bn capability for target
- * @psoc: psoc handle
- * @val: pointer to the output variable
- *
- * return: QDF_STATUS
- */
-QDF_STATUS
-wlan_psoc_mlme_set_11bn_capab(struct wlan_objmgr_psoc *psoc, bool val);
-
-/**
- * wlan_psoc_mlme_get_early_rx() - Get the early rx drift for target
- * @psoc: psoc handle
- * @val: pointer to the output variable
- *
- * return: QDF_STATUS
- */
-QDF_STATUS
-wlan_psoc_mlme_get_early_rx(struct wlan_objmgr_psoc *psoc, uint8_t *val);
 #endif

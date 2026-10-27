@@ -685,14 +685,12 @@ QDF_STATUS __qdf_wake_lock_create(qdf_wake_lock_t *lock, const char *name,
  * qdf_wake_lock_acquire() - acquires a wake lock
  * @lock: The wake lock to acquire
  * @reason: Reason for wakelock
- * @wake_lifetime: Expected wakelock lifetime
  *
  * Return:
  * QDF status success if wake lock is acquired
  * QDF status failure if wake lock was not acquired
  */
-QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason,
-				 uint8_t wake_lifetime);
+QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason);
 
 /**
  * qdf_wake_lock_name() - This function returns the name of the wakelock
@@ -800,14 +798,12 @@ enum qdf_rtpm_call_type {
  * @QDF_RTPM_ID_RESERVED: Reserved ID
  * @QDF_RTPM_ID_PM_QOS_NOTIFY: PM QOS context
  * @QDF_RTPM_ID_WIPHY_SUSPEND: APSS Bus suspend context
- * @QDF_RTPM_ID_OPT_DP: Optional datapath
  * @QDF_RTPM_ID_MAX: Max id
  */
 enum qdf_rtpm_client_id {
 	QDF_RTPM_ID_RESERVED,
 	QDF_RTPM_ID_PM_QOS_NOTIFY,
 	QDF_RTPM_ID_WIPHY_SUSPEND,
-	QDF_RTPM_ID_OPT_DP,
 	QDF_RTPM_ID_MAX
 };
 

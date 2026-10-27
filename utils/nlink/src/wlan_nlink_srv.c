@@ -450,8 +450,9 @@ static int send_msg_to_cld80211(int mcgroup_id, int pid, int app_id,
 		return -EPERM;
 	}
 
-	return genlmsg_multicast_netns(cld80211_fam, &init_net, msg, 0,
-				       mcgroup_id, flags);
+	genlmsg_multicast_netns(cld80211_fam, &init_net, msg, 0,
+						mcgroup_id, flags);
+	return 0;
 }
 
 /**
@@ -473,14 +474,15 @@ int nl_srv_bcast(struct sk_buff *skb, int mcgroup_id, int app_id)
 	int status;
 
 	status = send_msg_to_cld80211(mcgroup_id, 0, app_id, msg, msg_len);
-	if (status && (status != -ESRCH))
-		QDF_TRACE_ERROR_RL(
-			QDF_MODULE_ID_HDD,
-			"send msg to cld80211 fails for app id %d, status %d",
-			app_id, status);
+	if (status) {
+		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
+			"send msg to cld80211 fails for app id %d", app_id);
+		dev_kfree_skb(skb);
+		return -EPERM;
+	}
 
 	dev_kfree_skb(skb);
-	return status;
+	return 0;
 }
 qdf_export_symbol(nl_srv_bcast);
 
@@ -563,12 +565,10 @@ int nl_srv_init(void *wiphy, int proto)
  */
 void nl_srv_exit(void)
 {
-	mutex_lock(&nl_srv_sem);
 	if (nl_srv_is_initialized() == 0)
 		netlink_kernel_release(nl_srv_sock);
 
 	nl_srv_sock = NULL;
-	mutex_unlock(&nl_srv_sem);
 }
 
 /*
@@ -616,7 +616,7 @@ int nl_srv_unregister(tWlanNlModTypes msg_type, nl_srv_msg_callback msg_handler)
 }
 
 /*
- * Unicast the message to the process in user space identified
+ * Unicast the message to the process in user space identfied
  * by the dst-pid
  */
 int nl_srv_ucast(struct sk_buff *skb, int dst_pid, int flag)

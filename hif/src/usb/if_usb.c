@@ -580,6 +580,18 @@ void hif_usb_shutdown_bus_device(struct hif_softc *scn)
 }
 
 /**
+ * hif_trigger_dump() - trigger various dump cmd
+ * @scn: struct hif_opaque_softc
+ * @cmd_id: dump command id
+ * @start: start/stop dump
+ *
+ * Return: None
+ */
+void hif_trigger_dump(struct hif_opaque_softc *scn, uint8_t cmd_id, bool start)
+{
+}
+
+/**
  * hif_wlan_disable() - call the platform driver to disable wlan
  * @scn: scn
  *
@@ -667,7 +679,7 @@ void hif_fw_assert_ramdump_pattern(struct hif_usb_softc *sc)
  * call stack: wrapped in multiple USB packets, and each of them starts as
  *             FW_REG_PATTERN and contains multiple double-words. The tail
  *             of the last packet is FW_REG_END_PATTERN.
- * DRAM dump: wrapped in multiple USB packets, and each of them start as
+ * DRAM dump: wrapped in multiple USB pakcets, and each of them start as
  *            FW_RAMDUMP_PATTERN and contains multiple double-wors. The tail
  *            of the last packet is FW_RAMDUMP_END_PATTERN;
  * IRAM dump and AXI dump are with the same format as DRAM dump.

@@ -27,7 +27,6 @@
 #include <wlan_scan_public_structs.h>
 #include "wlan_crypto_global_def.h"
 #include "qdf_status.h"
-
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <wlan_mlo_mgr_public_structs.h>
 #endif
@@ -36,7 +35,7 @@
 
 typedef uint32_t wlan_cm_id;
 
-/* Disconnect active timeout */
+/* Diconnect active timeout */
 #define DISCONNECT_TIMEOUT \
 	((STOP_RESPONSE_TIMER) + (DELETE_RESPONSE_TIMER) +\
 	 (RSO_STOP_RESPONSE_TIMER) + (1000))
@@ -157,7 +156,7 @@ struct wlan_fils_con_info {
  * @CM_ROAMING_LINK_REMOVAL: Roaming request initiate by link removal
  * @CM_OSIF_DISCONNECT: Disconnect req initiated by OSIF or north bound
  * @CM_PEER_DISCONNECT: Disconnect req initiated by peer sending deauth/disassoc
- * only for this locally generated will be false while indicating to kernel
+ * only for this localy generated will be false while indicating to kernel
  * @CM_SB_DISCONNECT: Disconnect initiated from firmware. eg HB failure,
  * sta kickout etc
  * @CM_MLME_DISCONNECT: Disconnect req initiated by mlme. eg VDEV mgr or any
@@ -224,8 +223,7 @@ enum wlan_cm_source {
  * for production.
  * @is_wps_connection: if its wps connection
  * @is_osen_connection: if its osen connection
- * @is_reassoc_connect: if reassoc received
- * @eppke_allowed: Is connection allowed to be attempted with EPPKE AKM
+ * @reassoc_in_non_init: if reassoc received in non init state
  * @dot11mode_filter: dot11mode filter used to restrict connection to
  * 11n/11ac/11ax.
  * @sae_pwe: SAE mechanism for PWE derivation
@@ -243,10 +241,6 @@ enum wlan_cm_source {
  * @mld_addr: MLD address of candidate
  *              -mandatory and only used for link VDEV connect
  * @ml_parnter_info: ml partner link info
- * @is_new_assoc_vdev: if set, connect path calls set_mlo_vdev() (assoc flag)
- *                     instead of set_mlo_link_vdev(). Used by SMD roaming for
- *                     idle vdev direct-connect so T4 can fire (SMD_ROAM_SYNC
- *                     entry requires is_assoc_sta_vdev() to be true).
  */
 struct wlan_cm_connect_req {
 	uint8_t vdev_id;
@@ -263,8 +257,7 @@ struct wlan_cm_connect_req {
 	uint8_t force_rsne_override:1,
 		is_wps_connection:1,
 		is_osen_connection:1,
-		is_reassoc_connect:1,
-		eppke_allowed:1;
+		reassoc_in_non_init:1;
 	enum dot11_mode_filter dot11mode_filter;
 	uint8_t sae_pwe;
 	uint16_t ht_caps;
@@ -279,9 +272,6 @@ struct wlan_cm_connect_req {
 	uint8_t link_id;
 	struct qdf_mac_addr mld_addr;
 	struct mlo_partner_info ml_parnter_info;
-#endif
-#ifdef WLAN_FEATURE_11BN_SMD
-	bool is_new_assoc_vdev;
 #endif
 };
 
@@ -333,11 +323,6 @@ struct wlan_cm_vdev_connect_req {
 	uint8_t rsno_gen_used;
 };
 
-/* Max number of channels for OOQ roam invoke channel list */
-#ifndef CM_ROAM_MAX_CHAN_LIST_LEN
-#define CM_ROAM_MAX_CHAN_LIST_LEN 100
-#endif
-
 /**
  * struct wlan_cm_roam_req - roam req from requester
  * @forced_roaming: Roaming to be done without giving bssid, and channel.
@@ -347,10 +332,6 @@ struct wlan_cm_vdev_connect_req {
  * @prev_bssid: prev AP bssid, given in case supplican want to roam to new BSSID
  * @chan_freq: channel of the AP
  * @crypto: crypto related info
- * @num_chan: number of channels in chan_freq_list for OOQ roam invoke,
- *            0 for FASTREASSOC
- * @chan_freq_list: channel frequency list for OOQ roam invoke,
- *                 unused when num_chan is 0
  */
 struct wlan_cm_roam_req {
 	uint8_t forced_roaming:1;
@@ -360,8 +341,6 @@ struct wlan_cm_roam_req {
 	struct qdf_mac_addr prev_bssid;
 	uint32_t chan_freq;
 	struct wlan_cm_connect_crypto_info crypto;
-	uint8_t num_chan;
-	qdf_freq_t chan_freq_list[CM_ROAM_MAX_CHAN_LIST_LEN];
 };
 
 /**
@@ -527,19 +506,6 @@ struct wlan_connect_rsp_ies {
  * @pmkid: fils pmkid
  * @update_erp_next_seq_num: if seq update required
  * @next_erp_seq_num: next seq number
- * @kde_data_len: KDE data length
- * @kde_data: KDE data buffer
- * @smd_kdk_len: SMD KDK length derived during SMD-ME initial association
- * @smd_kdk: SMD KDK buffer derived during SMD-ME initial association
- * @smd_transition: true if this roam completion is an SMD BSS transition
- * @smd_ptk_mode: 0 = Per-SMD PTK, 1 = Per-AP MLD PTK (valid when
- *                smd_transition is true)
- * @target_ap_bssid: link-level BSSID of the target AP affiliated with the
- *                    roamed AP MLD
- * @st_prep_req: deep copy of the ST Preparation Request action frame body
- * @st_prep_rsp: deep copy of the ST Preparation Response action frame body
- * @st_exec_req: deep copy of the ST Execution Request action frame body
- * @st_exec_rsp: deep copy of the ST Execution Response action frame body
  */
 struct wlan_roam_sync_info {
 	uint8_t auth_status;
@@ -558,19 +524,6 @@ struct wlan_roam_sync_info {
 	uint8_t pmkid[PMKID_LEN];
 	bool update_erp_next_seq_num;
 	uint16_t next_erp_seq_num;
-	uint8_t kde_data_len;
-	uint8_t kde_data[255];
-#ifdef WLAN_FEATURE_11BN_SMD
-	uint32_t smd_kdk_len;
-	uint8_t smd_kdk[MAX_PMK_LEN];
-	bool smd_transition;
-	uint8_t smd_ptk_mode;
-	struct qdf_mac_addr target_ap_bssid;
-	struct element_info st_prep_req;
-	struct element_info st_prep_rsp;
-	struct element_info st_exec_req;
-	struct element_info st_exec_rsp;
-#endif /* WLAN_FEATURE_11BN_SMD */
 };
 #endif
 
@@ -598,8 +551,6 @@ struct wlan_roam_sync_info {
  * @is_fils_connection: is fils connection
  * @mld_addr: MLD address of the ML AP
  * @ml_parnter_info: ml partner link info
- * @is_assoc_encrypted: flag to indicate if the association response frame is
- * encrypted.
  */
 struct wlan_cm_connect_resp {
 	uint8_t vdev_id;
@@ -627,9 +578,6 @@ struct wlan_cm_connect_resp {
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct qdf_mac_addr mld_addr;
 	struct mlo_partner_info ml_parnter_info;
-#endif
-#ifdef WLAN_FEATURE_11BI_SECURITY
-	bool is_assoc_encrypted;
 #endif
 };
 
@@ -779,39 +727,5 @@ enum MLO_TYPE {
 	EMLSR,
 	MLMR,
 	MLO_TYPE_MAX
-};
-
-/**
- * struct smd_vdev_repurpose_req - SMD VDEV repurpose request
- * @vdev_id: Target vdev_id for BSS repurpose
- * @inactive_link_pre_stop: B0 - inactive link pre-vdev_stop
- * @cleanup_vdev: B1 - cleanup vdev
- * @bringup_vdev: B2 - bringup vdev
- * @bssid: Repurposed AP's BSSID
- * @mld_addr: Repurposed AP's MLD address
- * @smd_addr: Repurposed AP's SMD address
- * @is_valid: Flag indicating if this structure contains valid data
- */
-struct smd_vdev_repurpose_req {
-	uint32_t vdev_id;
-	bool inactive_link_pre_stop;
-	bool cleanup_vdev;
-	bool bringup_vdev;
-	struct qdf_mac_addr bssid;
-	struct qdf_mac_addr mld_addr;
-	struct qdf_mac_addr smd_addr;
-	bool is_valid;
-};
-
-/**
- * struct smd_transition_ie_info - SMD Transition IE information
- * @ie_len: Length of SMD transition IE
- * @ie_data: SMD transition IE data
- *           FW populates its capabilities (B0 and B1 set to '0')
- *           Host appends its capabilities (Listen Interval, SCS List)
- */
-struct smd_transition_ie_info {
-	uint32_t ie_len;
-	uint8_t ie_data[256];  /* Max IE size */
 };
 #endif /* __WLAN_CM_PUBLIC_STRUCT_H__ */

@@ -31,10 +31,8 @@
 #include <target_if.h>
 #include <wlan_tgt_def_config.h>
 #include <wmi_unified_api.h>
-#include <wmi_unified_cp_stats_api.h>
 #include <wlan_osif_priv.h>
 #include <wlan_cp_stats_utils_api.h>
-#include <wlan_cp_stats_mc_ucfg_api.h>
 #include <wlan_objmgr_peer_obj.h>
 #ifdef WLAN_FEATURE_MIB_STATS
 #include <wlan_cp_stats_mc_defs.h>
@@ -122,31 +120,6 @@ target_if_infra_cp_stats_rrm_sta_stats_event_alloc(
 
 	return QDF_STATUS_SUCCESS;
 }
-
-static QDF_STATUS
-target_if_infra_cp_stats_enchance_stats_event_alloc(
-					struct infra_cp_stats_event *ev)
-{
-	ev->vdev_beacon_stats =
-		qdf_mem_malloc(sizeof(*ev->vdev_beacon_stats) *
-		CTRL_PATH_STATS_MAX_VDEV_ID);
-	if (!ev->vdev_beacon_stats)
-		return QDF_STATUS_E_NOMEM;
-
-	ev->vdev_congestion_stats =
-			qdf_mem_malloc(sizeof(*ev->vdev_congestion_stats) *
-			CTRL_PATH_STATS_MAX_VDEV_ID);
-	if (!ev->vdev_congestion_stats)
-		return QDF_STATUS_E_NOMEM;
-
-	ev->vdev_data_stats =
-			qdf_mem_malloc(sizeof(*ev->vdev_data_stats) *
-			CTRL_PATH_STATS_MAX_VDEV_ID);
-	if (!ev->vdev_data_stats)
-		return QDF_STATUS_E_NOMEM;
-
-	return QDF_STATUS_SUCCESS;
-}
 #ifdef CONFIG_WLAN_BMISS
 
 /**
@@ -196,26 +169,6 @@ target_if_infra_cp_stats_bmiss_event_alloc(struct infra_cp_stats_event *ev)
 }
 #endif /* CONFIG_WLAN_BMISS */
 
-/* Free memory for vdev_beacon_stats_event */
-static void
-target_if_infra_cp_stats_enchance_event_free(struct infra_cp_stats_event *ev)
-{
-	if (ev->vdev_beacon_stats) {
-		qdf_mem_free(ev->vdev_beacon_stats);
-		ev->vdev_beacon_stats = NULL;
-	}
-
-	if (ev->vdev_congestion_stats) {
-		qdf_mem_free(ev->vdev_congestion_stats);
-		ev->vdev_congestion_stats = NULL;
-	}
-
-	if (ev->vdev_data_stats) {
-		qdf_mem_free(ev->vdev_data_stats);
-		ev->vdev_data_stats = NULL;
-	}
-}
-
 /**
  * target_if_infra_cp_stats_event_free() - Free event buffer
  * @ev: pointer to infra cp stats event structure
@@ -228,7 +181,6 @@ void target_if_infra_cp_stats_event_free(struct infra_cp_stats_event *ev)
 	target_if_infra_cp_stats_twt_event_free(ev);
 	target_if_infra_cp_stats_bmiss_event_free(ev);
 	target_if_infra_cp_stats_rrm_sta_stats_event_free(ev);
-	target_if_infra_cp_stats_enchance_event_free(ev);
 }
 
 /**
@@ -253,10 +205,6 @@ target_if_infra_cp_stats_event_alloc(struct infra_cp_stats_event *ev)
 		return QDF_STATUS_E_NOMEM;
 
 	status = target_if_infra_cp_stats_rrm_sta_stats_event_alloc(ev);
-	if (QDF_IS_STATUS_ERROR(status))
-		return QDF_STATUS_E_NOMEM;
-
-	status = target_if_infra_cp_stats_enchance_stats_event_alloc(ev);
 	if (QDF_IS_STATUS_ERROR(status))
 		return QDF_STATUS_E_NOMEM;
 
@@ -354,459 +302,6 @@ end:
 	target_if_infra_cp_stats_event_free(&ev);
 	return qdf_status_to_os_return(status);
 }
-
-QDF_STATUS
-target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc)
-{
-	struct wmi_unified *wmi_handle;
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		target_if_err("Invalid WMI handle");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	return wmi_unified_coex_get_policy_stats_cmd_send(wmi_handle);
-}
-
-#ifdef WLAN_FEATURE_CTAS
-/*
- * TAS GET_METRICS log buffer sizing:
- *
- * Header: "TAS GET_METRICS: num_chains=%u time_window=%u"
- *   - literal: 44 chars, num_chains: 2 digits, time_window: 10 digits -> 60
- *
- * Per-chain entry: " [%u: no=%u band=%u region=%u]"
- *   - index: 2 digits, chain_no: 10 digits, band: 1 digit, region: 1 digit,
- *     literal: 24 chars -> 40 per chain
- */
-#define TAS_METRICS_LOG_HDR_LEN   60
-#define TAS_METRICS_LOG_CHAIN_LEN 40
-#define TAS_METRICS_LOG_BUF_LEN(n) \
-	(TAS_METRICS_LOG_HDR_LEN + (n) * TAS_METRICS_LOG_CHAIN_LEN)
-
-/*
- * TAS GET_PLIMIT log buffer sizing:
- *
- * Header: "TAS GET_PLIMIT: dsi_id=%u num_chains=%u"
- *   - literal: 40 chars, dsi_id: 10 digits, num_chains: 2 digits -> 52 -> 60
- *
- * Per-chain entry: " [%u: no=%u band=%u power=%d]"
- *   - index: 2 digits, chain_no: 2 digits, band: 1 digit, power: 5 digits,
- *     literal: 22 chars -> 32 per chain
- *
- * Total for max 24 chains: 60 + 24 * 32 = 828 -> capped at 512 via
- * qdf_scnprintf truncation for large chain counts.
- */
-#define TAS_PLIMIT_LOG_HDR_LEN   60
-#define TAS_PLIMIT_LOG_CHAIN_LEN 32
-#define TAS_PLIMIT_LOG_BUF_LEN(n) \
-	QDF_MIN(512, TAS_PLIMIT_LOG_HDR_LEN + (n) * TAS_PLIMIT_LOG_CHAIN_LEN)
-
-bool
-target_if_is_ctas_plim_indication_supported(struct wlan_objmgr_psoc *psoc)
-{
-	struct wmi_unified *wmi_handle;
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("wmi_handle is null");
-		return false;
-	}
-
-	return wmi_service_enabled(wmi_handle,
-				   wmi_service_ctas_plim_indication_support);
-}
-
-QDF_STATUS
-target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
-				 enum host_tas_direction direction)
-{
-	struct wmi_unified *wmi_handle;
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("Invalid WMI handle");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	return wmi_unified_send_modify_tx_plim_cmd(wmi_handle, direction);
-}
-
-QDF_STATUS
-target_if_cp_stats_send_get_avg_tx_power(struct wlan_objmgr_psoc *psoc,
-					 uint32_t dsi_id)
-{
-	struct wmi_unified *wmi_handle;
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("Invalid WMI handle");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	return wmi_unified_send_get_avg_tx_power_cmd(wmi_handle, dsi_id);
-}
-
-QDF_STATUS
-target_if_cp_stats_send_get_tx_power_calling(struct wlan_objmgr_psoc *psoc,
-					     uint32_t dsi_id)
-{
-	struct wmi_unified *wmi_handle;
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("Invalid WMI handle");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	return wmi_unified_send_get_tx_power_calling_cmd(wmi_handle, dsi_id);
-}
-
-static int
-target_if_cp_stats_plimit_table_event_handler(ol_scn_t scn, uint8_t *data,
-					      uint32_t datalen)
-{
-	QDF_STATUS status;
-	struct wmi_unified *wmi_handle;
-	struct wlan_objmgr_psoc *psoc;
-	struct request_info last_req = {0};
-	uint32_t fw_status, dsi_id, num_chains;
-	wmi_tx_power_per_antenna_chain *chain_data = NULL;
-	bool pending = false;
-	struct wlan_tas_plimit_event ev = {0};
-	char *buf;
-	uint32_t i;
-
-	if (!scn || !data) {
-		cp_stats_err("scn: 0x%pK, data: 0x%pK", scn, data);
-		return -EINVAL;
-	}
-
-	psoc = target_if_get_psoc_from_scn_hdl(scn);
-	if (!psoc) {
-		cp_stats_err("psoc is NULL");
-		return -EINVAL;
-	}
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("wmi_handle is NULL");
-		return -EINVAL;
-	}
-
-	status = wmi_unified_extract_plimit_table_event(wmi_handle, data,
-							&fw_status, &dsi_id,
-							&chain_data,
-							&num_chains);
-
-	if (QDF_IS_STATUS_ERROR(status)) {
-		cp_stats_err("Failed to extract plimit table event");
-		return -EINVAL;
-	}
-
-	status = ucfg_mc_cp_stats_get_pending_req(psoc,
-						  TYPE_TAS_CURRENT_PLIMIT,
-						  &last_req);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		cp_stats_err("Failed to get pending TAS plimit request");
-		return -EINVAL;
-	}
-
-	ucfg_mc_cp_stats_reset_pending_req(psoc, TYPE_TAS_CURRENT_PLIMIT,
-					   &last_req, &pending);
-
-	if (pending && last_req.u.get_tas_current_plimit_cb) {
-		ev.fw_status = fw_status;
-		ev.dsi_id = dsi_id;
-		if (chain_data) {
-			ev.num_chains = QDF_MIN(num_chains,
-						WLAN_TAS_MAX_CHAINS);
-			buf = qdf_mem_malloc(TAS_PLIMIT_LOG_BUF_LEN(
-							ev.num_chains));
-			if (buf) {
-				int buf_pos;
-				int buf_len = TAS_PLIMIT_LOG_BUF_LEN(
-							ev.num_chains);
-
-				buf_pos = qdf_scnprintf(
-						buf, buf_len,
-						"TAS GET_PLIMIT: dsi_id=%u num_chains=%u",
-						ev.dsi_id, ev.num_chains);
-				for (i = 0; i < ev.num_chains; i++) {
-					ev.chains[i].chain_no =
-						chain_data[i].chain_no;
-					ev.chains[i].chain_operating_band =
-						chain_data[i].chain_operating_band;
-					ev.chains[i].power_limit_dbm =
-						chain_data[i].power;
-					if (buf_pos < buf_len)
-						buf_pos += qdf_scnprintf(
-							buf + buf_pos,
-							buf_len - buf_pos,
-							" [%u: no=%u band=%u power=%d]",
-							i,
-							ev.chains[i].chain_no,
-							ev.chains[i].chain_operating_band,
-							ev.chains[i].power_limit_dbm);
-				}
-				cp_stats_debug("%s", buf);
-				qdf_mem_free(buf);
-			} else {
-				for (i = 0; i < ev.num_chains; i++) {
-					ev.chains[i].chain_no =
-						chain_data[i].chain_no;
-					ev.chains[i].chain_operating_band =
-						chain_data[i].chain_operating_band;
-					ev.chains[i].power_limit_dbm =
-						chain_data[i].power;
-				}
-			}
-		}
-		last_req.u.get_tas_current_plimit_cb(&ev, last_req.cookie);
-	}
-
-	return 0;
-}
-
-static int
-target_if_cp_stats_avg_tx_power_event_handler(ol_scn_t scn, uint8_t *data,
-					      uint32_t datalen)
-{
-	QDF_STATUS status;
-	struct wmi_unified *wmi_handle;
-	struct wlan_objmgr_psoc *psoc;
-	struct request_info last_req = {0};
-	uint32_t fw_status, time_window_in_sec, num_chains;
-	wmi_avg_tx_power_region_per_antenna_chain *chain_data = NULL;
-	bool pending = false;
-	struct wlan_tas_metrics_event ev = {0};
-	char *buf;
-	uint32_t i;
-
-	if (!scn || !data) {
-		cp_stats_err("scn: 0x%pK, data: 0x%pK", scn, data);
-		return -EINVAL;
-	}
-
-	psoc = target_if_get_psoc_from_scn_hdl(scn);
-	if (!psoc) {
-		cp_stats_err("psoc is NULL");
-		return -EINVAL;
-	}
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("wmi_handle is NULL");
-		return -EINVAL;
-	}
-
-	status = wmi_unified_extract_avg_tx_power_event(
-						wmi_handle, data,
-						&fw_status,
-						&time_window_in_sec,
-						&chain_data, &num_chains);
-
-	if (QDF_IS_STATUS_ERROR(status)) {
-		cp_stats_err("Failed to extract avg tx power event");
-		return -EINVAL;
-	}
-
-	status = ucfg_mc_cp_stats_get_pending_req(psoc, TYPE_TAS_METRICS,
-						  &last_req);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		cp_stats_err("Failed to get pending TAS metrics request");
-		return -EINVAL;
-	}
-
-	ucfg_mc_cp_stats_reset_pending_req(psoc, TYPE_TAS_METRICS,
-					   &last_req, &pending);
-
-	if (pending && last_req.u.get_tas_metrics_cb) {
-		ev.fw_status = fw_status;
-		ev.time_window_in_sec = time_window_in_sec;
-		if (chain_data) {
-			ev.num_chains =
-				QDF_MIN(num_chains, WLAN_TAS_MAX_CHAINS);
-			buf = qdf_mem_malloc(TAS_METRICS_LOG_BUF_LEN(
-								ev.num_chains));
-			if (buf) {
-				int buf_pos;
-				int buf_len = TAS_METRICS_LOG_BUF_LEN(
-								ev.num_chains);
-
-				buf_pos = qdf_scnprintf(buf, buf_len,
-							"TAS GET_METRICS: num_chains=%u time_window=%u",
-							ev.num_chains,
-							ev.time_window_in_sec);
-				for (i = 0; i < ev.num_chains; i++) {
-					ev.chains[i].chain_no =
-						chain_data[i].chain_no;
-					ev.chains[i].chain_operating_band =
-						chain_data[i].chain_operating_band;
-					ev.chains[i].chain_power_region =
-						chain_data[i].chain_power_region;
-					if (buf_pos < buf_len)
-						buf_pos += qdf_scnprintf(
-						buf + buf_pos,
-						buf_len - buf_pos,
-						" [%u: no=%u band=%u region=%u]",
-						i,
-						ev.chains[i].chain_no,
-						ev.chains[i].chain_operating_band,
-						ev.chains[i].chain_power_region);
-				}
-				cp_stats_debug("%s", buf);
-				qdf_mem_free(buf);
-			} else {
-				for (i = 0; i < ev.num_chains; i++) {
-					ev.chains[i].chain_no = chain_data[i].chain_no;
-					ev.chains[i].chain_operating_band =
-						chain_data[i].chain_operating_band;
-					ev.chains[i].chain_power_region =
-						chain_data[i].chain_power_region;
-				}
-			}
-		}
-		last_req.u.get_tas_metrics_cb(&ev, last_req.cookie);
-	}
-
-	return 0;
-}
-
-static int
-target_if_cp_stats_tas_event_handler(ol_scn_t scn, uint8_t *data,
-				     uint32_t datalen)
-{
-	QDF_STATUS status;
-	struct wmi_unified *wmi_handle;
-	struct wlan_objmgr_psoc *psoc;
-	uint32_t fw_status;
-
-	if (!scn || !data) {
-		cp_stats_err("scn: 0x%pK, data: 0x%pK", scn, data);
-		return -EINVAL;
-	}
-
-	psoc = target_if_get_psoc_from_scn_hdl(scn);
-	if (!psoc) {
-		cp_stats_err("psoc is NULL");
-		return -EINVAL;
-	}
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("wmi_handle is NULL");
-		return -EINVAL;
-	}
-
-	status = wmi_unified_extract_modify_tx_plim_event(wmi_handle,
-							  data, &fw_status);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		cp_stats_err("Failed to extract TAS mode event");
-		return -EINVAL;
-	}
-
-	cp_stats_debug("TAS mode set status from FW: %u", fw_status);
-
-	return 0;
-}
-
-static QDF_STATUS
-target_if_cp_stats_register_ctas_event_handlers(struct wmi_unified *wmi_handle)
-{
-	QDF_STATUS ret_val;
-
-	ret_val = wmi_unified_register_event_handler(
-				wmi_handle,
-				wmi_modify_tx_plim_event_id,
-				target_if_cp_stats_tas_event_handler,
-				WMI_RX_WORK_CTX);
-	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register TAS mode event handler");
-		return ret_val;
-	}
-
-	ret_val = wmi_unified_register_event_handler(
-				wmi_handle,
-				wmi_avg_tx_power_event_id,
-				target_if_cp_stats_avg_tx_power_event_handler,
-				WMI_RX_WORK_CTX);
-	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register avg tx power event handler");
-		return ret_val;
-	}
-
-	ret_val = wmi_unified_register_event_handler(
-				wmi_handle,
-				wmi_plimit_table_event_id,
-				target_if_cp_stats_plimit_table_event_handler,
-				WMI_RX_WORK_CTX);
-	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register plimit table event handler");
-		return ret_val;
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static void
-target_if_cp_stats_unregister_ctas_event_handlers(
-				struct wmi_unified *wmi_handle)
-{
-	wmi_unified_unregister_event_handler(wmi_handle,
-					     wmi_plimit_table_event_id);
-	wmi_unified_unregister_event_handler(wmi_handle,
-					     wmi_avg_tx_power_event_id);
-	wmi_unified_unregister_event_handler(wmi_handle,
-					     wmi_modify_tx_plim_event_id);
-}
-
-static void
-target_if_register_ctas_txops(struct wlan_lmac_if_cp_stats_tx_ops *tx_ops)
-{
-	tx_ops->is_ctas_plim_indication_supported =
-		target_if_is_ctas_plim_indication_supported;
-	tx_ops->send_tas_mode =
-		target_if_cp_stats_send_tas_mode;
-	tx_ops->send_get_avg_tx_power =
-		target_if_cp_stats_send_get_avg_tx_power;
-	tx_ops->send_get_tx_power_calling =
-		target_if_cp_stats_send_get_tx_power_calling;
-}
-#else /* WLAN_FEATURE_CTAS */
-static inline void
-target_if_register_ctas_txops(struct wlan_lmac_if_cp_stats_tx_ops *tx_ops)
-{
-}
-
-static inline QDF_STATUS
-target_if_cp_stats_register_ctas_event_handlers(struct wmi_unified *wmi_handle)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline void
-target_if_cp_stats_unregister_ctas_event_handlers(
-				struct wmi_unified *wmi_handle)
-{
-}
-#endif /* WLAN_FEATURE_CTAS */
-
-QDF_STATUS
-target_if_cp_stats_get_coex_stats(struct wlan_objmgr_vdev *vdev)
-{
-	struct wlan_objmgr_psoc *psoc;
-
-	if (!vdev)
-		return QDF_STATUS_E_INVAL;
-
-	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc)
-		return QDF_STATUS_E_INVAL;
-
-	return target_if_cp_stats_send_coex_stats_req(psoc);
-}
 #else
 static
 int target_if_infra_cp_stats_event_handler(ol_scn_t scn, uint8_t *data,
@@ -815,71 +310,6 @@ int target_if_infra_cp_stats_event_handler(ol_scn_t scn, uint8_t *data,
 	return 0;
 }
 #endif /* WLAN_SUPPORT_INFRA_CTRL_PATH_STATS */
-
-#ifdef WLAN_FEATURE_QSH_SCAN
-/**
- * target_if_scan_stats_event_handler() - Handle WMI_GET_SCAN_STATS_RESP_EVENTID
- * @scn: opaque scn handle
- * @data: event buffer received from fw
- * @datalen: length of event buffer
- *
- * Return: 0 for success or non zero error codes for failure
- */
-static int target_if_scan_stats_event_handler(ol_scn_t scn, uint8_t *data,
-					      uint32_t datalen)
-{
-	QDF_STATUS status;
-	struct wlan_objmgr_psoc *psoc;
-	struct wmi_unified *wmi_handle;
-	struct wmi_scan_stats_event event = {0};
-	struct qsh_stats_event qsh_ev = {0};
-	struct wlan_lmac_if_cp_stats_rx_ops *rx_ops;
-
-	cp_stats_debug("Scan stats event received");
-
-	if (!scn || !data) {
-		cp_stats_err("scn: 0x%pK, data: 0x%pK", scn, data);
-		return -EINVAL;
-	}
-
-	psoc = target_if_get_psoc_from_scn_hdl(scn);
-	if (!psoc) {
-		cp_stats_err("null psoc");
-		return -EINVAL;
-	}
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("wmi_handle is null");
-		return -EINVAL;
-	}
-
-	/* Extract event data */
-	status =
-		wmi_unified_extract_scan_stats_event(wmi_handle, data, &event);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		cp_stats_err("Failed to extract scan stats event");
-		return qdf_status_to_os_return(status);
-	}
-
-	qsh_ev.scan_req_id = event.scan_req_id;
-	qsh_ev.scan_count = event.scan_count;
-
-	cp_stats_debug("Scan stats: scan_req_id=%u scan_count=%u",
-		       event.scan_req_id, event.scan_count);
-
-	/* Get RX ops and call process function */
-	rx_ops = target_if_cp_stats_get_rx_ops(psoc);
-	if (!rx_ops || !rx_ops->process_scan_stats_event) {
-		cp_stats_err("QSH scan stats callback not registered");
-		return -EINVAL;
-	}
-
-	status = rx_ops->process_scan_stats_event(psoc, &qsh_ev);
-
-	return qdf_status_to_os_return(status);
-}
-#endif
 
 #ifdef WLAN_FEATURE_LL_LT_SAP
 /**
@@ -920,84 +350,6 @@ target_if_ll_sap_twt_session_params(
 }
 #endif
 
-/**
- * target_if_coex_policy_stats_event_handler() - Coex policy stats event handler
- * @scn: scn handle
- * @evt_buf: event buffer
- * @evt_data_len: event data length
- *
- * This function handles the coexistence policy statistics event from firmware
- * and forwards it to the CP stats layer for further processing.
- *
- * Return: 0 on success, error code otherwise
- */
-static int
-target_if_coex_policy_stats_event_handler(ol_scn_t scn,
-					  uint8_t *evt_buf,
-					  uint32_t evt_data_len)
-{
-	struct wlan_objmgr_psoc *psoc;
-	struct wmi_unified *wmi_hdl;
-	struct wmi_coex_policy_stats_event_param event_param = {0};
-	struct request_info last_req = {0};
-	bool pending = false;
-	struct wlan_coex_policy_stats stats = {0};
-	QDF_STATUS status;
-
-	TARGET_IF_ENTER();
-
-	if (!scn || !evt_buf) {
-		target_if_err("scn: 0x%pK, evt_buf: 0x%pK", scn, evt_buf);
-		return -EINVAL;
-	}
-
-	psoc = target_if_get_psoc_from_scn_hdl(scn);
-	if (!psoc) {
-		target_if_err("psoc object is null!");
-		return -EINVAL;
-	}
-
-	wmi_hdl = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_hdl) {
-		target_if_err("wmi_handle is null!");
-		return -EINVAL;
-	}
-
-	status = wmi_extract_coex_policy_stats_event(wmi_hdl, evt_buf,
-						     &event_param);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		target_if_err("Failed to extract coex policy stats event. status = %d",
-			      status);
-		return qdf_status_to_os_return(status);
-	}
-
-	/* Get pending request info */
-	status = ucfg_mc_cp_stats_get_pending_req(psoc, TYPE_COEX_STATS,
-						  &last_req);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		target_if_err("Failed to get pending coex stats request. status = %d",
-			      status);
-		return qdf_status_to_os_return(status);
-	}
-
-	/* Copy WMI event params into the public coex stats struct */
-	stats.btc_policy           = event_param.btc_policy;
-	stats.mws_policy           = event_param.mws_policy;
-	stats.uwb_policy           = event_param.uwb_policy;
-	stats.monitoring_period    = event_param.monitoring_period;
-	stats.ocs_active_percent   = event_param.ocs_active_percent;
-	stats.ocs_non_wlan_percent = event_param.ocs_non_wlan_percent;
-
-	/* Reset pending request (coex stats is single-event) */
-	ucfg_mc_cp_stats_reset_pending_req(psoc, TYPE_COEX_STATS,
-					   &last_req, &pending);
-	/* Invoke callback if pending */
-	if (pending && last_req.u.get_coex_stats_cb)
-		last_req.u.get_coex_stats_cb(&stats, last_req.cookie);
-
-	TARGET_IF_EXIT();
-	return 0;
-}
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 static int
 target_if_twt_session_params_event_handler(ol_scn_t scn,
@@ -1170,28 +522,6 @@ target_if_cp_stats_infra_register_event_handler(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
-
-static QDF_STATUS
-target_if_cp_stats_register_coex_stats_event(struct wmi_unified *wmi_handle)
-{
-	QDF_STATUS ret_val;
-
-	ret_val = wmi_unified_register_event_handler(
-				wmi_handle,
-				wmi_coex_get_policy_stats_event_id,
-				target_if_coex_policy_stats_event_handler,
-				WMI_RX_WORK_CTX);
-
-	return ret_val;
-}
-
-static void
-target_if_cp_stats_unregister_coex_stats_event(struct wmi_unified *wmi_handle)
-{
-	wmi_unified_unregister_event_handler(
-					wmi_handle,
-					wmi_coex_get_policy_stats_event_id);
-}
 #else
 static QDF_STATUS
 target_if_cp_stats_infra_register_event_handler(struct wlan_objmgr_psoc *psoc,
@@ -1199,48 +529,7 @@ target_if_cp_stats_infra_register_event_handler(struct wlan_objmgr_psoc *psoc,
 {
 	return QDF_STATUS_SUCCESS;
 }
-
-static inline QDF_STATUS
-target_if_cp_stats_register_coex_stats_event(struct wmi_unified *wmi_handle)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline void
-target_if_cp_stats_unregister_coex_stats_event(struct wmi_unified *wmi_handle)
-{
-}
 #endif /* WLAN_SUPPORT_INFRA_CTRL_PATH_STATS */
-
-#ifdef WLAN_FEATURE_QSH_SCAN
-static QDF_STATUS
-target_if_cp_stats_register_qsh_event_handler(struct wmi_unified *wmi_handle)
-{
-
-	return wmi_unified_register_event_handler(wmi_handle,
-						  wmi_get_scan_stats_resp_event_id,
-						  target_if_scan_stats_event_handler,
-						  WMI_RX_WORK_CTX);
-}
-
-static void
-target_if_cp_stats_unregister_qsh_event_handler(struct wmi_unified *wmi_handle)
-{
-	wmi_unified_unregister_event_handler(wmi_handle,
-					     wmi_get_scan_stats_resp_event_id);
-}
-#else
-static QDF_STATUS
-target_if_cp_stats_register_qsh_event_handler(struct wmi_unified *wmi_handle)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static void
-target_if_cp_stats_unregister_qsh_event_handler(struct wmi_unified *wmi_handle)
-{
-}
-#endif /* WLAN_FEATURE_QSH_SCAN */
 
 static QDF_STATUS
 target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
@@ -1266,27 +555,9 @@ target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
 		return ret_val;
 	}
 
-	ret_val = target_if_cp_stats_register_coex_stats_event(wmi_handle);
-	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register coex stats event");
-		return ret_val;
-	}
-
 	ret_val = target_if_cp_stats_register_twt_session_event(wmi_handle);
 	if (QDF_IS_STATUS_ERROR(ret_val)) {
 		cp_stats_err("Failed to register twt session stats event");
-		return ret_val;
-	}
-
-	ret_val = target_if_cp_stats_register_qsh_event_handler(wmi_handle);
-	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register scan stats event handler");
-		return ret_val;
-	}
-
-	ret_val = target_if_cp_stats_register_ctas_event_handlers(wmi_handle);
-	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register CTAS event handlers");
 		return ret_val;
 	}
 
@@ -1309,14 +580,9 @@ target_if_cp_stats_unregister_event_handler(struct wlan_objmgr_psoc *psoc)
 		return QDF_STATUS_E_INVAL;
 	}
 
-	target_if_cp_stats_unregister_ctas_event_handlers(wmi_handle);
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_pdev_cp_fwstats_eventid);
-	target_if_cp_stats_unregister_coex_stats_event(wmi_handle);
 	target_if_cp_stats_unregister_twt_session_event(wmi_handle);
-
-	target_if_cp_stats_unregister_qsh_event_handler(wmi_handle);
-
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -1479,9 +745,6 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_cp_stats_register_legacy_event_handler;
 	cp_stats_tx_ops->cp_stats_legacy_detach =
 		target_if_cp_stats_unregister_legacy_event_handler;
-	cp_stats_tx_ops->send_req_coex_stats =
-		target_if_cp_stats_send_coex_stats_req;
-	target_if_register_ctas_txops(cp_stats_tx_ops);
 	return QDF_STATUS_SUCCESS;
 }
 

@@ -31,9 +31,6 @@
 #include <wlan_objmgr_vdev_obj.h>
 #include <wlan_vdev_mgr_tgt_if_tx_defs.h>
 #include <include/wlan_vdev_mlme.h>
-#ifdef FEATURE_CQM_RSSI
-struct cqm_rssi_config_param;
-#endif
 
 /**
  * tgt_vdev_mgr_create_send() - API to send create command
@@ -204,26 +201,12 @@ QDF_STATUS tgt_vdev_mgr_sta_ps_param_send(
 				struct sta_ps_params *param);
 
 /**
- * tgt_vdev_mgr_tm_param_send() - API to send traffic monitoring
- * configuration.
- * @mlme_obj: pointer to vdev_mlme_obj
- * @param: pointer to traffic_monitoring_params
- *
- * Return: QDF_STATUS - Success or Failure
- */
-
-QDF_STATUS tgt_vdev_mgr_tm_param_send(
-				struct vdev_mlme_obj *mlme_obj,
-				struct traffic_monitoring_params *param);
-
-/**
  * tgt_vdev_mgr_beacon_cmd_send() - API to send beacon
  * @mlme_obj: pointer to vdev_mlme_obj
  * @param: pointer to beacon_params
  *
  * Return: QDF_STATUS - Success or Failure
  */
-
 QDF_STATUS tgt_vdev_mgr_beacon_cmd_send(
 				struct vdev_mlme_obj *mlme_obj,
 				struct beacon_params *param);
@@ -277,6 +260,18 @@ static inline QDF_STATUS tgt_vdev_mgr_fils_enable_send(
 QDF_STATUS tgt_vdev_mgr_multiple_vdev_restart_send(
 				struct wlan_objmgr_pdev *pdev,
 				struct multiple_vdev_restart_params *param);
+
+/**
+ * tgt_vdev_mgr_multiple_vdev_set_param() - API to send multiple vdev
+ * param
+ * @pdev: pointer to pdev
+ * @param: pointer to multiple_vdev_set_param
+ *
+ * Return: QDF_STATUS - Success or Failure
+ */
+QDF_STATUS tgt_vdev_mgr_multiple_vdev_set_param(
+				struct wlan_objmgr_pdev *pdev,
+				struct multiple_vdev_set_param *param);
 
 /**
  * tgt_vdev_mgr_set_tx_rx_decap_type() - API to send tx rx decap type
@@ -382,18 +377,4 @@ bool tgt_sap_is_suspend_supported(struct wlan_objmgr_vdev *vdev);
  */
 QDF_STATUS tgt_sap_suspend_param_send(struct wlan_objmgr_psoc *psoc,
 				      struct vdev_suspend_params *param);
-
-#ifdef FEATURE_CQM_RSSI
-/*
- * tgt_cqm_rssi_config_send() - API to send adaptive-hysteresis RSSI CQM
- * config
- * @psoc: Pointer to psoc
- * @param: CQM RSSI configuration request structure
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS tgt_cqm_rssi_config_send(struct wlan_objmgr_psoc *psoc,
-				    struct cqm_rssi_config_param *param);
-#endif /* FEATURE_CQM_RSSI */
-
 #endif /* __WLAN_VDEV_MGR_TX_OPS_API_H__ */

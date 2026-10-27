@@ -34,8 +34,8 @@
 #include <linux/seq_file.h>
 #include "qdf_status.h"
 #include "qdf_atomic.h"
-#include "qdf_threads.h"
 #include "pld_common.h"
+#include "mp_dev.h"
 #include "hif_debug.h"
 
 #include "ce_tasklet.h"
@@ -73,9 +73,6 @@ static const char *hif_rtpm_id_to_string(enum hif_rtpm_client_id id)
 					"HIF_RTPM_FORCE_WAKE",
 					"HIF_RTPM_ID_PM_QOS_NOTIFY",
 					"HIF_RTPM_ID_WIPHY_SUSPEND",
-					"HIF_RTPM_ID_DP_STC",
-					"HIF_RTPM_ID_OPT_DP",
-					"HIF_RTPM_ID_OSIF",
 					"HIF_RTPM_ID_MAX"
 	};
 
@@ -346,10 +343,7 @@ void hif_rtpm_open(struct hif_softc *scn)
 	qdf_spinlock_create(&gp_hif_rtpm_ctx->prevent_list_lock);
 	qdf_atomic_init(&gp_hif_rtpm_ctx->pm_state);
 	qdf_atomic_set(&gp_hif_rtpm_ctx->pm_state, HIF_RTPM_STATE_NONE);
-	qdf_atomic_init(&gp_hif_rtpm_ctx->suspend_owner_pid);
-	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid, -1);
 	qdf_atomic_init(&gp_hif_rtpm_ctx->monitor_wake_intr);
-	qdf_atomic_init(&gp_hif_rtpm_ctx->tbtt_nack_delay_active);
 	INIT_LIST_HEAD(&gp_hif_rtpm_ctx->prevent_list);
 	gp_hif_rtpm_ctx->client_count = 0;
 	gp_hif_rtpm_ctx->pending_job = 0;
@@ -378,8 +372,7 @@ static void hif_rtpm_sanitize_exit(void)
 	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->prevent_list_lock);
 	list_for_each_entry_safe(ctx, tmp,
 				 &gp_hif_rtpm_ctx->prevent_list, list) {
-		hif_debug("Deinitializing Runtime PM wakelock %s", ctx->name);
-		__hif_pm_runtime_allow_suspend(ctx);
+		hif_runtime_lock_deinit(ctx);
 	}
 	qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->prevent_list_lock);
 
@@ -451,11 +444,6 @@ void hif_rtpm_start(struct hif_softc *scn)
 
 	if (!gp_hif_rtpm_ctx->enable_rpm) {
 		hif_info_high("RUNTIME PM is disabled in ini");
-		return;
-	}
-
-	if (pld_is_one_msi(scn->qdf_dev->dev)) {
-		hif_info_high("RUNTIME PM is disabled for single MSI mode");
 		return;
 	}
 
@@ -575,15 +563,15 @@ QDF_STATUS hif_rtpm_set_autosuspend_delay(int delay)
 QDF_STATUS hif_rtpm_restore_autosuspend_delay(void)
 {
 	if (gp_hif_rtpm_ctx->delay == gp_hif_rtpm_ctx->cfg_delay) {
-		hif_debug_rl("RTPM delay already default: %d",
-			     gp_hif_rtpm_ctx->delay);
+		hif_info_rl("RTPM delay already default: %d",
+			    gp_hif_rtpm_ctx->delay);
 		return QDF_STATUS_E_ALREADY;
 	}
 
 	__hif_rtpm_set_autosuspend_delay(gp_hif_rtpm_ctx->dev,
 					 gp_hif_rtpm_ctx->cfg_delay);
 	gp_hif_rtpm_ctx->delay = gp_hif_rtpm_ctx->cfg_delay;
-	hif_debug_rl("RTPM delay set: %d ms", gp_hif_rtpm_ctx->delay);
+	hif_info_rl("RTPM delay set: %d ms", gp_hif_rtpm_ctx->delay);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -591,51 +579,6 @@ QDF_STATUS hif_rtpm_restore_autosuspend_delay(void)
 int hif_rtpm_get_autosuspend_delay(void)
 {
 	return gp_hif_rtpm_ctx->delay;
-}
-
-QDF_STATUS hif_rtpm_set_wow_tbtt_nack_delay(int delay)
-{
-	QDF_STATUS status;
-
-	if (qdf_unlikely(!gp_hif_rtpm_ctx)) {
-		hif_err("Runtime PM context NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (qdf_atomic_read(&gp_hif_rtpm_ctx->tbtt_nack_delay_active)) {
-		hif_info_high("TBTT nack delay already active, restoring default");
-		return hif_rtpm_reset_wow_tbtt_nack_delay();
-	}
-
-	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
-	qdf_atomic_set(&gp_hif_rtpm_ctx->tbtt_nack_delay_active, 1);
-	status = hif_rtpm_set_autosuspend_delay(delay);
-	if (QDF_IS_STATUS_ERROR(status))
-		qdf_atomic_set(&gp_hif_rtpm_ctx->tbtt_nack_delay_active, 0);
-	qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->runtime_lock);
-
-	return status;
-}
-
-QDF_STATUS hif_rtpm_reset_wow_tbtt_nack_delay(void)
-{
-	QDF_STATUS status;
-
-	if (qdf_unlikely(!gp_hif_rtpm_ctx)) {
-		hif_err("Runtime PM context NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
-	if (!qdf_atomic_read(&gp_hif_rtpm_ctx->tbtt_nack_delay_active)) {
-		qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->runtime_lock);
-		return QDF_STATUS_E_ALREADY;
-	}
-	qdf_atomic_set(&gp_hif_rtpm_ctx->tbtt_nack_delay_active, 0);
-	status = hif_rtpm_restore_autosuspend_delay();
-	qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->runtime_lock);
-
-	return status;
 }
 
 int hif_runtime_lock_init(qdf_runtime_lock_t *lock, const char *name)
@@ -689,8 +632,8 @@ static bool hif_rtpm_enabled(void)
 	if (qdf_unlikely(!gp_hif_rtpm_ctx))
 		return false;
 
-	if (!gp_hif_rtpm_ctx->enable_rpm)
-		return false;
+	if (gp_hif_rtpm_ctx->enable_rpm)
+		return true;
 
 	return __hif_rtpm_enabled(gp_hif_rtpm_ctx->dev);
 }
@@ -750,8 +693,7 @@ QDF_STATUS hif_rtpm_get(uint8_t type, uint32_t id)
 		} else if (ret == 0 || ret == -EINPROGRESS) {
 			qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
 			pm_state = qdf_atomic_read(&gp_hif_rtpm_ctx->pm_state);
-			if (pm_state >= HIF_RTPM_STATE_RESUMING ||
-			    pm_state == HIF_RTPM_STATE_ON) {
+			if (pm_state >= HIF_RTPM_STATE_RESUMING) {
 				__hif_rtpm_put_noidle(gp_hif_rtpm_ctx->dev);
 				gp_hif_rtpm_ctx->stats.request_resume_ts =
 							qdf_get_log_timestamp();
@@ -923,7 +865,7 @@ int hif_pm_runtime_prevent_suspend(struct hif_pm_runtime_lock *lock)
 	if (!hif_rtpm_enabled() || !lock)
 		return -EINVAL;
 
-	if (qdf_in_irq())
+	if (in_irq())
 		WARN_ON(1);
 
 	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->prevent_list_lock);
@@ -987,7 +929,7 @@ int hif_pm_runtime_prevent_suspend_sync(struct hif_pm_runtime_lock *lock)
 	if (!lock)
 		return -EINVAL;
 
-	if (qdf_in_irq())
+	if (in_irq())
 		WARN_ON(1);
 
 	__hif_pm_runtime_prevent_suspend_sync(lock);
@@ -1008,7 +950,7 @@ int hif_pm_runtime_allow_suspend(struct hif_pm_runtime_lock *lock)
 	if (!lock)
 		return -EINVAL;
 
-	if (qdf_in_irq())
+	if (in_irq())
 		WARN_ON(1);
 
 	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->prevent_list_lock);
@@ -1270,16 +1212,6 @@ int hif_rtpm_get_state(void)
 	return qdf_atomic_read(&gp_hif_rtpm_ctx->pm_state);
 }
 
-bool hif_rtpm_is_suspend_owner_thread(void)
-{
-	if (qdf_atomic_read(&gp_hif_rtpm_ctx->pm_state) !=
-	    HIF_RTPM_STATE_SUSPENDING)
-		return false;
-
-	return qdf_atomic_read(&gp_hif_rtpm_ctx->suspend_owner_pid) ==
-		qdf_get_current_pid();
-}
-
 int hif_pre_runtime_suspend(struct hif_opaque_softc *hif_ctx)
 {
 	if (!hif_can_suspend_link(hif_ctx)) {
@@ -1289,8 +1221,6 @@ int hif_pre_runtime_suspend(struct hif_opaque_softc *hif_ctx)
 
 	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
 	hif_rtpm_set_state(HIF_RTPM_STATE_SUSPENDING);
-	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid,
-		       qdf_get_current_pid());
 
 	/* keep this after set suspending */
 	if (!hif_rtpm_is_suspend_allowed()) {
@@ -1310,7 +1240,6 @@ int hif_pre_runtime_suspend(struct hif_opaque_softc *hif_ctx)
 void hif_process_runtime_suspend_success(void)
 {
 	hif_rtpm_set_state(HIF_RTPM_STATE_SUSPENDED);
-	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid, -1);
 	gp_hif_rtpm_ctx->stats.suspend_count++;
 	gp_hif_rtpm_ctx->stats.suspend_ts = qdf_get_log_timestamp();
 }
@@ -1319,7 +1248,6 @@ void hif_process_runtime_suspend_failure(void)
 {
 	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
 	hif_rtpm_set_state(HIF_RTPM_STATE_ON);
-	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid, -1);
 	hif_rtpm_pending_job();
 	qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->runtime_lock);
 
@@ -1408,6 +1336,7 @@ void hif_fastpath_resume(struct hif_opaque_softc *hif_ctx)
 		ce_state = scn->ce_id_to_state[CE_HTT_H2T_MSG];
 		qdf_spin_lock_bh(&ce_state->ce_index_lock);
 
+		/*war_ce_src_ring_write_idx_set */
 		CE_SRC_RING_WRITE_IDX_SET(scn, ce_state->ctrl_addr,
 					  ce_state->src_ring->write_index);
 		qdf_spin_unlock_bh(&ce_state->ce_index_lock);

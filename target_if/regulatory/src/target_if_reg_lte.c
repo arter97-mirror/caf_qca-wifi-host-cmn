@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ *
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -94,9 +94,9 @@ QDF_STATUS tgt_if_regulatory_register_ch_avoid_event_handler(
 	if (!wmi_handle)
 		return QDF_STATUS_E_FAILURE;
 
-	return wmi_unified_register_event_handler(
-			wmi_handle, wmi_wlan_freq_avoid_event_id,
-			tgt_reg_ch_avoid_event_handler, WMI_RX_WORK_CTX);
+	return wmi_unified_register_event(wmi_handle,
+					  wmi_wlan_freq_avoid_event_id,
+					  tgt_reg_ch_avoid_event_handler);
 }
 
 QDF_STATUS tgt_if_regulatory_unregister_ch_avoid_event_handler(
@@ -107,7 +107,7 @@ QDF_STATUS tgt_if_regulatory_unregister_ch_avoid_event_handler(
 	if (!wmi_handle)
 		return QDF_STATUS_E_FAILURE;
 
-	return wmi_unified_unregister_event_handler(
-			wmi_handle, wmi_wlan_freq_avoid_event_id);
+	return wmi_unified_unregister_event(wmi_handle,
+			wmi_wlan_freq_avoid_event_id);
 }
 #endif

@@ -53,6 +53,7 @@ osif_twt_enable_complete_cb(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	twt_en_priv->pdev_id = event->pdev_id;
 	twt_en_priv->status = event->status;
 
 	osif_request_complete(request);
@@ -89,6 +90,7 @@ osif_twt_disable_complete_cb(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	twt_en_priv->pdev_id = event->pdev_id;
 	twt_en_priv->status = event->status;
 
 	osif_request_complete(request);

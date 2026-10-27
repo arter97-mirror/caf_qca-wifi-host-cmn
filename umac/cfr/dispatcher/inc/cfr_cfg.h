@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -29,7 +28,7 @@
  * disabled
  * @Min: 0
  * @Max: Bitmap with no. of set bits equal to total no. of PDEVs in the SOC
- * @Default: 0x7
+ * @Default: 0
  *
  * This ini is used to disable CFR feature for PDEV.
  *
@@ -45,7 +44,7 @@
 	CFG_INI_UINT("cfr_disable", \
 		0, \
 		0x7, \
-		0x7, \
+		0, \
 		CFG_VALUE_OR_DEFAULT, \
 		"cfr disable bitmap")
 

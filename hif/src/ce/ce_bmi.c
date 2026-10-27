@@ -56,7 +56,7 @@ struct BMI_transaction {
 	qdf_dma_addr_t bmi_response_CE;   /* Rsp BMI msg in CE addr space */
 	unsigned int bmi_response_length; /* Length of received response */
 	unsigned int bmi_timeout_ms;
-	uint32_t bmi_transaction_flags;   /* flags for the transaction */
+	uint32_t bmi_transaction_flags;   /* flags for the transcation */
 };
 
 /*

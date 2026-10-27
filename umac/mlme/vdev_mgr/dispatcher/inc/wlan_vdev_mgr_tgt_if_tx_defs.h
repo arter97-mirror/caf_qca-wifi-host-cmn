@@ -204,18 +204,6 @@ struct sta_ps_params {
 };
 
 /**
- * struct traffic_monitoring_params - traffic monitoring cmd parameter
- * @vdev_id: vdev id
- * @perf_data_threshold: perf data threshold
- * @traffic_monitoring_time: traffic monitoring time
- */
-struct traffic_monitoring_params {
-	uint32_t vdev_id;
-	uint32_t perf_data_threshold;
-	uint32_t traffic_monitoring_time;
-};
-
-/**
  * struct rnr_bss_tbtt_info_param: Reported Vdev info
  * @bss_mac: Mac address
  * @beacon_intval: Beacon interval of reported AP
@@ -658,7 +646,6 @@ struct vdev_scan_nac_rssi_params {
  * @mlo_link_add: Dynamic link addition
  * @is_bridge_vdev: Indicate the vdev is a bridge vdev
  * @mlo_ieee_link_id_valid: Indicate the link id is valid
- * @start_as_active: indicate link should be started in active status
  * @rsvd: reserved bits
  */
 struct mlo_vdev_start_flags {
@@ -669,8 +656,7 @@ struct mlo_vdev_start_flags {
 		 mlo_link_add:1,
 		 is_bridge_vdev:1,
 		 mlo_ieee_link_id_valid:1,
-		 start_as_active:1,
-		 rsvd:24;
+		 rsvd:26;
 };
 
 /**
@@ -712,10 +698,8 @@ struct mlo_vdev_start_partner_links {
  * @pmf_enabled: pmf enabled
  * @ssid: ssid MAC
  * @num_noa_descriptors: number of noa descriptors
- * @pref_tx_ss: preferred tx streams
- * @pref_rx_ss: preferred rx streams
- * @oper_tx_ss: current operating tx streams
- * @oper_rx_ss: current operating rx streams
+ * @preferred_tx_streams: preferred tx streams
+ * @preferred_rx_streams: preferred rx streams
  * @cac_duration_ms: cac duration in milliseconds
  * @regdomain: Regulatory domain
  * @he_ops: HE ops
@@ -732,7 +716,6 @@ struct mlo_vdev_start_partner_links {
  * @mbssid_multi_group_id: Group id of current vdev
  * @target_tsf_us_lo: Target TSF value of current vdev from bits 31:0
  * @target_tsf_us_hi: Target TSF value of current vdev from bits 63:32
- * @uhr_ops: UHR ops IE
  */
 struct vdev_start_params {
 	uint8_t vdev_id;
@@ -744,10 +727,8 @@ struct vdev_start_params {
 	bool pmf_enabled;
 	struct wlan_ssid ssid;
 	uint32_t num_noa_descriptors;
-	uint32_t pref_tx_ss;
-	uint32_t pref_rx_ss;
-	uint32_t oper_tx_ss;
-	uint32_t oper_rx_ss;
+	uint32_t preferred_rx_streams;
+	uint32_t preferred_tx_streams;
 	uint32_t cac_duration_ms;
 	uint32_t regdomain;
 	uint32_t he_ops;
@@ -761,16 +742,15 @@ struct vdev_start_params {
 	uint8_t vdevid_trans;
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct mlo_vdev_start_flags mlo_flags;
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
 	uint32_t link_id;
+#endif
 	struct mlo_vdev_start_partner_links mlo_partner;
 #endif
 	uint8_t mbssid_multi_group_flag;
 	uint32_t mbssid_multi_group_id;
 	uint32_t target_tsf_us_lo;
 	uint32_t target_tsf_us_hi;
-#ifdef WLAN_FEATURE_11BN
-	uint32_t uhr_ops;
-#endif
 };
 
 /**
@@ -912,7 +892,7 @@ struct vdev_create_params {
 #ifdef WLAN_FEATURE_11BE_MLO
 	uint8_t mlo_mac[QDF_MAC_ADDR_SIZE];
 #endif
-#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
+#ifdef FEATURE_WLAN_SUPPORT_USD
 	uint32_t wfd_mode;
 #endif
 
@@ -957,12 +937,9 @@ struct vdev_up_params {
 /**
  * struct vdev_down_params - vdev down cmd parameter
  * @vdev_id: vdev id
- * @peer_macaddr: MAC address of the peer associated with the vdev that is
- * being brought down
  */
 struct vdev_down_params {
 	uint8_t vdev_id;
-	struct qdf_mac_addr peer_macaddr;
 };
 
 /**

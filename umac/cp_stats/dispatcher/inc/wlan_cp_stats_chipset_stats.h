@@ -16,9 +16,7 @@
 #include "wlan_cp_stats_chipset_stats_events.h"
 
 #define MAX_CSTATS_NODE_LENGTH 2048
-#define HOST_TYPE_NODE_COUNT 50
-#define FW_TYPE_NODE_COUNT 460
-
+#define MAX_CSTATS_NODE_COUNT 256
 #define MAX_CSTATS_VERSION_BUFF_LENGTH 100
 
 #define CSTATS_QMI_EVENT_TYPE 1
@@ -62,8 +60,7 @@ enum cstats_types {
 
 struct cstats_tx_rx_ops {
 	int (*cstats_send_data_to_usr)(char *buff, unsigned int len,
-				       enum cstats_types type,
-				       bool is_logging_enable);
+				       enum cstats_types type);
 };
 
 struct cstats_node {
@@ -74,45 +71,25 @@ struct cstats_node {
 	char logbuf[MAX_CSTATS_NODE_LENGTH];
 };
 
-/**
- * struct chipset_stats - Structure to manage chipset statistics logging
- * @cstat_free_list: Array of free list queues for each chipset stats type
- * @cstat_filled_list: Array of filled list queues for each chipset stats type
- * @cstats_lock: Spinlocks to synchronize access to each stats type's resources
- * @ccur_node: Current active node for each chipset stats type
- * @cstat_drop_cnt: Counter for dropped stats entries per type
- * @chipset_stats_push_rbs_delay_val_ms: Delay value (in ms) for pushing stats
- * to RBS
- * @chipset_stats_push_rbs_delay_interval: Interval for pushing stats to RBS
- * @cstats_no_flush: Flag to prevent moving filled nodes to free list after
- * flush
- * @ops: Operations structure for TX/RX callbacks related to chipset stats
- * @is_cstats_ini_enabled: Flag indicating if chipset stats logging is enabled
- * via INI
- * @is_cp_stats_debug_logging_enable: Flag to enable debug logging for CP stats
- * @is_direct_log_dispatch_enabled: Flag to enable direct dispatch of logs to
- * user space
- */
 struct chipset_stats {
 	qdf_list_t cstat_free_list[CSTATS_MAX_TYPE];
 	qdf_list_t cstat_filled_list[CSTATS_MAX_TYPE];
+
+	/* Lock to synchronize access to shared cstats resource */
 	qdf_spinlock_t cstats_lock[CSTATS_MAX_TYPE];
 	struct cstats_node *ccur_node[CSTATS_MAX_TYPE];
 	unsigned int cstat_drop_cnt[CSTATS_MAX_TYPE];
-	size_t chipset_stats_push_rbs_delay_val_ms;
-	size_t chipset_stats_push_rbs_delay_interval;
+
+	/* Dont move filled list nodes to free list after flush to user space */
 	bool cstats_no_flush[CSTATS_MAX_TYPE];
 	struct cstats_tx_rx_ops ops;
 	bool is_cstats_ini_enabled;
-	bool is_cp_stats_debug_logging_enable;
-	bool is_direct_log_dispatch_enabled;
 };
 
 #define wlan_cstats_fw_stats(len, buf) \
-	wlan_cp_stats_fw_log_event_dispatcher(CSTATS_FW_TYPE, buf, len);
-
+	wlan_cp_stats_cstats_write_to_buff(CSTATS_FW_TYPE, buf, len)
 #define wlan_cstats_host_stats(len, buf) \
-	wlan_cp_stats_host_log_event_dispatcher(CSTATS_HOST_TYPE, buf, len)
+	wlan_cp_stats_cstats_write_to_buff(CSTATS_HOST_TYPE, buf, len)
 
 #ifdef WLAN_CHIPSET_STATS
 /**
@@ -123,35 +100,6 @@ struct chipset_stats {
  * Return: QDF_STATUS
  */
 QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc);
-
-/**
- * wlan_cp_stats_enable_direct_log_dispatch - API to set chipset logging
- * dispatch flag
- * @psoc: Pointer to the psoc object
- * @direct_log_dispatch: Boolean flag to enable or disable direct log dispatch
- *
- * This function sets the internal flag that controls whether enhanced
- * chipset logging is enabled. It is the final handler that updates the
- * CP stats configuration.
- *
- * Return: None
- */
-void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
-					      bool direct_log_dispatch);
-
-/**
- * wlan_cp_stats_flush_host_buffer_if_pending() - Flush host buffer if data is
- * pending
- * @psoc: Pointer to the psoc (physical SOC) object
- *
- * This function checks if there is any data pending in the host buffer
- * associated with control plane statistics. If data is present, it flushes
- * the buffer to user space using the registered callback. It also resets
- * the buffer state after flushing.
- *
- * Return: None
- */
-void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc);
 
 /**
  * wlan_cp_stats_cstats_deinit() - Deinitialize chipset stats infra
@@ -169,81 +117,18 @@ void wlan_cp_stats_cstats_deinit(void);
  */
 void wlan_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops);
 
-/**
- * wlan_cp_stats_cstats_write_to_buff() - Write cstats event to buffer
- * @type: CSTATS type identifier (e.g., HOST or FW)
- * @to_be_sent: Pointer to the event payload
- * @length: Length of the event payload
+/*
+ * wlan_cp_stats_cstats_write_to_buff() - Write stats to the chipset stats
+ * buffer
+ * @type: Type of chipset stats to be written
+ * @to_be_sent: Pointer to stats payload which is to be write to cstats buffer
+ * @length: Length of the payload
  *
- * Writes chipset statistics (cstats) event data to the appropriate buffer
- * based on the event type. For firmware events, start and end markers are
- * added around the payload. For host events, only the payload is copied,
- * and markers are added during flush to userspace.
- *
- * If the current buffer node lacks sufficient space, a new buffer node is
- * allocated. Optionally logs the event timestamp if debug logging is enabled.
- *
- * Return: void
+ * Return : void
  */
 void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
-					void *to_be_sent, uint32_t length);
-
-/**
- * wlan_cp_stats_host_log_event_dispatcher() - Handle conditional dispatch
- * logic for host cp stats
- * @type:      Type of cstats event
- * @event:     Pointer to the event data
- * @event_len: Length of the event data
- *
- * Based on the use_direct_fw_dispatch flag:
- * direct dispatch (wlan_cp_stats_host_append_and_flush)
- * buffered dispatch (wlan_cp_stats_cstats_write_to_buff)
- */
-void wlan_cp_stats_host_log_event_dispatcher(enum cstats_types type,
-					     void *event, uint32_t event_len);
-
-/**
- * wlan_cp_stats_fw_log_event_dispatcher() - Dispatch FW log event based on flag
- * @type:       CSTATS type identifier
- * @event:      Pointer to FW log event data
- * @event_len:  Length of the FW log event data
- *
- * Dispatches firmware log events either directly to userspace or via
- * buffered write, depending on the is_direct_log_dispatch_enabled flag.
- *
- * Return: void
- */
-void wlan_cp_stats_fw_log_event_dispatcher(enum cstats_types type, void *event,
-					   int event_len);
-
-/**
- * wlan_cp_stats_fw_log_event_direct_flush() - Send FW log directly to userspace
- * @type: CSTATS type identifier
- * @to_be_sent: Pointer to FW log event data
- * @plen: Length of the FW log event data
- *
- * Logs CSTATS_FW_TYPE entries by packaging them with markers
- * and sending to userspace via callback without buffering logic.
- *
- * Return: void
- */
-void
-wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
-					void *to_be_sent, uint32_t plen);
-
-
-/**
- * wlan_cp_stats_host_append_and_flush() - Flush host cstats data
- * @type:       Type of cstats event
- * @to_be_sent: Pointer to the payload to be sent
- * @plen:       Length of the payload
- *
- * Immediately writes the cstats payload to the buffer with start and end
- * markers. If the buffer exceeds its limit, it is flushed to userspace
- * via Netlink.
- */
-void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
-					 void *to_be_sent, uint32_t plen);
+					void *to_be_sent,
+					uint32_t length);
 
 /**
  * wlan_cp_stats_cstats_send_buffer_to_user() - Flush chipset stats to the
@@ -274,18 +159,6 @@ void wlan_cp_stats_cstats_pkt_log(uint8_t *sa, uint8_t *da,
 				  enum qdf_dp_tx_rx_status status,
 				  uint8_t vdev_id, enum QDF_OPMODE op_mode);
 #else
-static inline
-void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
-					      bool direct_log_dispatch)
-{
-}
-
-static inline
-void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc,
-						bool dump_in_progress)
-{
-}
-
 static inline QDF_STATUS
 wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 {
@@ -304,30 +177,6 @@ wlan_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops)
 static inline void
 wlan_cp_stats_cstats_write_to_buff(enum cstats_types type, void *to_be_sent,
 				   uint32_t length)
-{
-}
-
-static inline
-void wlan_cp_stats_host_log_event_dispatcher(enum cstats_types type,
-					     void *event, uint32_t event_len)
-{
-}
-
-static inline
-void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
-					 void *to_be_sent, uint32_t plen)
-{
-}
-
-static inline void
-wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
-					void *to_be_sent, uint32_t plen)
-{
-}
-
-static inline void
-wlan_cp_stats_fw_log_event_dispatcher(enum cstats_types type, void *event,
-				      int event_len)
 {
 }
 

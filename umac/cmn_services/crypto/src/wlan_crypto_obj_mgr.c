@@ -44,14 +44,6 @@
 
 static qdf_mutex_t crypto_lock;
 
-/*
- * Serializes all access to the per-vdev PMKSA cache
- * (crypto_params->pmksa[]). Kept separate from crypto_lock, which
- * protects the crypto key table, so the PMKSA lookup/free paths do not
- * contend with key install/migration paths.
- */
-static qdf_mutex_t pmksa_lock;
-
 extern const struct wlan_crypto_cipher
 				*wlan_crypto_cipher_ops[WLAN_CRYPTO_CIPHER_MAX];
 
@@ -70,6 +62,7 @@ static inline int crypto_log2_ceil(unsigned int value)
 	return log2;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static QDF_STATUS wlan_crypto_hash_init(struct crypto_psoc_priv_obj *psoc)
 {
 	int log2, hash_elems, i;
@@ -96,6 +89,7 @@ static QDF_STATUS wlan_crypto_hash_init(struct crypto_psoc_priv_obj *psoc)
 
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 static inline uint32_t crypto_hash_index(struct crypto_psoc_priv_obj *psoc,
 					 union crypto_align_mac_addr *mac_addr,
@@ -175,22 +169,12 @@ static inline void crypto_hash_add(struct crypto_psoc_priv_obj *psoc,
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
-/**
- * wlan_crypto_add_key_entry() - Add a filled key entry to the hashing
- * framework
- * @psoc: PSOC pointer
- * @new_entry: New entry
- *
- * Return: QDF_STATUS
- */
-static QDF_STATUS
-wlan_crypto_add_key_entry(struct wlan_objmgr_psoc *psoc,
-			  struct wlan_crypto_key_entry *new_entry)
+QDF_STATUS wlan_crypto_add_key_entry(struct wlan_objmgr_psoc *psoc,
+				     struct wlan_crypto_key_entry *new_entry)
 {
 	struct crypto_psoc_priv_obj *crypto_psoc_obj;
 	uint8_t link_id = new_entry->link_id;
 	struct wlan_crypto_key_entry *crypto_entry = NULL;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	crypto_psoc_obj =
 		wlan_objmgr_psoc_get_comp_private_obj(psoc,
@@ -200,35 +184,31 @@ wlan_crypto_add_key_entry(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_mutex_acquire(&crypto_psoc_obj->crypto_key_lock);
-
 	if (qdf_unlikely(qdf_atomic_read(&crypto_psoc_obj->crypto_key_cnt) >=
 					 CRYPTO_MAX_HASH_ENTRY)) {
 		crypto_err("max crypto hash entry limit reached mac_addr: "
 			   QDF_MAC_ADDR_FMT,
 			   QDF_MAC_ADDR_REF(new_entry->mac_addr.raw));
-		status = QDF_STATUS_E_NOMEM;
-		goto rel_lock;
+		return QDF_STATUS_E_NOMEM;
 	}
 
 	crypto_debug("crypto add entry link id %d mac_addr: " QDF_MAC_ADDR_FMT,
 		     link_id, QDF_MAC_ADDR_REF(new_entry->mac_addr.raw));
 
+	qdf_mutex_acquire(&crypto_psoc_obj->crypto_key_lock);
 	crypto_entry =
 		crypto_hash_find_by_linkid_and_macaddr(crypto_psoc_obj, link_id,
 						       new_entry->mac_addr.raw);
+	qdf_mutex_release(&crypto_psoc_obj->crypto_key_lock);
 
 	if (qdf_unlikely(crypto_entry))
-		wlan_crypto_free_key_by_link_id(
-				psoc,
-				(struct qdf_mac_addr *)new_entry->mac_addr.raw,
-				link_id);
+		wlan_crypto_free_key_by_link_id(psoc,
+						(struct qdf_mac_addr *)new_entry->mac_addr.raw,
+						link_id);
 
 	crypto_entry = qdf_mem_malloc(sizeof(*crypto_entry));
-	if (!crypto_entry) {
-		status = QDF_STATUS_E_NOMEM;
-		goto rel_lock;
-	}
+	if (!crypto_entry)
+		return QDF_STATUS_E_NOMEM;
 
 	*crypto_entry = *new_entry;
 
@@ -236,35 +216,7 @@ wlan_crypto_add_key_entry(struct wlan_objmgr_psoc *psoc,
 	qdf_atomic_inc(&crypto_psoc_obj->crypto_key_cnt);
 	crypto_entry->is_active = 1;
 
-rel_lock:
-	qdf_mutex_release(&crypto_psoc_obj->crypto_key_lock);
-	return status;
-}
-#endif
-
-#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_ROAM_OFFLOAD)
-QDF_STATUS wlan_crypto_key_event_handler(struct wlan_objmgr_psoc *psoc,
-					 struct wlan_crypto_key_entry *keys,
-					 uint8_t num_keys)
-{
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	uint8_t i;
-
-	wlan_crypto_aquire_lock();
-
-	for (i = 0; i < num_keys; i++) {
-		status = wlan_crypto_add_key_entry(psoc, &keys[i]);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			crypto_err("Failed to add key entry for link:%d",
-				   keys[i].link_id);
-			wlan_crypto_free_key(&keys[i].keys);
-			qdf_mem_zero(&keys[i], sizeof(*keys));
-		}
-	}
-
-	wlan_crypto_release_lock();
-
-	return status;
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 
@@ -275,35 +227,28 @@ QDF_STATUS crypto_add_entry(struct crypto_psoc_priv_obj *psoc,
 			    uint8_t key_index)
 {
 	struct wlan_crypto_key_entry *crypto_entry = NULL;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	uint8_t igtk_key_idx, bigtk_key_idx;
-	struct wlan_crypto_key *old_vlan_key;
 
-	crypto_debug("crypto add entry link id %d mac_addr " QDF_MAC_ADDR_FMT
-		     " key index %d psoc key cnt %d",
-		     link_id, QDF_MAC_ADDR_REF(mac_addr),
-		     key_index, qdf_atomic_read(&psoc->crypto_key_cnt));
-
-	qdf_mutex_acquire(&psoc->crypto_key_lock);
+	crypto_debug("crypto add entry link id %d mac_addr: " QDF_MAC_ADDR_FMT,
+		     link_id, QDF_MAC_ADDR_REF(mac_addr));
 
 	if (qdf_unlikely(qdf_atomic_read(&psoc->crypto_key_cnt) >=
 					 CRYPTO_MAX_HASH_ENTRY)) {
 		crypto_err("max crypto hash entry limit reached mac_addr: "
 			   QDF_MAC_ADDR_FMT, QDF_MAC_ADDR_REF(mac_addr));
-		status = QDF_STATUS_E_NOMEM;
-		goto rel_lock;
+		return QDF_STATUS_E_NOMEM;
 	}
 
+	qdf_mutex_acquire(&psoc->crypto_key_lock);
 	crypto_entry = crypto_hash_find_by_linkid_and_macaddr(psoc, link_id,
 							      mac_addr);
+	qdf_mutex_release(&psoc->crypto_key_lock);
+
 	if (qdf_likely(!crypto_entry)) {
 		crypto_entry = (struct wlan_crypto_key_entry *)
 			qdf_mem_malloc(sizeof(struct wlan_crypto_key_entry));
 
-		if (qdf_unlikely(!crypto_entry)) {
-			status = QDF_STATUS_E_NOMEM;
-			goto rel_lock;
-		}
+		if (qdf_unlikely(!crypto_entry))
+			return QDF_STATUS_E_NOMEM;
 
 		qdf_copy_macaddr((struct qdf_mac_addr *)&crypto_entry->mac_addr.raw[0],
 				 (struct qdf_mac_addr *)mac_addr);
@@ -315,81 +260,28 @@ QDF_STATUS crypto_add_entry(struct crypto_psoc_priv_obj *psoc,
 
 	if (!is_valid_keyix(key_index)) {
 		crypto_err("Invalid key index %d", key_index);
-		status = QDF_STATUS_E_INVAL;
-		goto rel_lock;
+		return QDF_STATUS_E_INVAL;
 	}
 
 	if (key_index < WLAN_CRYPTO_MAXKEYIDX) {
-		if (crypto_entry->keys.key[key_index] &&
-		    crypto_entry->keys.key[key_index] != crypto_key) {
-			/*
-			 * If keys address is different from new crypto entry,
-			 * then older keys need to be freed before assigning
-			 * new keys in crypto object. There can be memory
-			 * leak when crypto object will be freed because memory
-			 * will freed for new keys only as older key pointer
-			 * will be overwriiten by new key pointer.
-			 */
-			crypto_info("crypto key addr1:%pK addr2:%pK key index %d, link id %d mac_addr: " QDF_MAC_ADDR_FMT,
-				    crypto_entry->keys.key[key_index],
-				    crypto_key, key_index, link_id,
-				    QDF_MAC_ADDR_REF(mac_addr));
-			qdf_mem_free(crypto_entry->keys.key[key_index]);
-		}
-
 		crypto_entry->keys.key[key_index] = crypto_key;
 	} else if (is_igtk(key_index)) {
-		igtk_key_idx = key_index - WLAN_CRYPTO_MAXKEYIDX;
-		if (crypto_entry->keys.igtk_key[igtk_key_idx] &&
-		    crypto_entry->keys.igtk_key[igtk_key_idx] != crypto_key) {
-			crypto_info("crypto key addr1:%pK addr2:%pK key index %d, link id %d mac_addr: " QDF_MAC_ADDR_FMT,
-				    crypto_entry->keys.igtk_key[igtk_key_idx],
-				    crypto_key, key_index, link_id,
-				    QDF_MAC_ADDR_REF(mac_addr));
-			qdf_mem_free(crypto_entry->keys.igtk_key[igtk_key_idx]);
-		}
-		crypto_entry->keys.igtk_key[igtk_key_idx] = crypto_key;
-		crypto_entry->keys.def_igtk_tx_keyid = igtk_key_idx;
+		crypto_entry->keys.igtk_key[key_index - WLAN_CRYPTO_MAXKEYIDX] =
+		crypto_key;
+		crypto_entry->keys.def_igtk_tx_keyid =
+				key_index - WLAN_CRYPTO_MAXKEYIDX;
 		crypto_entry->keys.igtk_key_type = crypto_key->cipher_type;
-	} else if (is_bigtk(key_index)) {
-		bigtk_key_idx = key_index - WLAN_CRYPTO_MAXKEYIDX -
-				WLAN_CRYPTO_MAXIGTKKEYIDX;
-		if (crypto_entry->keys.bigtk_key[bigtk_key_idx] &&
-		    crypto_entry->keys.bigtk_key[bigtk_key_idx] != crypto_key) {
-			crypto_info("crypto key addr1:%pK addr2:%pK key index %d, link id %d mac_addr: " QDF_MAC_ADDR_FMT,
-				    crypto_entry->keys.bigtk_key[bigtk_key_idx],
-				    crypto_key, key_index, link_id,
-				    QDF_MAC_ADDR_REF(mac_addr));
-			qdf_mem_free(
-				crypto_entry->keys.bigtk_key[bigtk_key_idx]);
-		}
-		crypto_entry->keys.bigtk_key[bigtk_key_idx] = crypto_key;
-		crypto_entry->keys.def_bigtk_tx_keyid = bigtk_key_idx;
-	} else if (is_vgtk(key_index)) {
-		old_vlan_key = wlan_crypto_get_vlan_key(&crypto_entry->keys,
-							key_index);
-		if (old_vlan_key && old_vlan_key != crypto_key) {
-			crypto_info("crypto key addr1:%pK addr2:%pK key index %d, link id %d mac_addr: " QDF_MAC_ADDR_FMT,
-				    old_vlan_key, crypto_key, key_index,
-				    link_id, QDF_MAC_ADDR_REF(mac_addr));
-			qdf_mem_free(old_vlan_key);
-		}
-		wlan_crypto_save_vlan_key(&crypto_entry->keys, key_index,
-					  crypto_key);
 	} else {
-		/*
-		 * is_valid_keyix() above admits every index below
-		 * WLAN_CRYPTO_TOTAL_KEYIDX; refuse rather than silently
-		 * drop the key if no slot class matched.
-		 */
-		crypto_err("No slot class for key index %d", key_index);
-		status = QDF_STATUS_E_INVAL;
+		crypto_entry->keys.bigtk_key[key_index - WLAN_CRYPTO_MAXKEYIDX
+				- WLAN_CRYPTO_MAXIGTKKEYIDX] = crypto_key;
+		crypto_entry->keys.def_bigtk_tx_keyid =
+				key_index - WLAN_CRYPTO_MAXKEYIDX
+				- WLAN_CRYPTO_MAXIGTKKEYIDX;
 	}
-rel_lock:
-	qdf_mutex_release(&psoc->crypto_key_lock);
-	return status;
+	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static void crypto_remove_entry(struct crypto_psoc_priv_obj *psoc,
 				struct wlan_crypto_key_entry *crypto_entry,
 				void *ptr)
@@ -400,17 +292,10 @@ static void crypto_remove_entry(struct crypto_psoc_priv_obj *psoc,
 					   crypto_entry->link_id);
 	TAILQ_HEAD(, wlan_crypto_key_entry) * free_list = ptr;
 
-	if (qdf_atomic_read(&psoc->crypto_key_cnt) >
-		CRYPTO_MAX_HASH_ENTRY / 4)
-		crypto_debug_rl("crypto remove entry key index %d link id %d cnt %d",
-				index, crypto_entry->link_id,
-				qdf_atomic_read(&psoc->crypto_key_cnt));
-	else
-		crypto_debug("crypto remove entry key index %d link id %d cnt %d",
-			     index, crypto_entry->link_id,
-			     qdf_atomic_read(&psoc->crypto_key_cnt));
+	crypto_info("crypto remove entry key index %d link id %d",
+		    index, crypto_entry->link_id);
 
-	for (i = 0; i < WLAN_CRYPTO_MAXKEYIDX; i++) {
+	for (i = 0; i < WLAN_CRYPTO_MAX_VLANKEYIX; i++) {
 		if (crypto_entry->keys.key[i]) {
 			qdf_mem_free(crypto_entry->keys.key[i]);
 			crypto_entry->keys.key[i] = NULL;
@@ -430,8 +315,6 @@ static void crypto_remove_entry(struct crypto_psoc_priv_obj *psoc,
 			crypto_entry->keys.bigtk_key[i] = NULL;
 		}
 	}
-
-	wlan_crypto_free_vlan_keys(&crypto_entry->keys);
 	/* Reset All key index as well */
 	crypto_entry->keys.def_tx_keyid = 0;
 	crypto_entry->keys.def_igtk_tx_keyid = 0;
@@ -450,22 +333,9 @@ static void crypto_free_list(struct crypto_psoc_priv_obj *psoc, void *ptr)
 
 	TAILQ_FOREACH_SAFE(crypto_entry, free_list, hash_list_elem,
 			   hash_entry_next) {
-		if (qdf_atomic_read(&psoc->crypto_key_cnt) >
-			CRYPTO_MAX_HASH_ENTRY / 4)
-			crypto_debug_rl("crypto delete for link_id %d mac_addr "
-					QDF_MAC_ADDR_FMT " psoc key cnt %d",
-					crypto_entry->link_id,
-					QDF_MAC_ADDR_REF(
-					crypto_entry->mac_addr.raw),
-					qdf_atomic_read(
-					&psoc->crypto_key_cnt));
-		else
-			crypto_debug("crypto delete for link_id %d mac_addr "
-				     QDF_MAC_ADDR_FMT " psoc key cnt %d",
-				     crypto_entry->link_id,
-				     QDF_MAC_ADDR_REF(
-				     crypto_entry->mac_addr.raw),
-				     qdf_atomic_read(&psoc->crypto_key_cnt));
+		crypto_debug("crypto delete for link_id %d mac_addr "
+			     QDF_MAC_ADDR_FMT, crypto_entry->link_id,
+			     QDF_MAC_ADDR_REF(crypto_entry->mac_addr.raw));
 		qdf_mem_free(crypto_entry);
 		if (!qdf_atomic_read(&psoc->crypto_key_cnt))
 			crypto_debug("Invalid crypto_key_cnt");
@@ -597,6 +467,11 @@ static QDF_STATUS wlan_crypto_psoc_obj_destroy_handler(
 	qdf_mem_free(crypto_psoc_obj);
 	return status;
 }
+#else
+void crypto_flush_entries(struct wlan_objmgr_psoc *psoc)
+{
+}
+#endif
 
 static QDF_STATUS wlan_crypto_register_all_ciphers(
 					struct wlan_crypto_params *crypto_param)
@@ -737,7 +612,7 @@ void wlan_crypto_free_key(struct wlan_crypto_keys *crypto_key)
 		return;
 	}
 
-	for (i = 0; i < WLAN_CRYPTO_MAXKEYIDX; i++) {
+	for (i = 0; i < WLAN_CRYPTO_MAX_VLANKEYIX; i++) {
 		if (crypto_key->key[i]) {
 			qdf_mem_free(crypto_key->key[i]);
 			crypto_key->key[i] = NULL;
@@ -758,14 +633,13 @@ void wlan_crypto_free_key(struct wlan_crypto_keys *crypto_key)
 		}
 	}
 
-	wlan_crypto_free_vlan_keys(crypto_key);
-
 	/* Reset All key index as well */
 	crypto_key->def_tx_keyid = 0;
 	crypto_key->def_igtk_tx_keyid = 0;
 	crypto_key->def_bigtk_tx_keyid = 0;
 }
 
+#ifdef CRYPTO_SET_KEY_CONVERGED
 void wlan_crypto_free_vdev_key(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_crypto_comp_priv *crypto_priv;
@@ -778,6 +652,7 @@ void wlan_crypto_free_vdev_key(struct wlan_objmgr_vdev *vdev)
 
 	wlan_crypto_free_key(&crypto_priv->crypto_key);
 }
+#endif
 
 void wlan_crypto_aquire_lock(void)
 {
@@ -789,16 +664,7 @@ void wlan_crypto_release_lock(void)
 	qdf_mutex_release(&crypto_lock);
 }
 
-void wlan_crypto_pmksa_aquire_lock(void)
-{
-	qdf_mutex_acquire(&pmksa_lock);
-}
-
-void wlan_crypto_pmksa_release_lock(void)
-{
-	qdf_mutex_release(&pmksa_lock);
-}
-
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     struct qdf_mac_addr *link_addr,
 				     uint8_t link_id)
@@ -838,82 +704,7 @@ void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 	qdf_mutex_release(&crypto_psoc_obj->crypto_key_lock);
 }
 
-QDF_STATUS
-wlan_crypto_copy_ml_sta_link_key(struct wlan_objmgr_psoc *psoc,
-				 struct wlan_crypto_ml_key_copy_params *params)
-{
-	struct wlan_crypto_key *src_key;
-	struct wlan_crypto_key *dst_key;
-	uint8_t key_index;
-	bool dst_key_alloc = false;
-	QDF_STATUS status = QDF_STATUS_E_NOENT;
-	uint8_t max_key_index = WLAN_CRYPTO_MAXKEYIDX +
-				WLAN_CRYPTO_MAXIGTKKEYIDX +
-				WLAN_CRYPTO_MAXBIGTKKEYIDX;
-
-	if (!psoc || !params) {
-		crypto_err("invalid params");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (!params->src_link_addr || !params->dst_link_addr ||
-	    !params->dst_peer_addr) {
-		crypto_err("invalid link addr");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	wlan_crypto_aquire_lock();
-
-	for (key_index = 0; key_index < max_key_index; key_index++) {
-		src_key = wlan_crypto_get_ml_sta_link_key(psoc, key_index,
-							  params->src_link_addr,
-							  params->src_link_id);
-		if (!src_key || src_key->key_type != params->key_type)
-			continue;
-
-		dst_key = wlan_crypto_get_ml_sta_link_key(psoc, key_index,
-							  params->dst_link_addr,
-							  params->dst_link_id);
-		if (!dst_key) {
-			dst_key = qdf_mem_malloc(sizeof(*dst_key));
-			if (!dst_key) {
-				status = QDF_STATUS_E_NOMEM;
-				break;
-			}
-			dst_key_alloc = true;
-		}
-
-		qdf_mem_copy(dst_key, src_key, sizeof(*dst_key));
-		/*
-		 * The key install path passes macaddr to firmware as the peer,
-		 * so point the copy at the destination link's peer.
-		 */
-		qdf_mem_copy(dst_key->macaddr, params->dst_peer_addr->bytes,
-			     QDF_MAC_ADDR_SIZE);
-
-		status = wlan_crypto_save_ml_sta_key(psoc, key_index, dst_key,
-						     params->dst_link_addr,
-						     params->dst_link_id);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			crypto_err("failed to save key %d for link_id %d",
-				   key_index, params->dst_link_id);
-			if (dst_key_alloc)
-				qdf_mem_free(dst_key);
-			break;
-		}
-
-		crypto_debug("copied key %d from link_id %d to link_id %d",
-			     key_index, params->src_link_id,
-			     params->dst_link_id);
-		params->copied_key_index = key_index;
-		break;
-	}
-
-	wlan_crypto_release_lock();
-
-	return status;
-}
-
+#endif
 static QDF_STATUS wlan_crypto_vdev_obj_destroy_handler(
 						struct wlan_objmgr_vdev *vdev,
 						void *arg)
@@ -970,6 +761,7 @@ static QDF_STATUS wlan_crypto_peer_obj_destroy_handler(
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static int register_psoc_create_handler(void)
 {
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
@@ -1014,15 +806,35 @@ static int unregister_psoc_destroy_handler(void)
 	return status;
 }
 
+#else
+static int register_psoc_create_handler(void)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static int register_psoc_destroy_handler(void)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static int unregister_psoc_create_handler(void)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static int unregister_psoc_destroy_handler(void)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+#endif
+
 QDF_STATUS __wlan_crypto_init(void)
 {
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	/* Initialize crypto global lock*/
 	qdf_mutex_create(&crypto_lock);
-
-	/* Initialize the PMKSA cache lock */
-	qdf_mutex_create(&pmksa_lock);
 
 	status = register_psoc_create_handler();
 	if (QDF_IS_STATUS_ERROR(status)) {
@@ -1116,9 +928,6 @@ QDF_STATUS __wlan_crypto_deinit(void)
 
 	/* Destroy crypto global lock */
 	qdf_mutex_destroy(&crypto_lock);
-
-	/* Destroy the PMKSA cache lock */
-	qdf_mutex_destroy(&pmksa_lock);
 
 	return QDF_STATUS_SUCCESS;
 }

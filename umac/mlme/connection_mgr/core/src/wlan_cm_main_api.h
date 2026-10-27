@@ -29,6 +29,9 @@
 #include <include/wlan_mlme_cmn.h>
 #include <wlan_crypto_global_api.h>
 #include <wlan_if_mgr_api.h>
+#ifdef WLAN_CM_USE_SPINLOCK
+#include <scheduler_api.h>
+#endif
 #include <wlan_cp_stats_chipset_stats.h>
 
 #define CM_ID_LSWITCH_BIT 0x10000000
@@ -49,13 +52,6 @@
 
 #define CM_PREFIX_FMT "vdev %d cm_id 0x%x: "
 #define CM_PREFIX_REF(vdev_id, cm_id) (vdev_id), (cm_id)
-
-
-/* Get candidate flags */
-/* Is scan for ssid is not done for this connection */
-#define CM_SCAN_SSID_ALLOWED 0
-/* Call is from update candidate list */
-#define CM_UPDATE_CANDIDATE_REQ 1
 
 /*************** CONNECT APIs ****************/
 
@@ -226,7 +222,7 @@ QDF_STATUS cm_try_next_candidate(struct cnx_mgr *cm_ctx,
 QDF_STATUS
 cm_resume_connect_after_peer_create(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id);
 
-#ifdef WLAN_FEATURE_11BE_MLO
+#if defined(CONN_MGR_ADV_FEATURE) && defined(WLAN_FEATURE_11BE_MLO)
 /**
  * cm_bss_peer_create_resp_mlo_attach() - Create MLO peer and attach objmgr peer
  * @vdev: VDEV object manager pointer
@@ -285,25 +281,6 @@ QDF_STATUS cm_connect_rsp(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS cm_notify_connect_complete(struct cnx_mgr *cm_ctx,
 				      struct wlan_cm_connect_resp *resp,
 				      bool acquire_lock);
-
-#ifdef WLAN_FEATURE_11BE_MLO
-/**
- * cm_update_link_channel_info - Update channel link info
- * @vdev: Pointer to vdev object
- * @mac_addr: Bssid for which channel info needs update
- * @freq: Frequency of the given bssid
- *
- * Return: None
- */
-void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
-				 struct qdf_mac_addr *mac_addr,
-				 qdf_freq_t freq);
-#else
-static inline void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
-					       struct qdf_mac_addr *mac_addr,
-					       qdf_freq_t freq)
-{}
-#endif
 
 /**
  * cm_update_scan_mlme_info() - This API would be called after connect complete
@@ -388,15 +365,16 @@ cm_send_connect_start_fail(struct cnx_mgr *cm_ctx,
 /**
  * cm_find_bss_from_candidate_list() - get bss entry by bssid value
  * @candidate_list: candidate list
- * @scan_entry: scan entry
+ * @bssid: bssid to find
  * @entry_found: found bss entry
  *
  * Return: true if find bss entry with bssid
  */
 bool cm_find_bss_from_candidate_list(qdf_list_t *candidate_list,
-				     struct scan_cache_entry *scan_entry,
+				     struct qdf_mac_addr *bssid,
 				     struct scan_cache_node **entry_found);
 
+#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * cm_hw_mode_change_resp() - HW mode change response
  * @pdev: pdev pointer
@@ -421,6 +399,15 @@ void cm_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 QDF_STATUS cm_ser_connect_after_mode_change_resp(struct cnx_mgr *cm_ctx,
 						wlan_cm_id *cm_id,
 						enum wlan_cm_sm_evt event);
+#else
+static inline
+QDF_STATUS cm_ser_connect_after_mode_change_resp(struct cnx_mgr *cm_ctx,
+						wlan_cm_id *cm_id,
+						enum wlan_cm_sm_evt event)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 /*************** DISCONNECT APIs ****************/
 
@@ -603,10 +590,17 @@ cm_handle_rso_stop_rsp(struct wlan_objmgr_vdev *vdev,
  *
  * Return: bool
  */
+#ifdef CONN_MGR_ADV_FEATURE
 static inline bool cm_ser_get_blocking_cmd(void)
 {
 	return true;
 }
+#else
+static inline bool cm_ser_get_blocking_cmd(void)
+{
+	return false;
+}
+#endif
 
 /**
  * cm_get_cm_id() - Get unique cm id for connect/disconnect request
@@ -651,6 +645,7 @@ cm_ext_t *cm_get_ext_hdl_fl(struct wlan_objmgr_vdev *vdev,
  */
 void cm_reset_active_cm_id(struct wlan_objmgr_vdev *vdev, wlan_cm_id cm_id);
 
+#ifdef CRYPTO_SET_KEY_CONVERGED
 /**
  * cm_set_key() - set wep or fils key on connection completion
  * @cm_ctx: connection manager context
@@ -662,7 +657,9 @@ void cm_reset_active_cm_id(struct wlan_objmgr_vdev *vdev, wlan_cm_id cm_id);
  */
 QDF_STATUS cm_set_key(struct cnx_mgr *cm_ctx, bool unicast,
 		      uint8_t key_idx, struct qdf_mac_addr *bssid);
+#endif
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_store_wep_key() - store wep keys in crypto on connect active
  * @cm_ctx: connection manager context
@@ -832,6 +829,87 @@ cm_is_link_add_connect_resp(struct wlan_cm_connect_resp *resp)
  * Return: bool
  */
 bool cm_is_link_add_cmd_active(struct wlan_objmgr_vdev *vdev);
+#else
+static inline void cm_store_wep_key(struct cnx_mgr *cm_ctx,
+				    struct wlan_cm_connect_req *req,
+				    wlan_cm_id cm_id)
+{}
+
+static inline QDF_STATUS
+cm_inform_dlm_connect_complete(struct wlan_objmgr_vdev *vdev,
+			       struct wlan_cm_connect_resp *resp)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * cm_peer_create_on_bss_select_ind_resp() - Called to create peer
+ * if bss select inidication's resp was success
+ * @cm_ctx: connection manager context
+ * @cm_id: Connection mgr ID assigned to this connect request.
+ *
+ * Return: QDF status
+ */
+QDF_STATUS
+cm_peer_create_on_bss_select_ind_resp(struct cnx_mgr *cm_ctx,
+				      wlan_cm_id *cm_id);
+
+/**
+ * cm_bss_select_ind_rsp() - Connection manager resp for bss
+ * select indication
+ * @vdev: vdev pointer
+ * @status: Status
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS cm_bss_select_ind_rsp(struct wlan_objmgr_vdev *vdev,
+				 QDF_STATUS status);
+
+static inline bool cm_is_link_switch_connect_req(struct cm_connect_req *req)
+{
+	return false;
+}
+
+static inline bool cm_is_link_add_connect_req(struct cm_connect_req *req)
+{
+	return false;
+}
+
+static inline bool
+cm_is_link_switch_disconnect_req(struct cm_disconnect_req *req)
+{
+	return false;
+}
+
+static inline bool cm_is_link_switch_cmd(wlan_cm_id cm_id)
+{
+	return false;
+}
+
+static inline bool
+cm_is_link_switch_disconnect_resp(struct wlan_cm_discon_rsp *resp)
+{
+	return false;
+}
+
+static inline bool
+cm_is_link_switch_connect_resp(struct wlan_cm_connect_resp *resp)
+{
+	return false;
+}
+
+static inline bool
+cm_is_link_add_connect_resp(struct wlan_cm_connect_resp *resp)
+{
+	return false;
+}
+
+static inline bool
+cm_is_link_add_cmd_active(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif
 
 #ifdef WLAN_FEATURE_FILS_SK
 /**
@@ -1008,25 +1086,6 @@ void cm_vdev_scan_cancel(struct wlan_objmgr_pdev *pdev,
 			 struct wlan_objmgr_vdev *vdev);
 
 /**
- * cm_pdev_scan_cancel() - Cancel all scans on the pdev
- * @pdev: pdev object
- * @vdev: vdev object of the connecting vdev
- *
- * Cancel all scans on the pdev (not just a single vdev) before starting
- * connection. This prevents long-duration scans on other vdevs (e.g.,
- * P2P-ROC) from blocking the VDEV_START critical channel request, which
- * can cause timeouts and crashes.
- *
- * Synchronously cancels and waits, bounded to 200ms, so a connect
- * attempt does not race with an in-progress scan. Must only be called
- * from the connect request's calling thread (dispatcher entry point).
- *
- * Return: void
- */
-void cm_pdev_scan_cancel(struct wlan_objmgr_pdev *pdev,
-			 struct wlan_objmgr_vdev *vdev);
-
-/**
  * cm_fill_disconnect_resp_from_cm_id() - Fill disconnect response
  * @cm_ctx: connection manager context
  * @cm_id: cm id of connect/disconnect req
@@ -1097,7 +1156,7 @@ void cm_set_max_connect_timeout(struct wlan_objmgr_vdev *vdev,
 				uint32_t max_connect_timeout);
 
 /**
- * cm_is_vdev_connecting() - check if vdev is in connecting state
+ * cm_is_vdev_connecting() - check if vdev is in conneting state
  * @vdev: vdev pointer
  *
  * Return: bool
@@ -1105,7 +1164,7 @@ void cm_set_max_connect_timeout(struct wlan_objmgr_vdev *vdev,
 bool cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev);
 
 /**
- * cm_is_vdev_connected() - check if vdev is in connected state
+ * cm_is_vdev_connected() - check if vdev is in conneted state
  * @vdev: vdev pointer
  *
  * Return: bool
@@ -1113,7 +1172,7 @@ bool cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev);
 bool cm_is_vdev_connected(struct wlan_objmgr_vdev *vdev);
 
 /**
- * cm_is_vdev_active() - check if vdev is in active state ie connected or roaming
+ * cm_is_vdev_active() - check if vdev is in active state ie conneted or roaming
  * state
  * @vdev: vdev pointer
  *
@@ -1137,6 +1196,7 @@ bool cm_is_vdev_disconnecting(struct wlan_objmgr_vdev *vdev);
  */
 bool cm_is_vdev_disconnected(struct wlan_objmgr_vdev *vdev);
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_is_vdev_idle_due_to_link_switch() - Check if VDEV is in
  * IDLE state due to link switch
@@ -1148,6 +1208,13 @@ bool cm_is_vdev_disconnected(struct wlan_objmgr_vdev *vdev);
  * Return: bool
  */
 bool cm_is_vdev_idle_due_to_link_switch(struct wlan_objmgr_vdev *vdev);
+#else
+static inline bool
+cm_is_vdev_idle_due_to_link_switch(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif
 
 /**
  * cm_is_vdev_roaming() - check if vdev is in roaming state
@@ -1220,28 +1287,6 @@ bool cm_get_active_connect_req(struct wlan_objmgr_vdev *vdev,
 			       struct wlan_cm_vdev_connect_req *req);
 
 /**
- * cm_is_connect_ap_eppke_capable() - Check if the active connect candidate AP
- * is EPPKE capable
- * @vdev: vdev pointer
- *
- * Parse the currently selected AP candidate's RSN IE (and Security Profile IE)
- * to determine whether the AP actually advertises EPPKE. Used to gate 11bi
- * peer creation, since EPPKE auth bits injected pre-connect for candidate
- * expansion are stripped only after peer create.
- *
- * Return: true if the selected AP is EPPKE capable, false otherwise
- */
-#ifdef WLAN_FEATURE_11BI_SECURITY
-bool cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev);
-#else
-static inline bool
-cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_11BI_SECURITY */
-
-/**
  * cm_get_active_disconnect_req() - Get copy of active disconnect request
  * @vdev: vdev pointer
  * @req: pointer to the copy of the active disconnect request
@@ -1253,15 +1298,6 @@ cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev)
  */
 bool cm_get_active_disconnect_req(struct wlan_objmgr_vdev *vdev,
 				  struct wlan_cm_vdev_discon_req *req);
-
-/**
- * cm_get_ho_disconnect_pending() - Get ho fail disconnect request
- * is pending or not
- * @vdev: vdev pointer
- *
- * Return: true and ho fail disconnect req is in pending queue
- */
-bool cm_get_ho_disconnect_pending(struct wlan_objmgr_vdev *vdev);
 
 /**
  * cm_connect_handle_event_post_fail() - initiate connect failure if msg posting
@@ -1412,13 +1448,13 @@ cm_update_scan_mlme_on_disconnect(struct wlan_objmgr_vdev *vdev,
  * @pdev: Object manager pdev
  * @filter: Scan filter params
  * @list: List of candidates to be scored
- * @flag: get candidate flag passed
+ * @allow_scan: Is scan allowed
  *
  * Return: void
  */
 void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
 			 struct scan_filter *filter, qdf_list_t *list,
-			 uint32_t flag);
+			 bool allow_scan);
 
 /**
  * cm_req_lock_acquire() - Acquire connection manager request lock
@@ -1502,6 +1538,44 @@ static inline void cm_req_history_deinit(struct cnx_mgr *cm_ctx)
 
 static inline void cm_req_history_print(struct cnx_mgr *cm_ctx)
 {}
+#endif
+
+#ifdef WLAN_CM_USE_SPINLOCK
+/**
+ * cm_activate_cmd_req_flush_cb() - Callback when the scheduler msg is flushed
+ * @msg: scheduler message
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS cm_activate_cmd_req_flush_cb(struct scheduler_msg *msg);
+#endif
+
+#ifndef CONN_MGR_ADV_FEATURE
+/**
+ * cm_set_candidate_advance_filter_cb() - Set CM candidate advance
+ * filter cb
+ * @vdev: Objmgr vdev
+ * @filter_fun: CM candidate advance filter cb
+ *
+ * Return: void
+ */
+void cm_set_candidate_advance_filter_cb(
+		struct wlan_objmgr_vdev *vdev,
+		void (*filter_fun)(struct wlan_objmgr_vdev *vdev,
+				   struct scan_filter *filter));
+
+/**
+ * cm_set_candidate_custom_sort_cb() - Set CM candidate custom sort cb
+ * @vdev: Objmgr vdev
+ * @sort_fun: CM candidate custom sort cb
+ *
+ * Return: void
+ */
+void cm_set_candidate_custom_sort_cb(
+		struct wlan_objmgr_vdev *vdev,
+		void (*sort_fun)(struct wlan_objmgr_vdev *vdev,
+				 qdf_list_t *list));
+
 #endif
 
 /**
@@ -1608,6 +1682,7 @@ void cm_free_connect_req_param(struct wlan_cm_connect_req *req);
  */
 void cm_free_wep_key_params(struct wlan_cm_connect_req *req);
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_store_first_candidate_rsp() - store the connection failure response
  * @cm_ctx: connection manager context
@@ -1650,6 +1725,18 @@ cm_get_first_candidate_rsp(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id,
  * Return: void
  */
 void cm_store_n_send_failed_candidate(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id);
+#else
+static inline
+void cm_store_first_candidate_rsp(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id,
+				  struct wlan_cm_connect_resp *resp)
+{
+}
+
+static inline
+void cm_store_n_send_failed_candidate(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id)
+{
+}
+#endif /* CONN_MGR_ADV_FEATURE */
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
@@ -1744,40 +1831,4 @@ static inline bool cm_is_nontx_scan_params_valid(struct cm_connect_req *cm_req)
 	return false;
 }
 #endif /* WLAN_FEATURE_11BE_MLO */
-
-/**
- * cm_is_link_switch_connection() - Check whether the connection is
- * because of link switch or not
- * @vdev: pointer to vdev
- *
- * Return: True/False
- */
-bool cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev);
-
-#ifdef WLAN_FEATURE_SECURITY_PROFILE
-/**
- * cm_get_sp_ie_rsnxe() - Extract RSNXE capability bytes from a Security
- * Profile IE and build a synthetic RSNXE IE in the caller-supplied buffer.
- * @entry: scan cache entry for the selected AP candidate
- * @buf: caller-supplied buffer (must be at least 6 bytes)
- * @buf_len: size of @buf
- * @rsnxe_cap_out: set to the parsed capability bytes on success
- * @cap_len_out: set to the (n-1) encoded cap length on success
- *
- * Return: true if SP IE was present and ext_rsn_caps were extracted.
- */
-bool cm_get_sp_ie_rsnxe(struct scan_cache_entry *entry,
-			uint8_t *buf, uint8_t buf_len,
-			const uint8_t **rsnxe_cap_out,
-			uint8_t *cap_len_out);
-#else
-static inline bool cm_get_sp_ie_rsnxe(struct scan_cache_entry *entry,
-				      uint8_t *buf, uint8_t buf_len,
-				      const uint8_t **rsnxe_cap_out,
-				      uint8_t *cap_len_out)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_SECURITY_PROFILE */
-
 #endif /* __WLAN_CM_MAIN_API_H__ */

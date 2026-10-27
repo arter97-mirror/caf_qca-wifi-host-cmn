@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -38,7 +38,6 @@
  *  @prevent_runtime_lock: run time lock
  *  @roam_sync_runtime_lock: roam sync runtime lock
  *  @is_link_up: flag to check link status
- *  @is_roam_lock_acquired: flag to check if roam lock is taken
  */
 struct psoc_mlme_wakelock {
 	qdf_wake_lock_t start_wakelock;
@@ -47,7 +46,6 @@ struct psoc_mlme_wakelock {
 	qdf_runtime_lock_t prevent_runtime_lock;
 	qdf_runtime_lock_t roam_sync_runtime_lock;
 	bool is_link_up;
-	bool is_roam_lock_acquired;
 };
 #endif
 
@@ -124,23 +122,23 @@ void target_if_vdev_start_link_handler(struct wlan_objmgr_vdev *vdev,
 void target_if_vdev_stop_link_handler(struct wlan_objmgr_vdev *vdev);
 
 /**
- * target_if_prevent_pm_during_roam() - prevent runtime PM during roam
+ * target_if_prevent_pm_during_roam_sync() - prevent runtime PM during roam sync
  * @psoc: pointer to psoc
  *
  * Return: None
  */
 void
-target_if_prevent_pm_during_roam(struct wlan_objmgr_psoc *psoc);
+target_if_prevent_pm_during_roam_sync(struct wlan_objmgr_psoc *psoc);
 
 /**
- * target_if_allow_pm_after_roam() - allow runtime PM after roam
- * sync complete or roam abort/ho-failure
+ * target_if_allow_pm_after_roam_sync() - allow runtime PM after roam
+ * sync complete
  * @psoc: pointer to psoc
  *
  * Return: None
  */
 void
-target_if_allow_pm_after_roam(struct wlan_objmgr_psoc *psoc);
+target_if_allow_pm_after_roam_sync(struct wlan_objmgr_psoc *psoc);
 
 #else
 static inline void target_if_wake_lock_init(struct wlan_objmgr_psoc *psoc)
@@ -177,12 +175,12 @@ target_if_vdev_stop_link_handler(struct wlan_objmgr_vdev *vdev)
 }
 
 static inline void
-target_if_prevent_pm_during_roam(struct wlan_objmgr_psoc *psoc)
+target_if_prevent_pm_during_roam_sync(struct wlan_objmgr_psoc *psoc)
 {
 }
 
 static inline void
-target_if_allow_pm_after_roam(struct wlan_objmgr_psoc *psoc)
+target_if_allow_pm_after_roam_sync(struct wlan_objmgr_psoc *psoc)
 {
 }
 #endif

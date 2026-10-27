@@ -86,7 +86,7 @@
 #define SCAN_CTS_DURATION_MS_MAX             (32)
 #define SCAN_ROAM_SCAN_CHANNEL_SWITCH_TIME    (4)
 #define SCAN_DWELL_TIME_PROBE_TIME_MAP_SIZE      (11)
-#define SCAN_GO_MIN_ACTIVE_SCAN_BURST_DURATION   (0)
+#define SCAN_GO_MIN_ACTIVE_SCAN_BURST_DURATION   (40)
 #define SCAN_GO_MAX_ACTIVE_SCAN_BURST_DURATION   (240)
 #define SCAN_P2P_SCAN_MAX_BURST_DURATION     (240)
 #define SCAN_GO_BURST_SCAN_MAX_NUM_OFFCHANNELS   (6)
@@ -279,7 +279,7 @@ struct scan_vdev_obj {
  * @pno_runtime_pm_lock: pno runtime pm lock
  * @pno_cb: callback to call on PNO completion
  * @mawc_params: Configuration parameters for NLO MAWC.
- * @user_config_sched_scan_plan: if enabled set user config sched scan plan
+ * @user_config_sched_scan_plan: if enabled set user confing sched scan plan
  */
 struct pno_def_config {
 	bool pno_offload_enabled;
@@ -322,22 +322,10 @@ struct extscan_def_config {
 #endif
 
 /**
- * enum scan_dfs_mode - DFS channel scan mode
- * @SCAN_DFS_DISABLE: Do not scan DFS channels
- * @SCAN_DFS_ENABLE: Scan DFS channels
- * @SCAN_DFS_ENABLE_LOW_SPAN: Scan DFS channels including low-span scans
- */
-enum scan_dfs_mode {
-	SCAN_DFS_DISABLE         = 0,
-	SCAN_DFS_ENABLE          = 1,
-	SCAN_DFS_ENABLE_LOW_SPAN = 2,
-};
-
-/**
  * struct scan_default_params - default scan parameters to be used
  * @active_dwell: default active dwell time
  * @allow_dfs_chan_in_first_scan: first scan should contain dfs channels or not.
- * @allow_dfs_chan_in_scan: DFS channel scan mode, see enum scan_dfs_mode.
+ * @allow_dfs_chan_in_scan: Scan DFS channels or not.
  * @skip_dfs_chan_in_p2p_search: Skip DFS channels in p2p search.
  * @use_wake_lock_in_user_scan: if wake lock will be acquired during user scan
  * @active_dwell_2g: default active dwell time for 2G channels, if it's not zero
@@ -432,16 +420,11 @@ enum scan_dfs_mode {
  * @scan_ev_resumed: notify scan resumed event
  * @scan_events: variable to read and set scan_ev_* flags in one shot
  *               can be used to dump all scan_ev_* flags for debug
- * @scan_cache_report_max_time_in_sec: Max value for scan cache report
- *                                     in seconds
- * @p2p_scan_dwell_time_en_on_single_chan: enable indicate Enhance
- *                                         dwell times for Single
- *                                         channel P2P scan
  */
 struct scan_default_params {
 	uint32_t active_dwell;
 	bool allow_dfs_chan_in_first_scan;
-	uint8_t allow_dfs_chan_in_scan;
+	bool allow_dfs_chan_in_scan;
 	bool skip_dfs_chan_in_p2p_search;
 	bool use_wake_lock_in_user_scan;
 	uint32_t active_dwell_2g;
@@ -536,8 +519,6 @@ struct scan_default_params {
 		};
 		uint32_t scan_events;
 	};
-	uint64_t scan_cache_report_max_time_in_sec;
-	bool p2p_scan_dwell_time_en_on_single_chan;
 };
 
 /**

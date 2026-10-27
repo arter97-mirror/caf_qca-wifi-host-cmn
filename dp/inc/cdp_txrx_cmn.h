@@ -55,16 +55,11 @@ extern bool is_dp_verbose_debug_enabled;
 #define dp_debug(params...) QDF_TRACE_DEBUG(QDF_MODULE_ID_DP, params)
 /* logs for IPA logging Infra */
 #define dp_ipa_log(params...) WLAN_IPA_LOGGING(params)
-#define dp_ipa_log_rl(params...) WLAN_IPA_LOGGING_RL(params)
 /* To collect common log in both wlan and IPA logging infra */
 #define dp_ipa_debug(params...) \
 	do { dp_info(params); dp_ipa_log(params); } while (0)
-#define dp_ipa_info_rl(params...) \
-	do { dp_info_rl(params); dp_ipa_log_rl(params); } while (0)
 #define dp_ipa_err(params...) \
 	do { dp_err(params); dp_ipa_log(params); } while (0)
-#define dp_ipa_err_rl(params...) \
-	do { dp_err_rl(params); dp_ipa_log_rl(params); } while (0)
 
 #ifdef DP_PRINT_NO_CONSOLE
 #define dp_err_log(params...) \
@@ -111,7 +106,7 @@ enum verbose_debug_module {
 #define dp_nofl_warn(params...) \
 	QDF_TRACE_WARN_NO_FL(QDF_MODULE_ID_DP, params)
 #define dp_nofl_info(params...) \
-	__QDF_TRACE_NO_FL(QDF_TRACE_LEVEL_INFO_HIGH, QDF_MODULE_ID_DP, ## params)
+	QDF_TRACE_INFO_NO_FL(QDF_MODULE_ID_DP, params)
 #define dp_nofl_debug(params...) \
 	QDF_TRACE_DEBUG_NO_FL(QDF_MODULE_ID_DP, params)
 
@@ -1069,6 +1064,15 @@ cdp_set_monitor_filter(ol_txrx_soc_handle soc, uint8_t pdev_id,
 	return 0;
 }
 
+static inline int
+cdp_set_mu_sniffer(ol_txrx_soc_handle soc, uint8_t pdev_id, uint32_t mode)
+{
+	if (soc->ops->mon_ops->txrx_set_mu_sniffer)
+		return soc->ops->mon_ops->txrx_set_mu_sniffer(soc, pdev_id,
+							      mode);
+	return 0;
+}
+
 /******************************************************************************
  * Data Interface (B Interface)
  *****************************************************************************/
@@ -1716,6 +1720,24 @@ static inline int cdp_delba_tx_completion(ol_txrx_soc_handle soc,
 							  tid, status);
 }
 
+static inline QDF_STATUS
+cdp_set_addbaresponse(ol_txrx_soc_handle soc,
+		      uint8_t *peer_mac, uint16_t vdev_id, int tid,
+		      uint16_t statuscode)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance:");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->cmn_drv_ops ||
+	    !soc->ops->cmn_drv_ops->set_addba_response)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->cmn_drv_ops->set_addba_response(soc, peer_mac, vdev_id,
+						  tid, statuscode);
+}
 
 /**
  * cdp_set_vdev_dscp_tid_map(): function to set DSCP-tid map in the vap
@@ -2818,6 +2840,53 @@ cdp_peer_flush_rate_stats(ol_txrx_soc_handle soc, uint8_t pdev_id,
 }
 
 /**
+ * cdp_peer_get_peerstats_ctx() - get peer stats context
+ * @soc: opaque soc handle
+ * @vdev_id: id of vdev handle
+ * @mac_addr: peer mac address
+ */
+static inline void
+*cdp_peer_get_peerstats_ctx(ol_txrx_soc_handle soc, uint8_t vdev_id,
+			    uint8_t *mac_addr)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance:");
+		QDF_BUG(0);
+		return NULL;
+	}
+
+	if (!soc->ops->cmn_drv_ops ||
+	    !soc->ops->cmn_drv_ops->txrx_peer_get_peerstats_ctx)
+		return NULL;
+
+	return soc->ops->cmn_drv_ops->txrx_peer_get_peerstats_ctx(soc,
+								  vdev_id,
+								  mac_addr);
+}
+
+/**
+ * cdp_flush_rate_stats_request() - request flush rate statistics
+ * @soc: opaque soc handle
+ * @pdev_id: id of pdev handle
+ */
+static inline QDF_STATUS
+cdp_flush_rate_stats_request(struct cdp_soc_t *soc, uint8_t pdev_id)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance:");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->cmn_drv_ops ||
+	    !soc->ops->cmn_drv_ops->txrx_flush_rate_stats_request)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->cmn_drv_ops->txrx_flush_rate_stats_request(soc,
+								    pdev_id);
+}
+
+/**
  * cdp_set_vdev_pcp_tid_map() - set vdev pcp-tid-map
  * @soc: opaque soc handle
  * @vdev_id: id of data path vdev handle
@@ -2906,6 +2975,32 @@ cdp_vdev_get_peer_mac_list(ol_txrx_soc_handle soc,
 
 	return soc->ops->cmn_drv_ops->get_peer_mac_list
 			(soc, vdev_id, newmac, mac_cnt, limit);
+}
+
+/**
+ * cdp_soc_config_full_mon_mode () - Configure Full monitor mode
+ *
+ * @soc: dp soc handle
+ * @val: value to be configured val should be 0 or 1
+ *
+ * This API is used to enable/disable support for Full monitor mode feature
+ *
+ * Return: QDF_STATUS_SUCCESS if value set successfully
+ *         QDF_STATUS_E_INVAL false if error
+ */
+static inline QDF_STATUS
+cdp_soc_config_full_mon_mode(ol_txrx_soc_handle soc, uint8_t val)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!soc->ops->mon_ops ||
+	    !soc->ops->mon_ops->config_full_mon_mode)
+		return QDF_STATUS_E_INVAL;
+
+	return soc->ops->mon_ops->config_full_mon_mode(soc, val);
 }
 
 /**
@@ -3585,59 +3680,4 @@ cdp_get_ext_grp_id_from_reo_num(ol_txrx_soc_handle soc, uint8_t reo_num)
 	return soc->ops->cmn_drv_ops->get_ext_grp_id_from_reo_num(soc, reo_num);
 }
 #endif
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * cdp_dal_ssr_notify() - Notify DAL about SSR
- * @soc: data path soc handle
- *
- * Notify DAL layer about SSR (SubSystem Restart). This function is called
- * during SSR scenarios to inform the DAL layer about the restart event,
- * allowing it to perform necessary cleanup and recovery operations.
- *
- * Return: None
- */
-static inline void cdp_dal_ssr_notify(ol_txrx_soc_handle soc)
-{
-	if (!soc) {
-		dp_cdp_debug("Invalid soc instance");
-		return;
-	}
-
-	if (!soc->ops || !soc->ops->cmn_drv_ops) {
-		dp_cdp_debug("Invalid ops instance");
-		return;
-	}
-
-	if (soc->ops->cmn_drv_ops->dal_ssr_notify)
-		soc->ops->cmn_drv_ops->dal_ssr_notify(soc);
-}
-#endif /* FEATURE_DAL_DP_SUPPORT */
-
-#ifdef QCA_OL_TX_MULTIQ_SUPPORT
-/**
- * cdp_get_max_txdesc_pools() - Get the maximum number of TX descriptor pools
- * @soc: datapath soc handle
- *
- * Retrieve the compile-time maximum number of TX descriptor pools from the
- * DP layer via the ops mechanism.  Falls back to 4 if the soc handle or
- * the ops pointer is not yet available (e.g. during early init).
- *
- * Return: maximum number of TX descriptor pools
- */
-static inline uint8_t cdp_get_max_txdesc_pools(ol_txrx_soc_handle soc)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance");
-		return 4;
-	}
-
-	if (!soc->ops->cmn_drv_ops ||
-	    !soc->ops->cmn_drv_ops->get_max_txdesc_pools)
-		return 4;
-
-	return soc->ops->cmn_drv_ops->get_max_txdesc_pools(soc);
-}
-#endif /* QCA_OL_TX_MULTIQ_SUPPORT */
-
 #endif /* _CDP_TXRX_CMN_H_ */

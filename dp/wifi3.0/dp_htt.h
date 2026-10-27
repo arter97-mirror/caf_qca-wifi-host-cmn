@@ -166,18 +166,6 @@ void htt_htc_pkt_pool_free(struct htt_soc *soc);
 #define HTT_VDEV_STATS_TLV_TX_TQM_BYPASS_PKT_CNT_OFFSET  22
 #define HTT_VDEV_STATS_TLV_TX_TQM_BYPASS_BYTE_CNT_OFFSET 24
 
-/* 4-word fixed header preceding the TLV area */
-#define HTT_VDEV_TXRX_STATS_COMMON_HDR_SIZE 16
-/* Min TLV size (including 4-byte TLV header) required to safely read
- * all fixed offsets in each tag handler. The +2 accounts for reading a
- * 64-bit value (2 consecutive uint32_t words) at the highest offset.
- */
-#define HTT_VDEV_TXRX_STATS_SOC_TLV_MIN_SIZE \
-	((HTT_VDEV_STATS_TLV_SOC_DROP_CNT_OFFSET + 2) * sizeof(uint32_t))
-#define HTT_VDEV_TXRX_STATS_HW_TLV_MIN_SIZE \
-	((HTT_VDEV_STATS_TLV_TX_TQM_BYPASS_BYTE_CNT_OFFSET + 2) * \
-	 sizeof(uint32_t))
-
 #define HTT_VDEV_STATS_GET_INDEX(index) \
 	HTT_VDEV_STATS_TLV_##index##_OFFSET
 
@@ -231,6 +219,7 @@ struct dp_htt_htc_pkt {
 	qdf_dma_addr_t nbuf_paddr;
 	HTC_PACKET htc_pkt;
 };
+
 struct dp_htt_htc_pkt_union {
 	union {
 		struct dp_htt_htc_pkt pkt;
@@ -280,12 +269,6 @@ struct htt_soc {
 		int htt_ver_req_put_skip;
 		int reserve_fail_cnt;
 		int abort_count;
-#ifdef WLAN_SOFTUMAC_SUPPORT
-		struct {
-			uint64_t rx_data_ind;
-			uint64_t tx_completion_ind;
-		} htt_msg_stats[CE_COUNT_MAX];
-#endif /* WLAN_SOFTUMAC_SUPPORT */
 	} stats;
 
 	HTT_TX_MUTEX_TYPE htt_tx_mutex;
@@ -633,6 +616,7 @@ struct htt_tx_ring_tlv_filter {
  * @ppdu_start_user_info:
  * @header_per_msdu:
  * @enable_fp: enable/disable FP packet
+ * @enable_md: enable/disable MD packet
  * @enable_mo: enable/disable MO packet
  * @enable_fp_packet: enable/disable FP packet config
  * @enable_md_packet: enable/disable MD packet config
@@ -645,6 +629,9 @@ struct htt_tx_ring_tlv_filter {
  * @mo_ctrl_filter:
  * @fp_data_filter:
  * @mo_data_filter:
+ * @md_data_filter:
+ * @md_mgmt_filter:
+ * @md_ctrl_filter:
  * @fp_packet_mgmt_filter:
  * @mo_packet_mgmt_filter:
  * @fp_packet_ctrl_filter:
@@ -708,6 +695,7 @@ struct htt_rx_ring_tlv_filter {
 		ppdu_start_user_info:1,
 		header_per_msdu:1,
 		enable_fp:1,
+		enable_md:1,
 		enable_mo:1,
 		enable_fp_packet:1,
 		enable_md_packet:1,
@@ -720,7 +708,10 @@ struct htt_rx_ring_tlv_filter {
 		mo_ctrl_filter:16;
 	u_int32_t fp_data_filter:16,
 		mo_data_filter:16;
+	u_int16_t md_data_filter;
+	u_int16_t md_mgmt_filter;
 
+	u_int16_t md_ctrl_filter;
 	u_int16_t fp_packet_mgmt_filter;
 
 	u_int16_t mo_packet_mgmt_filter;
@@ -1278,33 +1269,6 @@ QDF_STATUS htt_h2t_tx_super_rule_setup(struct htt_soc *htt_soc,
 				       void *flt_params);
 #endif
 #endif
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-/**
- * struct htt_h2t_msg_dal_suspend_info - HTT message for DAL suspend info
- * @pdev_id: Pdev ID
- * @mode: DAL mode (0: bypass, 1: offload)
- * @write_data_addr_lo: Lower 32 bits of write data address
- * @write_data_addr_hi: Upper 32 bits of write data address
- * @write_msi_addr_lo: Lower 32 bits of write MSI address
- * @write_msi_addr_hi: Upper 32 bits of write MSI address
- * @write_msi_data: MSI data value
- */
-struct htt_h2t_msg_dal_suspend_info {
-	uint8_t pdev_id;
-	uint8_t mode;
-	uint32_t write_data_addr_lo;
-	uint32_t write_data_addr_hi;
-	uint32_t write_msi_addr_lo;
-	uint32_t write_msi_addr_hi;
-	uint32_t write_msi_data;
-};
-
-/* HTT Message for DAL Mode Info */
-
-QDF_STATUS dp_h2t_dal_mode_info_send(struct dp_soc *dp_soc,
-				     struct htt_h2t_msg_dal_suspend_info *info);
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #ifdef QCA_SUPPORT_PRIMARY_LINK_MIGRATE
 /**

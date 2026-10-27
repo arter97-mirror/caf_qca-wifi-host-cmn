@@ -86,7 +86,28 @@ typedef void (*CE_recv_cb)(struct CE_handle *copyeng,
 		   unsigned int transfer_id,
 		   unsigned int flags);
 
+/*
+ * Copy Engine Watermark callback type.
+ *
+ * Allows upper layers to be notified when watermarks are reached:
+ *   space is available and/or running short in a source ring
+ *   buffers are exhausted and/or abundant in a destination ring
+ *
+ * The flags parameter indicates which condition triggered this
+ * callback.  See CE_WM_FLAG_*.
+ *
+ * Watermark APIs are provided to allow upper layers "batch"
+ * descriptor processing and to allow upper layers to
+ * throttle/unthrottle.
+ */
+typedef void (*CE_watermark_cb)(struct CE_handle *copyeng,
+				void *per_CE_wm_context, unsigned int flags);
 
+
+#define CE_WM_FLAG_SEND_HIGH   1
+#define CE_WM_FLAG_SEND_LOW    2
+#define CE_WM_FLAG_RECV_HIGH   4
+#define CE_WM_FLAG_RECV_LOW    8
 #define CE_HTT_TX_CE           4
 
 
@@ -157,7 +178,16 @@ int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 		    uint8_t encap_type);
 
 void ce_update_tx_ring(struct CE_handle *ce_tx_hdl, uint32_t num_htt_cmpls);
+extern qdf_nbuf_t ce_batch_send(struct CE_handle *ce_tx_hdl,
+		qdf_nbuf_t msdu,
+		uint32_t transfer_id,
+		uint32_t len,
+		uint32_t sendhead);
 
+QDF_STATUS ce_send_single(struct CE_handle *ce_tx_hdl,
+			  qdf_nbuf_t msdu,
+			  uint32_t transfer_id,
+			  uint32_t len);
 /*
  * Register a Send Callback function.
  * This function is called as soon as the contents of a Send
@@ -242,6 +272,58 @@ void ce_recv_cb_register(struct CE_handle *copyeng,
 
 /*==================CE Watermark=============================================*/
 
+/*
+ * Register a Watermark Callback function.
+ * This function is called as soon as a watermark level
+ * is crossed.  A Watermark Callback function is free to
+ * handle received data "en masse"; but then some coordination
+ * is required with a registered Receive Callback function.
+ * [Suggestion: Either handle Receives in a Receive Callback
+ * or en masse in a Watermark Callback; but not both.]
+ */
+void ce_watermark_cb_register(struct CE_handle *copyeng,
+			  CE_watermark_cb fn_ptr,
+			  void *per_CE_wm_context);
+
+/*
+ * Set low/high watermarks for the send/source side of a copy engine.
+ *
+ * Typically, the destination side CPU manages watermarks for
+ * the receive side and the source side CPU manages watermarks
+ * for the send side.
+ *
+ * A low watermark of 0 is never hit (so the watermark function
+ * will never be called for a Low Watermark condition).
+ *
+ * A high watermark equal to nentries is never hit (so the
+ * watermark function will never be called for a High Watermark
+ * condition).
+ */
+void ce_send_watermarks_set(struct CE_handle *copyeng,
+			    unsigned int low_alert_nentries,
+			    unsigned int high_alert_nentries);
+
+/* Set low/high watermarks for the receive/destination side of copy engine. */
+void ce_recv_watermarks_set(struct CE_handle *copyeng,
+			    unsigned int low_alert_nentries,
+			    unsigned int high_alert_nentries);
+
+/*
+ * Return the number of entries that can be queued
+ * to a ring at an instant in time.
+ *
+ * For source ring, does not imply that destination-side
+ * buffers are available; merely indicates descriptor space
+ * in the source ring.
+ *
+ * For destination ring, does not imply that previously
+ * received buffers have been processed; merely indicates
+ * descriptor space in destination ring.
+ *
+ * Mainly for use with CE Watermark callback.
+ */
+unsigned int ce_send_entries_avail(struct CE_handle *copyeng);
+unsigned int ce_recv_entries_avail(struct CE_handle *copyeng);
 
 /* recv flags */
 /* Data is byte-swapped */
@@ -401,8 +483,29 @@ void ce_fini(struct CE_handle *copyeng);
 void hif_ce_desc_history_log_unregister(void);
 
 /*==================CE Interrupt Handlers====================================*/
+void ce_per_engine_service_any(int irq, struct hif_softc *scn);
 int ce_per_engine_service(struct hif_softc *scn, unsigned int CE_id);
 void ce_per_engine_servicereap(struct hif_softc *scn, unsigned int CE_id);
+
+/*===================CE cmpl interrupt Enable/Disable =======================*/
+void ce_disable_any_copy_compl_intr_nolock(struct hif_softc *scn);
+void ce_enable_any_copy_compl_intr_nolock(struct hif_softc *scn);
+
+/* API to check if any of the copy engine pipes has
+ * pending frames for processing
+ */
+bool ce_get_rx_pending(struct hif_softc *scn);
+
+/**
+ * war_ce_src_ring_write_idx_set() - Set write index for CE source ring
+ * @scn: HIF context
+ * @ctrl_addr: address
+ * @write_index: write index
+ *
+ * Return: None
+ */
+void war_ce_src_ring_write_idx_set(struct hif_softc *scn,
+				   u32 ctrl_addr, unsigned int write_index);
 
 /* CE_attr.flags values */
 #define CE_ATTR_NO_SNOOP             0x01 /* Use NonSnooping PCIe accesses? */
@@ -433,18 +536,6 @@ struct CE_attr {
 	void *reserved;
 };
 
-/**
- * struct CE_cmn_register_config - CE common register configuration structure
- * @offset:  offset of common register from base address of CE register.
- * @mask:    bit mask for values which are going to be set.
- * @value:   final value of the ce common register
- */
-struct CE_cmn_register_config {
-	uint32_t offset;
-	uint32_t mask;
-	uint32_t value;
-};
-
 /*
  * When using sendlist_send to transfer multiple buffer fragments, the
  * transfer context of each fragment, except last one, will be filled
@@ -469,8 +560,7 @@ struct ce_sendlist {
 #define ATH_ISR_SCHED    0x0001  /* Schedule the bottom half for execution */
 #define ATH_ISR_NOTMINE  0x0002  /* for shared IRQ's */
 
-#if defined(IPA_OFFLOAD) && !defined(CONFIG_LITHIUM) && \
-	!defined(CONFIG_BERYLLIUM) && !defined(CONFIG_RHINE)
+#ifdef IPA_OFFLOAD
 void ce_ipa_get_resource(struct CE_handle *ce,
 			 qdf_shared_mem_t **ce_sr,
 			 uint32_t *ce_sr_ring_size,
@@ -497,7 +587,7 @@ static inline void ce_ipa_get_resource(struct CE_handle *ce,
 			 qdf_dma_addr_t *ce_reg_paddr)
 {
 }
-#endif /* IPA_OFFLOAD && !LITHIUM && !BERYLLIUM && !RHINE */
+#endif /* IPA_OFFLOAD */
 
 static inline void ce_pkt_error_count_incr(
 	struct HIF_CE_state *_hif_state,
@@ -593,12 +683,6 @@ struct ce_ops {
 	QDF_STATUS (*ce_get_direct_link_ring_info)(struct hif_softc *scn,
 					   struct hif_direct_link_ce_info *info,
 					   uint8_t max_ce_info_len);
-#endif
-#ifdef CE_CMN_REG_CFG_QMI
-	int (*ce_prepare_cmn_reg_cfg)(
-			struct hif_softc *scn,
-			struct CE_cmn_register_config **host_ce_cmn_reg_cfg_ret,
-			uint32_t *host_ce_cmn_reg_num_ret);
 #endif
 };
 

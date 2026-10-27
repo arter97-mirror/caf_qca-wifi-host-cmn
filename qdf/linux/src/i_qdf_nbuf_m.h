@@ -78,7 +78,6 @@
  * @u.rx.dev.priv_cb_m.to_ds: to DS bit in RX packet
  * @u.rx.dev.priv_cb_m.logical_link_id: link id of RX packet
  * @u.rx.dev.priv_cb_m.audio_smmu_map: audio smmu map
- * @u.rx.dev.priv_cb_m.ipa_smmu_map_caller: ipa smmu map caller
  * @u.rx.dev.priv_cb_m.reserved1: reserved bits
  * @u.rx.dev.priv_cb_m.dp_ext: Union of tcp and ext structs
  * @u.rx.dev.priv_cb_m.dp_ext.tcp: TCP structs
@@ -86,8 +85,6 @@
  * @u.rx.dev.priv_cb_m.dp_ext.tcp.tcp_ack_num: TCP ACK number
  * @u.rx.dev.priv_cb_m.dp_ext.ext: Extension struct for other usage
  * @u.rx.dev.priv_cb_m.dp_ext.ext.mpdu_seq: wifi MPDU sequence number
- * @u.rx.dev.priv_cb_m.dp_ext.ext.pp_track_id: RX page pool track id for
- *                                             tracking buffers
  * @u.rx.dev.priv_cb_m.dp: Union of wifi3 and wifi2 structs
  * @u.rx.dev.priv_cb_m.dp.wifi3: wifi3 data
  * @u.rx.dev.priv_cb_m.dp.wifi3.msdu_len: length of RX packet
@@ -116,7 +113,7 @@
  * @u.rx.flag_chfrag_cont: middle or part of MSDU in an AMSDU
  * @u.rx.flag_chfrag_end: last MSDU in an AMSDU
  * @u.rx.flag_retry: flag to indicate MSDU is retried
- * @u.rx.flag_da_mcbc: flag to indicate multicast or broadcast packets
+ * @u.rx.flag_da_mcbc: flag to indicate mulicast or broadcast packets
  * @u.rx.flag_da_valid: flag to indicate DA is valid for RX packet
  * @u.rx.flag_sa_valid: flag to indicate SA is valid for RX packet
  * @u.rx.flag_is_frag: flag to indicate skb has frag list
@@ -155,15 +152,11 @@
  *                                                   dma map
  * @u.tx.dev.priv_cb_m.dma_option.dma_option.reserved: reserved bits for future
  *                                                     use
- * @flag_notify_comp: flag for tx completion notification
- * @band: band in which the tx packet is sent
- * @flag_ts_valid: flag to indicate field
- * @u.tx.pa_ts.ts_value is available, it must be cleared before fragment mapping
- * @peer_bw: peer bandwidth
- * @txpt_idx_value: Tx msdu flow pointer start idx
- * @txpt_idx_valid: Is txpt_idx_value is valid
- * @u.tx.dev.priv_cb_m.tx_page_pool_id: TX page pool ID (6 bits, 0-63)
- * @u.tx.dev.priv_cb_m.reserved: reserved bit
+ * @u.tx.dev.priv_cb_m.flag_notify_comp: reserved
+ * @u.tx.dev.priv_cb_m.flag_ts_valid: flag to indicate field
+ * u.tx.pa_ts.ts_value is available, it must be cleared before fragment mapping
+ * @u.tx.dev.priv_cb_m.rsvd: reserved
+ * @u.tx.dev.priv_cb_m.reserved: reserved
  *
  * @u.tx.ftype: mcast2ucast, TSO, SG, MESH
  * @u.tx.vdev_id: vdev (for protocol trace)
@@ -223,7 +216,7 @@ struct qdf_nbuf_cb {
 					 * control block and tx control block.
 					 * Do not change location of this bit.
 					 */
-					uint32_t ipa_or_dal_owned:1,
+					uint32_t ipa_owned:1,
 						 peer_cached_buf_frm:1,
 						 flush_ind:1,
 						 packet_buf_pool:1,
@@ -238,8 +231,7 @@ struct qdf_nbuf_cb {
 						 logical_link_id:4,
 						 band:3,
 						 audio_smmu_map:1,
-						 ipa_smmu_map_caller:3,
-						 reserved1:3;
+						 reserved1:6;
 					union {
 						struct {
 							uint32_t tcp_seq_num;
@@ -249,8 +241,7 @@ struct qdf_nbuf_cb {
 							uint32_t mpdu_seq:12,
 								 rx_flow_id:8,
 								 track_flow:1,
-								 pp_track_id:4,
-								 reserved:7;
+								 reserved:11;
 							uint32_t rx_flow_mdata;
 						} ext;
 					} dp_ext;
@@ -291,8 +282,7 @@ struct qdf_nbuf_cb {
 				uint8_t packet_state;
 				uint8_t dp_trace:1,
 					packet_track:3,
-					flow_idx_valid:1,
-					rsrvd:3;
+					rsrvd:4;
 			} trace;
 			uint16_t vdev_id:8,
 				 tid_val:4,
@@ -325,11 +315,8 @@ struct qdf_nbuf_cb {
 					uint8_t flag_notify_comp:1,
 						band:3,
 						flag_ts_valid:1,
-						peer_bw:3;
-					uint8_t peer_search_idx_value;
-					uint8_t peer_search_idx_valid:1,
-						tx_page_pool_id:6,
-						reserved:1;
+						rsvd:3;
+					uint8_t reserved[2];
 				} priv_cb_m;
 			} dev;
 			uint8_t ftype;
@@ -419,17 +406,6 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.trace.packet_state)
 #define QDF_NBUF_CB_RX_DP_TRACE(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.trace.dp_trace)
-
-#define QDF_NBUF_CB_RX_FLOW_IDX_VALID(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.trace.flow_idx_valid)
-
-#if defined(WLAN_SUPPORT_RX_FISA) && defined(WLAN_FAST_L2L_RX)
-#define __qdf_nbuf_set_rx_flow_idx_valid(skb, val) \
-		((QDF_NBUF_CB_RX_FLOW_IDX_VALID((skb))) = (val))
-
-#define __qdf_nbuf_get_rx_flow_idx_valid(skb) \
-		(QDF_NBUF_CB_RX_FLOW_IDX_VALID((skb)))
-#endif
 
 #define QDF_NBUF_CB_RX_FTYPE(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.ftype)
@@ -620,10 +596,6 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 #define QDF_NBUF_CB_RX_LRO_CTX(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m.lro_ctx)
 
-#define QDF_NBUF_CB_RX_DAL_OWNED(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
-	ipa_or_dal_owned)
-
 #define QDF_NBUF_CB_TX_IPA_OWNED(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.ipa.owned)
 #define QDF_NBUF_CB_TX_IPA_PRIV(skb) \
@@ -635,11 +607,6 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 #define QDF_NBUF_CB_TX_DMA_BI_MAP(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	dma_option.bi_map)
-
-#define QDF_NBUF_CB_TX_PAGE_POOL_ID(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
-	 tx_page_pool_id)
-
 #define QDF_NBUF_CB_TX_EXTRA_FRAG_FLAGS_NOTIFY_COMP(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	flag_notify_comp)
@@ -647,15 +614,6 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 #define QDF_NBUF_CB_TX_BAND(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	band)
-
-#define QDF_NBUF_CB_TX_PEER_BW(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
-	 peer_bw)
-
-#define QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.peer_search_idx_valid)
-#define QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.peer_search_idx_value)
 
 #define QDF_NBUF_CB_RX_PEER_ID(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m.dp. \
@@ -710,27 +668,11 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 
 #define  QDF_NBUF_CB_RX_PACKET_IPA_SMMU_MAP_CALLER(skb) \
 	 (((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
-	ipa_smmu_map_caller)
+	reserved1)
 
 #define QDF_NBUF_CB_RX_AUDIO_SMMU_MAP(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
 	audio_smmu_map)
-
-#define QDF_NBUF_CB_RX_PP_TRACK_ID(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
-	dp_ext.ext.pp_track_id)
-
-#define __qdf_nbuf_rx_pp_track_id_get(skb) \
-	QDF_NBUF_CB_RX_PP_TRACK_ID(skb)
-
-#define __qdf_nbuf_rx_pp_track_id_set(skb, rx_pp_track_id) \
-	(QDF_NBUF_CB_RX_PP_TRACK_ID(skb) = (rx_pp_track_id))
-
-#define __qdf_nbuf_dal_owned_get(skb) \
-	QDF_NBUF_CB_RX_DAL_OWNED(skb)
-
-#define __qdf_nbuf_dal_owned_set(skb) \
-	(QDF_NBUF_CB_RX_DAL_OWNED(skb) = 1)
 
 #define __qdf_nbuf_ipa_owned_get(skb) \
 	QDF_NBUF_CB_TX_IPA_OWNED(skb)
@@ -754,12 +696,6 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 	QDF_NBUF_CB_TX_DATA_ATTR(skb)
 #define __qdf_nbuf_data_attr_set(skb, data_attr) \
 	(QDF_NBUF_CB_TX_DATA_ATTR(skb) = (data_attr))
-
-#define __qdf_nbuf_set_tx_page_pool_id(skb, pool_id) \
-	(QDF_NBUF_CB_TX_PAGE_POOL_ID(skb) = (pool_id))
-
-#define __qdf_nbuf_get_tx_page_pool_id(skb) \
-	QDF_NBUF_CB_TX_PAGE_POOL_ID(skb)
 
 #define __qdf_nbuf_set_tx_ts(skb, ts) \
 	do { \
@@ -804,24 +740,11 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 	qdf_dma_addr_t paddr;
 	QDF_STATUS ret;
 
-	if (((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
-	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
-	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf)) {
-		dma_sync_single_for_device(QDF_DMA_DEV(osdev),
-					   QDF_NBUF_CB_PADDR(buf),
-					   nbytes,
-					   __qdf_dma_dir_to_os(dir));
-
-		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
-			qdf_page_pool_inc_buf_count(buf);
-		return QDF_STATUS_SUCCESS;
-	}
-
 	/* assume that the OS only provides a single fragment */
 	QDF_NBUF_CB_PADDR(buf) = paddr =
-		dma_map_single(QDF_DMA_DEV(osdev), buf->data,
+		dma_map_single(osdev->dev, buf->data,
 			       nbytes, __qdf_dma_dir_to_os(dir));
-	ret =  dma_mapping_error(QDF_DMA_DEV(osdev), paddr) ?
+	ret =  dma_mapping_error(osdev->dev, paddr) ?
 		QDF_STATUS_E_FAULT : QDF_STATUS_SUCCESS;
 	if (QDF_IS_STATUS_SUCCESS(ret))
 		__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf),
@@ -855,20 +778,14 @@ __qdf_nbuf_unmap_nbytes_single(qdf_device_t osdev, struct sk_buff *buf,
 	/* Sync the DMA buffer for CPU instead of unmap
 	 * for page pool buffers since these are recyclable.
 	 */
-	if (((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
-	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
-	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf)) {
+	if (__qdf_is_pp_nbuf(buf))
+		return dma_sync_single_for_cpu(osdev->dev, paddr, nbytes,
+					       __qdf_dma_dir_to_os(dir));
 
-		dma_sync_single_for_cpu(QDF_DMA_DEV(osdev), paddr, nbytes,
-					__qdf_dma_dir_to_os(dir));
-		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
-			qdf_page_pool_dec_buf_count(buf);
-		return;
-	}
 	if (qdf_likely(paddr)) {
 		__qdf_record_nbuf_nbytes(
 			__qdf_nbuf_get_end_offset(buf), dir, false);
-		dma_unmap_single(QDF_DMA_DEV(osdev), paddr, nbytes,
+		dma_unmap_single(osdev->dev, paddr, nbytes,
 				 __qdf_dma_dir_to_os(dir));
 		return;
 	}

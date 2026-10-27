@@ -117,8 +117,7 @@
 #define WLAN_CFG_PER_PDEV_LMAC_RING 0
 #define WLAN_LRO_ENABLE 0
 #if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN6450) || \
-    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072) || \
-    defined(QCA_WIFI_WCN8750)
+    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
 #define WLAN_CFG_MAC_PER_TARGET 1
 #else
 #define WLAN_CFG_MAC_PER_TARGET 2
@@ -149,9 +148,6 @@
 /* Interrupt Mitigation - Timer threshold in us */
 #define WLAN_CFG_INT_TIMER_THRESHOLD_TX 8
 #define WLAN_CFG_INT_TIMER_THRESHOLD_OTHER 8
-
-#define WLAN_CFG_INT_BATCH_THRESHOLD_RX_ERR 1
-#define WLAN_CFG_INT_TIMER_THRESHOLD_RX_ERR 512
 
 #ifdef WLAN_DP_PER_RING_TYPE_CONFIG
 #define WLAN_CFG_INT_BATCH_THRESHOLD_RX \
@@ -310,17 +306,7 @@
 #define WLAN_CFG_RX_DEFRAG_TIMEOUT_MIN 100
 #define WLAN_CFG_RX_DEFRAG_TIMEOUT_MAX 100
 
-#ifdef CONFIG_BORON
-#define WLAN_CFG_NUM_TCL_DATA_RINGS 5
-#elif defined(CONFIG_BERYLLIUM)
-#if defined(FEATURE_DAL_DP_SUPPORT) && !defined(IPA_OFFLOAD)
-#define WLAN_CFG_NUM_TCL_DATA_RINGS 5
-#else
 #define WLAN_CFG_NUM_TCL_DATA_RINGS 3
-#endif
-#else
-#define WLAN_CFG_NUM_TCL_DATA_RINGS 3
-#endif
 #define WLAN_CFG_NUM_TCL_DATA_RINGS_MIN 1
 #define WLAN_CFG_NUM_TCL_DATA_RINGS_MAX MAX_TCL_DATA_RINGS
 
@@ -328,9 +314,7 @@
 #define WLAN_CFG_NUM_TX_COMP_RINGS_MIN WLAN_CFG_NUM_TCL_DATA_RINGS_MIN
 #define WLAN_CFG_NUM_TX_COMP_RINGS_MAX WLAN_CFG_NUM_TCL_DATA_RINGS_MAX
 
-#ifdef CONFIG_BORON
-#define WLAN_CFG_NUM_REO_DEST_RING 9
-#elif defined(CONFIG_BERYLLIUM)
+#if defined(CONFIG_BERYLLIUM)
 #define WLAN_CFG_NUM_REO_DEST_RING 8
 #else
 #define WLAN_CFG_NUM_REO_DEST_RING 4
@@ -342,17 +326,13 @@
 #define WLAN_CFG_NSS_NUM_TCL_DATA_RINGS_MIN 1
 #define WLAN_CFG_NSS_NUM_TCL_DATA_RINGS_MAX 3
 
-#define WLAN_CFG_NUM_EMBEDDED_PATHS 1
-#define WLAN_CFG_NUM_EMBEDDED_PATHS_MIN 1
-#define WLAN_CFG_NUM_EMBEDDED_PATHS_MAX 5
-
 #define WLAN_CFG_NSS_NUM_REO_DEST_RING 2
 #define WLAN_CFG_NSS_NUM_REO_DEST_RING_MIN 1
 #define WLAN_CFG_NSS_NUM_REO_DEST_RING_MAX 3
 
 #define WLAN_CFG_WBM_RELEASE_RING_SIZE 1024
 #define WLAN_CFG_WBM_RELEASE_RING_SIZE_MIN 64
-#define WLAN_CFG_WBM_RELEASE_RING_SIZE_MAX 4096
+#define WLAN_CFG_WBM_RELEASE_RING_SIZE_MAX 1024
 
 #define WLAN_CFG_TCL_CMD_CREDIT_RING_SIZE 512
 #define WLAN_CFG_TCL_CMD_CREDIT_RING_SIZE_MIN 32
@@ -379,20 +359,15 @@
 #define WLAN_CFG_RX_RELEASE_RING_SIZE_MIN 8
 #if defined(QCA_WIFI_QCA6390) || defined(QCA_WIFI_QCA6490) || \
     defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_KIWI) || \
-    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072) || \
-    defined(QCA_WIFI_WCN8750)
-#define WLAN_CFG_RX_RELEASE_RING_SIZE_MAX 4096
+    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
+#define WLAN_CFG_RX_RELEASE_RING_SIZE_MAX 1024
 #else
 #define WLAN_CFG_RX_RELEASE_RING_SIZE_MAX 32768
 #endif
 
-#ifdef CONFIG_BORON
-#define WLAN_CFG_REO_EXCEPTION_RING_SIZE 1024
-#else
 #define WLAN_CFG_REO_EXCEPTION_RING_SIZE 256
-#endif
 #define WLAN_CFG_REO_EXCEPTION_RING_SIZE_MIN 128
-#define WLAN_CFG_REO_EXCEPTION_RING_SIZE_MAX 8192
+#define WLAN_CFG_REO_EXCEPTION_RING_SIZE_MAX 512
 
 #define WLAN_CFG_REO_CMD_RING_SIZE 128
 #define WLAN_CFG_REO_CMD_RING_SIZE_MIN 64
@@ -408,19 +383,11 @@
 #else
 #define WLAN_CFG_RXDMA_BUF_RING_SIZE_MIN 1024
 #endif
-#define WLAN_CFG_RXDMA_BUF_RING_SIZE_MAX 16384
+#define WLAN_CFG_RXDMA_BUF_RING_SIZE_MAX 8192
 
 #define WLAN_CFG_RXDMA_REFILL_RING_SIZE 4096
 #define WLAN_CFG_RXDMA_REFILL_RING_SIZE_MIN 16
 #define WLAN_CFG_RXDMA_REFILL_RING_SIZE_MAX 16384
-
-#define WLAN_CFG_DIRECT_REFILL_RING_SIZE 16384
-#define WLAN_CFG_DIRECT_REFILL_RING_SIZE_MIN 16
-#define WLAN_CFG_DIRECT_REFILL_RING_SIZE_MAX 16384
-
-#define WLAN_CFG_AUX_REFILL_RING_SIZE 64
-#define WLAN_CFG_AUX_REFILL_RING_SIZE_MIN 32
-#define WLAN_CFG_AUX_REFILL_RING_SIZE_MAX 64
 
 #define WLAN_CFG_RXDMA_SCAN_RADIO_REFILL_RING_SIZE 4096
 #define WLAN_CFG_RXDMA_SCAN_RADIO_REFILL_RING_SIZE_MIN 16
@@ -520,7 +487,7 @@
 #else
 #define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MIN 1024
 #endif
-#define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MAX 32768
+#define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MAX 16384
 
 /*
  * For low memory AP cases using 1 will reduce the rx descriptors memory req
@@ -554,7 +521,7 @@
 #else
 #define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MIN 4096
 #endif
-#define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MAX 32768
+#define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MAX 16384
 #endif
 
 #define WLAN_CFG_RX_FLOW_SEARCH_TABLE_SIZE 16384
@@ -572,27 +539,17 @@
 #define WLAN_CFG_NUM_REO_RINGS_MAP 0xF
 #endif
 #define WLAN_CFG_NUM_REO_RINGS_MAP_MIN 0x1
-#ifdef CONFIG_BORON
-#define WLAN_CFG_NUM_REO_RINGS_MAP_MAX 0x1FF
-#elif defined(CONFIG_BERYLLIUM)
+#if defined(CONFIG_BERYLLIUM)
 #define WLAN_CFG_NUM_REO_RINGS_MAP_MAX 0xFF
 #else
 #define WLAN_CFG_NUM_REO_RINGS_MAP_MAX 0xF
-#endif
-
-#define WLAN_CFG_NUM_RX_CONTEXT_MIN 0
-#define WLAN_CFG_NUM_RX_CONTEXT_MAX MAX_REO_DEST_RINGS
-#ifdef CONFIG_BORON
-#define WLAN_CFG_NUM_RX_CONTEXT_DEFAULT 4
-#else
-#define WLAN_CFG_NUM_RX_CONTEXT_DEFAULT 0
 #endif
 
 #if defined(WLAN_FEATURE_LATENCY_SENSITIVE_REO) && !defined(FEATURE_ALLOW_PKT_DROPPING)
 #define WLAN_CFG_RADIO_0_DEFAULT_REO 0xA	//REO_REMAP_SW8
 #else
 /* FEATURE_ALLOW_PKT_DROPPING is only defined on consolidate
- * build, reuse this marcro and don't set default route to REO2SW8
+ * build, re-use this marcro and don't set default route to REO2SW8
  * on consolidate build either.
  */
 #define WLAN_CFG_RADIO_0_DEFAULT_REO 0x1	//REO_REMAP_SW1
@@ -867,13 +824,6 @@
 		WLAN_CFG_NSS_NUM_TCL_DATA_RINGS_MAX, \
 		WLAN_CFG_NSS_NUM_TCL_DATA_RINGS, \
 		CFG_VALUE_OR_DEFAULT, "DP NSS TCL Data Rings")
-
-#define CFG_DP_EMBEDDED_PATHS \
-		CFG_INI_UINT("dp_embedded_tx_paths", \
-		WLAN_CFG_NUM_EMBEDDED_PATHS_MIN, \
-		WLAN_CFG_NUM_EMBEDDED_PATHS_MAX, \
-		WLAN_CFG_NUM_EMBEDDED_PATHS, \
-		CFG_VALUE_OR_DEFAULT, "DP EMBEDDED TX Paths")
 
 #define CFG_DP_TX_DESC \
 		CFG_INI_UINT("dp_tx_desc", \
@@ -1179,22 +1129,12 @@
 	"DP Rx Hash")
 
 #define CFG_DP_RX_RR \
-	CFG_INI_BOOL("dp_rx_rr", false, \
+	CFG_INI_BOOL("dp_rx_rr", true, \
 	"DP Rx Round Robin")
 
 #define CFG_DP_TSO \
 	CFG_INI_BOOL("TSOEnable", false, \
 	"DP TSO Enabled")
-
-#ifdef DP_FEATURE_USO
-#define USO_ENABLE_DEFAULT true
-#else
-#define USO_ENABLE_DEFAULT false
-#endif
-
-#define CFG_DP_USO \
-	CFG_INI_BOOL("USOEnable", USO_ENABLE_DEFAULT, \
-	"DP USO Enabled")
 
 #define CFG_DP_LRO \
 	CFG_INI_BOOL("LROEnable", WLAN_LRO_ENABLE, \
@@ -1556,20 +1496,6 @@
 		WLAN_CFG_RXDMA_REFILL_RING_SIZE, \
 		CFG_VALUE_OR_DEFAULT, "DP RXDMA refilll ring")
 
-#define CFG_DP_DIRECT_REFILL_RING \
-		CFG_INI_UINT("dp_direct_refill_ring", \
-		WLAN_CFG_DIRECT_REFILL_RING_SIZE_MIN, \
-		WLAN_CFG_DIRECT_REFILL_RING_SIZE_MAX, \
-		WLAN_CFG_DIRECT_REFILL_RING_SIZE, \
-		CFG_VALUE_OR_DEFAULT, "DP direct refill ring")
-
-#define CFG_DP_AUX_REFILL_RING \
-		CFG_INI_UINT("dp_aux_refill_ring", \
-		WLAN_CFG_AUX_REFILL_RING_SIZE_MIN, \
-		WLAN_CFG_AUX_REFILL_RING_SIZE_MAX, \
-		WLAN_CFG_AUX_REFILL_RING_SIZE, \
-		CFG_VALUE_OR_DEFAULT, "DP aux refill ring")
-
 #define CFG_DP_RXDMA_SCAN_RADIO_REFILL_RING \
 		CFG_INI_UINT("dp_rxdma_scan_radio_refill_ring", \
 		WLAN_CFG_RXDMA_SCAN_RADIO_REFILL_RING_SIZE_MIN, \
@@ -1791,11 +1717,11 @@
 
 #define CFG_DP_TXMON_SW_PEER_FILTERING \
 	CFG_INI_BOOL("tx_litemon_sw_peer_filtering", false, \
-		     "Enable SW based tx monitor peer filtering")
+		     "Enable SW based tx monitor peer fitlering")
 
 #define CFG_DP_TXMON_DISABLE_HW_FILTER \
 	CFG_INI_BOOL("tx_litemon_disable_hw_filter", false, \
-		     "Disable HW based tx monitor and enable sw filtering")
+		     "Disable HW based tx monitor and enable sw fitlering")
 
 #define CFG_DP_POINTER_TIMER_THRESHOLD_RX \
 	CFG_INI_UINT("dp_rx_ptr_timer_threshold", \
@@ -1835,38 +1761,16 @@
 		WLAN_CFG_PKTLOG_BUFFER_SIZE, \
 		CFG_VALUE_OR_DEFAULT, "Packet Log buffer size")
 
+#define CFG_DP_FULL_MON_MODE \
+		CFG_INI_BOOL("full_mon_mode", \
+		false, "Full Monitor mode support")
+
 #define CFG_DP_REO_RINGS_MAP \
 		CFG_INI_UINT("dp_reo_rings_map", \
 		WLAN_CFG_NUM_REO_RINGS_MAP_MIN, \
 		WLAN_CFG_NUM_REO_RINGS_MAP_MAX, \
 		WLAN_CFG_NUM_REO_RINGS_MAP, \
 		CFG_VALUE_OR_DEFAULT, "REO Destination Rings Mapping")
-
-/*
- * <ini>
- * dp_num_rx_context - Configure the number of RX contexts
- * @Min: 0
- * @Max: 9 (same as MAX_REO_DEST_RINGS)
- * @Default: 4 for fig, 0 for other chip
- *
- * This ini is used to control number of RX contexts (RX thread)
- * initialized and used.
- * If value is 0, it means this INI configuration is bypassed,
- * number of RX contexts used still same as before which depends on
- * number of RX rings used relevant with INI "dp_reo_rings_map".
- * If value is non-0, this INI value will be used as number of RX contexts
- * directly.
- *
- * Usage: Internal
- *
- * </ini>
- */
-#define CFG_DP_NUM_RX_CONTEXT \
-		CFG_INI_UINT("dp_num_rx_context", \
-		WLAN_CFG_NUM_RX_CONTEXT_MIN, \
-		WLAN_CFG_NUM_RX_CONTEXT_MAX, \
-		WLAN_CFG_NUM_RX_CONTEXT_DEFAULT, \
-		CFG_VALUE_OR_DEFAULT, "Number of DP RX contexts")
 
 #define CFG_DP_RX_RADIO_0_DEFAULT_REO \
 		CFG_INI_UINT("dp_rx_radio0_default_reo", \
@@ -2477,245 +2381,6 @@
 #define CFG_DP_RX_BUFFER_RECYCLE
 #endif
 
-#if defined(DP_FEATURE_RX_BUFFER_RECYCLE) || defined(DP_FEATURE_TX_PAGE_POOL)
-#define WLAN_CFG_PP_PREALLOC_TX_ONLY   2
-#define WLAN_CFG_PP_PREALLOC_MIN 0
-#define WLAN_CFG_PP_PREALLOC_MAX 3
-#define WLAN_CFG_PP_PREALLOC_DEFAULT WLAN_CFG_PP_PREALLOC_TX_ONLY
-
-/* Bit definitions for page pool preallocation control */
-#define DP_RX_PP_PREALLOC_BIT BIT(0)
-#define DP_TX_PP_PREALLOC_BIT BIT(1)
-
-/*
- * <ini>
- * dp_pp_prealloc_en - Page pool preallocation control (bit-encoded)
- * @Min: 0
- * @Max: 3
- * @Default: 0
- *
- * This ini is used to control page pool preallocation for RX and TX
- * page pools during initialization using bit encoding:
- * - Bit 0: Enable/Disable RX page pool preallocation
- * - Bit 1: Enable/Disable TX page pool preallocation
- *
- * Value 0 (0b00): Both RX and TX preallocation disabled
- * Value 1 (0b01): RX preallocation enabled, TX disabled
- * Value 2 (0b10): RX preallocation disabled, TX enabled
- * Value 3 (0b11): Both RX and TX preallocation enabled
- *
- * Related: dp_rx_buffer_recycle, dp_tx_page_pool
- *
- * Supported Feature: All modes
- *
- * Usage: Internal
- *
- * </ini>
- */
-#define CFG_DP_PP_PREALLOC_ENABLE \
-	CFG_INI_UINT("dp_pp_prealloc_en", \
-		     WLAN_CFG_PP_PREALLOC_MIN, \
-		     WLAN_CFG_PP_PREALLOC_MAX, \
-		     WLAN_CFG_PP_PREALLOC_DEFAULT, \
-		     CFG_VALUE_OR_DEFAULT, \
-		     "Page pool preallocation control (bit-encoded)")
-
-#define CFG_DP_PP_PREALLOC CFG(CFG_DP_PP_PREALLOC_ENABLE)
-#else
-#define CFG_DP_PP_PREALLOC
-#endif
-
-#ifdef NDP_TX_BW_FLOW_CTRL
-/*
- * <ini>
- * dp_ndp_bw_flow_ctrl_enable - Control NDP bandwidth based flow control
- * @Min: 0
- * @Max: 1
- * @Default: 1
- *
- * This ini is used to enable/disable bandwidth based flow control logic for NDP
- *
- * Supported Feature: NDP
- *
- * Usage: Internal
- *
- * </ini>
- */
-#define CFG_DP_NDP_BW_FLOW_CTRL_ENABLE \
-			CFG_INI_BOOL("dp_ndp_bw_flow_ctrl_enable", true, \
-				     "Enable/Disable NDP bw based flow control")
-
-#define CFG_DP_NDP_BW_FLOW_CTRL CFG(CFG_DP_NDP_BW_FLOW_CTRL_ENABLE)
-#else
-#define CFG_DP_NDP_BW_FLOW_CTRL
-#endif
-
-#ifdef DP_FEATURE_TX_PAGE_POOL
-#define CFG_DP_TX_PAGE_POOL_ENABLE \
-	CFG_INI_BOOL("dp_tx_page_pool", false, \
-		     "Enable/Disable page pool usage for TX buffers")
-#define CFG_DP_TX_PAGE_POOL CFG(CFG_DP_TX_PAGE_POOL_ENABLE)
-
-/**
- * WLAN_TX_DYNAMIC_PAGE_POOL_MAX
- *
- * Represents the maximum TX dynamic page pool configuration value.
- *
- * Bit Layout:
- * - Bit 0: Dynamic page pool enable flag (0 = disabled, 1 = enabled)
- * - Bits 1–31: Number of TX buffers to pre-allocate during initialization
- *
- * Calculation Steps:
- * 1. Base TX buffer count (WLAN_CFG_NUM_TX_DESC): 0x2000 (8192 decimal)
- * 2. Add 25% headroom: 8192 × 1.25 = 10240 (0x2800)
- * 3. Align to 16-byte boundary: 0x2800 (already aligned)
- * 4. Encode:
- *    - Shift buffer count left by 1: 0x2800 << 1 = 0x5000
- *    - Set enable flag (OR with 1): 0x5000 | 0x1 = 0x5001
- *
- * Final Value: 0x5001
- */
-#define WLAN_TX_DYNAMIC_PAGE_POOL_MAX  0x5001
-#define WLAN_TX_DYNAMIC_PAGE_POOL_MIN 0
-#define WLAN_TX_DYNAMIC_PAGE_POOL WLAN_TX_DYNAMIC_PAGE_POOL_MIN
-
-/*
- * <ini>
- * tx_dynamic_page_pool_config - Dynamic TX page pool configuration
- * @Min: 0
- * @Max: WLAN_TX_DYNAMIC_PAGE_POOL_CFG_MAX
- * @Default: 0
- *
- * This ini configures the dynamic TX page pool feature using bit encoding:
- * - Bit 0: Enable/Disable dynamic page pool (0=disabled, 1=enabled)
- * - Bits 1-31: Number of TX buffers to pre-allocate at initialization
- *
- * The dynamic page pool reduces memory footprint by allocating buffers
- * on-demand instead of pre-allocating all buffers at init time.
- *
- * Value 0: Dynamic page pool disabled (uses static pre-allocation)
- * Value 1 (0b1): Dynamic page pool enabled, 0 buffers pre-allocated
- * Value 3 (0b11): Dynamic page pool enabled, 1 buffer pre-allocated
- * Value 2049 (0x801): Dynamic page pool enabled, 1024 buffers pre-allocated
- *
- * Note: This feature requires dp_tx_page_pool=1 to be effective.
- * Buffer count is in multiples of 16 for optimal page pool alignment.
- *
- * Related: dp_tx_page_pool
- *
- * Supported Feature: All modes
- *
- * Usage: Internal
- *
- * </ini>
- */
-#define CFG_DP_TX_DYNAMIC_PAGE_POOL_CONFIG \
-	CFG_INI_UINT("tx_dynamic_page_pool_config", \
-		     WLAN_TX_DYNAMIC_PAGE_POOL_MIN, \
-		     WLAN_TX_DYNAMIC_PAGE_POOL_MAX, \
-		     WLAN_TX_DYNAMIC_PAGE_POOL, \
-		     CFG_VALUE_OR_DEFAULT, \
-		     "Dynamic TX page pool configuration")
-
-#define CFG_DP_TX_DYNAMIC_PAGE_POOL \
-	CFG(CFG_DP_TX_DYNAMIC_PAGE_POOL_CONFIG)
-#else
-#define CFG_DP_TX_PAGE_POOL
-#define CFG_DP_TX_DYNAMIC_PAGE_POOL
-#endif
-
-#ifdef FEATURE_DP_DAL_SIM
-#define CFG_DP_DAL_SIM_MODE_MIN 0
-#define CFG_DP_DAL_SIM_MODE_MAX 0xF
-#define CFG_DP_DAL_SIM_MODE_DEFAULT 0
-
-/*
- * <ini>
- * dp_dal_sim_mode - Set the dal simulation mode
- * @Min: 0
- * @Max: 0xF
- * @Default: 0
- *
- * This ini is used to set mode for dal simulation. Basis on this mode during
- * init time will decide which platform ops to use for dal simulation and
- * whether to use dal vendor hal for overwriting tx descriptors in offload sim.
- *
- * BIT0 - dal simulation mode (set - offload mode unset - bypass mode)
- * BIT1 - dal vendor hal use cfg (set - overwrite tx descriptors
- * unset - not overwrite)
- *
- * 0 - dal simulation in bypass mode
- * 1 - dal simulation in offload mode
- * 3 - use dal vendor hal cfg in offload mode
- *
- * Usage: Internal
- *
- * </ini>
- */
-#define CFG_DP_DAL_SIM_MODE \
-		CFG_INI_UINT("dp_dal_sim_mode", \
-		CFG_DP_DAL_SIM_MODE_MIN, \
-		CFG_DP_DAL_SIM_MODE_MAX, \
-		CFG_DP_DAL_SIM_MODE_DEFAULT, \
-		CFG_VALUE_OR_DEFAULT, "set dal simulation mode of operation")
-#define CFG_DP_DAL_SIM CFG(CFG_DP_DAL_SIM_MODE)
-#else
-#define CFG_DP_DAL_SIM
-#endif /* FEATURE_DP_DAL_SIM */
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-/*
- * <ini>
- * dp_dal_enable - Enable/disable DAL support in DP
- * @Min: 0
- * @Max: 1
- * @Default: 0
- *
- * This ini is used to enable/disable DAL support in DP
- *
- * Usage: Internal
- *
- * </ini>
- */
-
-#define CFG_DP_DAL_SUPPORT \
-	CFG_INI_BOOL("dp_dal_enable", false, \
-		     "Enable/Disable DAL support")
-#define CFG_DP_DAL CFG(CFG_DP_DAL_SUPPORT)
-#else
-#define CFG_DP_DAL
-#endif /* FEATURE_DAL_DP_SUPPORT */
-
-#ifdef DP_TCP_MEM_PARAM_CTRL
-/*
- * <ini>
- * tcp_mem_param_ctrl - Enable/Disable rmem_max and wmem_max setting
- * @Min: 0
- * @Max: 1
- * @Default: 0
- *
- * This ini is used to enable/disable the setting of /proc/sys/net/core/rmem_max
- * and /proc/sys/net/core/wmem_max values.
- * When set to 1, the driver will dynamically adjust these values.
- * When set to 0, the driver will not modify these system parameters.
- *
- * Related: None
- *
- * Supported Feature: hamoa
- *
- * Usage: External
- *
- * </ini>
- */
-
-#define CFG_DP_TCP_MEM_PARAM_CTRL \
-		CFG_INI_BOOL("tcp_mem_param_ctrl", false, \
-		"Enable/Disable rmem_max and wmem_max setting")
-#define CFG_DP_TCP_MEM_PARAM CFG(CFG_DP_TCP_MEM_PARAM_CTRL)
-#else
-#define CFG_DP_TCP_MEM_PARAM
-#endif /* DP_TCP_MEM_PARAM_CTRL */
-
 #define CFG_DP \
 		CFG(CFG_DP_HTT_PACKET_TYPE) \
 		CFG(CFG_DP_INT_BATCH_THRESHOLD_OTHER) \
@@ -2736,7 +2401,6 @@
 		CFG(CFG_DP_TCL_DATA_RINGS) \
 		CFG(CFG_DP_NSS_REO_DEST_RINGS) \
 		CFG(CFG_DP_NSS_TCL_DATA_RINGS) \
-		CFG(CFG_DP_EMBEDDED_PATHS) \
 		CFG(CFG_DP_TX_DESC) \
 		CFG(CFG_DP_TX_DESC_POOL_0) \
 		CFG(CFG_DP_TX_DESC_POOL_1) \
@@ -2766,7 +2430,6 @@
 		CFG(CFG_DP_RX_HASH) \
 		CFG(CFG_DP_RX_RR) \
 		CFG(CFG_DP_TSO) \
-		CFG(CFG_DP_USO) \
 		CFG(CFG_DP_LRO) \
 		CFG(CFG_DP_SG) \
 		CFG(CFG_DP_GRO) \
@@ -2796,8 +2459,6 @@
 		CFG(CFG_DP_REO_STATUS_RING) \
 		CFG(CFG_DP_RXDMA_BUF_RING) \
 		CFG(CFG_DP_RXDMA_REFILL_RING) \
-		CFG(CFG_DP_DIRECT_REFILL_RING) \
-		CFG(CFG_DP_AUX_REFILL_RING) \
 		CFG(CFG_DP_RXDMA_SCAN_RADIO_REFILL_LT_DISABLE) \
 		CFG(CFG_DP_RXDMA_REFILL_LT_DISABLE) \
 		CFG(CFG_DP_TX_DESC_LIMIT_0) \
@@ -2830,8 +2491,8 @@
 		CFG(CFG_DP_RX_MON_PROTOCOL_FLOW_TAG_ENABLE) \
 		CFG(CFG_DP_RXDMA_MONITOR_RX_DROP_THRESHOLD) \
 		CFG(CFG_DP_PKTLOG_BUFFER_SIZE) \
+		CFG(CFG_DP_FULL_MON_MODE) \
 		CFG(CFG_DP_REO_RINGS_MAP) \
-		CFG(CFG_DP_NUM_RX_CONTEXT) \
 		CFG(CFG_DP_PEER_EXT_STATS) \
 		CFG_DP_STATS_MAX_WINDOW \
 		CFG_DP_STATS_MAX_PKT_PER_WINDOW \
@@ -2893,12 +2554,5 @@
 		CFG_DP_SAWF_RECLAIM_TIMER \
 		CFG_DP_SAWF_MSDUQ_TID_SKID \
 		CFG(CFG_DP_RXMON_MGMT_LINEARIZATION) \
-		CFG_DP_RX_BUFFER_RECYCLE \
-		CFG_DP_PP_PREALLOC \
-		CFG_DP_NDP_BW_FLOW_CTRL \
-		CFG_DP_TX_PAGE_POOL \
-		CFG_DP_DAL_SIM \
-		CFG_DP_DAL \
-		CFG_DP_TX_DYNAMIC_PAGE_POOL \
-		CFG_DP_TCP_MEM_PARAM
+		CFG_DP_RX_BUFFER_RECYCLE
 #endif /* _CFG_DP_H_ */

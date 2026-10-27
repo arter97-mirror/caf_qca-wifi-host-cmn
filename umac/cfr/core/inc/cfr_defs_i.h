@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -93,14 +93,6 @@ wlan_cfr_peer_obj_create_handler(struct wlan_objmgr_peer *peer, void *arg);
  */
 QDF_STATUS
 wlan_cfr_peer_obj_destroy_handler(struct wlan_objmgr_peer *peer, void *arg);
-
-/**
- * wlan_cfr_is_ini_disabled() - Check if cfr feature is disabled
- * @pdev: the physical device object.
- *
- * Return : true if cfr is disabled, else false.
- */
-bool wlan_cfr_is_ini_disabled(struct wlan_objmgr_pdev *pdev);
 
 #ifdef WLAN_STREAMFS
 /**

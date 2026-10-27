@@ -24,22 +24,17 @@
 #include "qdf_mem.h"
 #include "qdf_trace.h"
 #include "rx_msdu_link.h"
+#include "rx_reo_queue.h"
+#include "rx_reo_queue_ext.h"
 #include "wcss_seq_hwiobase.h"
 #include "tlv_hdr.h"
 #include "tlv_tag_def.h"
 #include "reo_destination_ring.h"
 #include "reo_entrance_ring.h"
-#ifdef CONFIG_BORON
-#include "tcl_assist_cmd.h"
-#include "tqm2sw_completion_ring.h"
-#else /* CONFIG_BORON */
-#include "rx_reo_queue.h"
-#include "tcl_data_cmd.h"
 #include "reo_get_queue_stats.h"
 #include "reo_get_queue_stats_status.h"
-#include "rx_reo_queue_ext.h"
+#include "tcl_data_cmd.h"
 #include "tcl_gse_cmd.h"
-#endif /* !CONFIG_BORON */
 #include "tcl_status_ring.h"
 #include "ce_src_desc.h"
 #include "ce_stat_desc.h"
@@ -77,12 +72,6 @@
 #include "wcss_version.h"
 #include "rx_msdu_link.h"
 #include "hal_internal.h"
-
-#ifdef DP_FEATURE_DIRECT_REFILL
-#include "wcss_seq_hwioreg_wifi_top.h"
-
-#define HAL_PMM_SCRATCH_REG_IX_26 HWIO_WFSS_PMM_R0_PMM_SW_META_S_PARE_IX_26_ADDR(WFSS_PMM_REG_BASE)
-#endif
 
 #define HAL_SRNG_REO_EXCEPTION HAL_SRNG_REO2SW1
 #define HAL_SRNG_REO_ALTERNATE_SELECT 0x7
@@ -376,14 +365,6 @@ static inline void hal_set_link_desc_addr(hal_soc_handle_t hal_soc_hdl,
 						     bm_id);
 }
 
-#ifdef CONFIG_BORON
-static inline
-uint32_t hal_get_reo_qdesc_size(hal_soc_handle_t hal_soc_hdl,
-				uint32_t ba_window_size, int tid)
-{
-	return 0;
-}
-#else
 /**
  * hal_get_reo_qdesc_size - Get size of reo queue descriptor
  *
@@ -404,7 +385,6 @@ uint32_t hal_get_reo_qdesc_size(hal_soc_handle_t hal_soc_hdl,
 
 	return sizeof(struct rx_reo_queue);
 }
-#endif /* !CONFIG_BORON */
 
 /**
  * hal_get_rx_max_ba_window - Get RX max BA window size per target

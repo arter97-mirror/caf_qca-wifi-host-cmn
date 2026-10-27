@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022,2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -30,12 +30,9 @@
 #include <qdf_trace.h>
 #include <wlan_nlink_common.h>
 
-#define ANI_NL_MSG_APF_LOG_TYPE 112
-
 int wlan_logging_sock_init_svc(void);
 int wlan_logging_sock_deinit_svc(void);
 int wlan_log_to_user(QDF_TRACE_LEVEL log_level, char *to_be_sent, int length);
-int wlan_log_apf_to_user(void *data, uint16_t len);
 
 /**
  * wlan_logging_set_flush_timer() - Sets the time period for log flush timer
@@ -184,12 +181,9 @@ enum tx_status {
 };
 
 #ifdef WLAN_CHIPSET_STATS
-void wlan_set_chipset_stats_bit(bool is_drv_dump_in_progress_valid,
-				uint8_t dump_in_progress);
+void wlan_set_chipset_stats_bit(void);
 #else
-static inline void
-wlan_set_chipset_stats_bit(bool is_drv_dump_in_progress_valid,
-			   uint8_t dump_in_progress)
+static inline void wlan_set_chipset_stats_bit(void)
 {
 }
 #endif /* WLAN_CHIPSET_STATS */

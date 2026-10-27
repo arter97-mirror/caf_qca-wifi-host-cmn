@@ -27,9 +27,6 @@
 #include "wlan_crypto_global_def.h"
 #include "wlan_crypto_global_api.h"
 #include "wlan_reg_services_api.h"
-#include "wlan_cm_bss_score_param.h"
-#include "wlan_psoc_mlme.h"
-#include "wlan_mlme_api.h"
 
 /**
  * scm_check_open() - Check if scan entry support open authmode
@@ -190,235 +187,12 @@ static bool scm_chk_if_cipher_n_akm_match(struct scan_filter *filter,
 	return true;
 }
 
-/* Number of Security Profiles defined per IEEE P802.11bn D1.4 Table 9-bb14 */
-#define WLAN_SP_MAX 16
-
-/*
- * Security Profile Number to AKM mapping per IEEE P802.11bn D1.4 Table 9-bb14.
- * All profiles use GCMP-256 pairwise cipher.
- */
-static const uint32_t sec_profile_akm_map[] = {
-	/* Profile 0: EPPKE without mutual auth */
-	BIT(WLAN_CRYPTO_KEY_MGMT_EPPKE),
-	/* Profile 1: EPPKE + SAE-EXT-KEY (AKM suite 24) */
-	BIT(WLAN_CRYPTO_KEY_MGMT_EPPKE) | BIT(WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY),
-	/* Profile 2: EPPKE + FT-SAE-EXT-KEY (AKM suite 25) */
-	BIT(WLAN_CRYPTO_KEY_MGMT_EPPKE) | BIT(WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY),
-	/* Profile 3: 802.1X */
-	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X),
-	/* Profile 4: 802.1X + FT */
-	BIT(WLAN_CRYPTO_KEY_MGMT_FT_IEEE8021X),
-	/* Profile 5: 802.1X SHA384 (AKM suite 23) */
-	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SHA384),
-	/* Profile 6: 802.1X + FT SHA384 */
-	BIT(WLAN_CRYPTO_KEY_MGMT_FT_IEEE8021X_SHA384),
-	/* Profile 7: 802.1X SUITE-B-192 */
-	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B_192),
-	/* Profile 8: OWE (AKM suite 18) */
-	BIT(WLAN_CRYPTO_KEY_MGMT_OWE),
-	/* Profile 9: SAE-EXT-KEY (AKM suite 24) */
-	BIT(WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY),
-	/* Profile 10: FT-SAE-EXT-KEY (AKM suite 25) */
-	BIT(WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY),
-	/* Profile 11: 802.1X */
-	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X),
-	/* Profile 12: 802.1X + FT */
-	BIT(WLAN_CRYPTO_KEY_MGMT_FT_IEEE8021X),
-	/* Profile 13: 802.1X SHA384 (AKM suite 23) */
-	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SHA384),
-	/* Profile 14: 802.1X + FT SHA384 */
-	BIT(WLAN_CRYPTO_KEY_MGMT_FT_IEEE8021X_SHA384),
-	/* Profile 15: 802.1X SUITE-B-192 */
-	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B_192),
-};
-
-#if defined(WLAN_FEATURE_11BI_SECURITY) && \
-	defined(WLAN_FEATURE_SECURITY_PROFILE)
-/**
- * scm_sp_eppke_rsnxe_valid() - Check RSNXE caps in SP IE for an EPPKE profile
- * @ie: raw SP IE (ie[0]=EID=255, ie[1]=Len, ie[2]=ExtID=162, ...)
- * @db_entry: scan entry (for debug MAC address)
- * @profile_num: profile index (for debug log)
- *
- * Per IEEE 802.11bi, EPPKE profiles mandate KEK_IN_PASN (bit 18),
- * ASSOC_FRM_ENCRYPTION (bit 27), and PMKSA_PRIVACY (bit 29) in the
- * SP IE's Extended RSN Capabilities field.
- *
- * Return: true if all required caps are present, false otherwise.
- */
-static bool
-scm_sp_eppke_rsnxe_valid(const uint8_t *ie,
-			 struct scan_cache_entry *db_entry,
-			 uint8_t profile_num)
-{
-	/*
-	 * ext_rsn_offset: byte offset of Extended RSN Caps from ie[2] (ExtID).
-	 * ie[1] is the IE body length (from ie[2] onward), so the caps exist
-	 * only when ie[1] >= ext_rsn_offset + WLAN_SP_IE_EPPKE_MIN_EXT_RSN_LEN.
-	 */
-	uint8_t ext_rsn_offset = WLAN_SP_IE_EXT_RSN_OFFSET(ie);
-	const uint8_t *ext_caps =
-		(ie[1] >= ext_rsn_offset + WLAN_SP_IE_EPPKE_MIN_EXT_RSN_LEN) ?
-		ie + WLAN_SP_IE_DATA_OFFSET + ext_rsn_offset : NULL;
-
-	if (!wlan_crypto_eppke_rsnxe_caps_valid(ext_caps,
-						ext_caps ? ext_caps[0] & 0xf : 0,
-						true)) {
-		scm_debug(QDF_MAC_ADDR_FMT
-			  " SP%d: EPPKE RSNXE caps absent",
-			  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
-			  profile_num);
-		return false;
-	}
-	return true;
-}
-#else
-static inline bool
-scm_sp_eppke_rsnxe_valid(const uint8_t *ie,
-			 struct scan_cache_entry *db_entry,
-			 uint8_t profile_num)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_11BI_SECURITY && WLAN_FEATURE_SECURITY_PROFILE */
-
-/**
- * scm_check_security_profile() - Check if AP Security Profile IE matches
- * the filter's key management suite
- * @filter: scan filter
- * @db_entry: scan cache entry
- * @security: matched security info to update
- * @ap_crypto: AP crypto params to patch on match
- *
- * Parse the AP's Security Profile element bitmap and check whether any
- * advertised profile's AKM matches the filter's key_mgmt. On match,
- * record the selected profile number in security->sec_profile_num and
- * patch security with the SP-mandated GCMP-256 pairwise cipher and AKM.
- * All Security Profile element profiles mandate GCMP-256 as the pairwise
- * cipher; if the filter does not include GCMP-256 the check fails.
- *
- * Return: true if a matching profile is found, false otherwise
- */
-#ifdef WLAN_FEATURE_SECURITY_PROFILE
-static bool
-scm_check_security_profile(struct scan_filter *filter,
-			   struct scan_cache_entry *db_entry,
-			   struct security_info *security,
-			   struct wlan_crypto_params *ap_crypto)
-{
-	const uint8_t *ie;
-	uint8_t num_bitmap_octets;
-	uint16_t sp_bitmap;
-	uint8_t profile_num;
-	uint32_t effective_key_mgmt;
-
-	if (!filter->security_profile)
-		return false;
-
-	ie = util_scan_entry_security_profile(db_entry);
-	if (!ie || ie[1] < 4)
-		return false;
-
-	/* An empty ucastcipherset means "no cipher restriction"; only reject
-	 * if the filter explicitly specifies ciphers that exclude GCMP-256.
-	 */
-	if (filter->ucastcipherset &&
-	    !QDF_HAS_PARAM(filter->ucastcipherset,
-			   WLAN_CRYPTO_CIPHER_AES_GCM_256))
-		return false;
-
-	/* ie[4] = Security Profile Indication: bits[3:0] = num bitmap octets */
-	num_bitmap_octets = ie[4] & 0x0f;
-	if (!num_bitmap_octets || ie[1] < (3 + num_bitmap_octets))
-		return false;
-
-	security->sec_profile_num = -1;
-	effective_key_mgmt = filter->key_mgmt;
-
-	/*
-	 * When eppke_allowed is set and userspace sent only SAE-EXT-KEY or
-	 * FT-SAE-EXT-KEY (without EPPKE), expand the effective key_mgmt to
-	 * also include EPPKE so that profiles 1 and 2 can match.
-	 * Profile 1: EPPKE | SAE-EXT-KEY
-	 * Profile 2: EPPKE | FT-SAE-EXT-KEY
-	 */
-
-	if (filter->eppke_allowed &&
-	    !QDF_HAS_PARAM(filter->key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE) &&
-	    (QDF_HAS_PARAM(filter->key_mgmt, WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY) ||
-	     QDF_HAS_PARAM(filter->key_mgmt,
-			   WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY))) {
-		QDF_SET_PARAM(effective_key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE);
-		scm_debug(QDF_MAC_ADDR_FMT
-			  "scm_check_security_profile: eppke_allowed, expanded key_mgmt 0x%x -> 0x%x",
-			  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
-			  filter->key_mgmt, effective_key_mgmt);
-	}
-
-	/*
-	 * Build a 16-bit profile bitmap from the IE (little-endian, profiles
-	 * 0-7 in byte[5], profiles 8-15 in byte[6] if present).
-	 * Test each set bit: if the corresponding AKM mask is fully covered by
-	 * filter->key_mgmt, it is a match.
-	 */
-	sp_bitmap = ie[5];
-	if (num_bitmap_octets > 1)
-		sp_bitmap |= (uint16_t)ie[6] << 8;
-
-	for (profile_num = 0; profile_num < WLAN_SP_MAX; profile_num++) {
-		if (!QDF_HAS_PARAM(sp_bitmap, profile_num))
-			continue;
-		if ((effective_key_mgmt &
-		     sec_profile_akm_map[profile_num]) !=
-		    sec_profile_akm_map[profile_num])
-			continue;
-
-		if (QDF_HAS_PARAM(sec_profile_akm_map[profile_num],
-				  WLAN_CRYPTO_KEY_MGMT_EPPKE) &&
-		    !scm_sp_eppke_rsnxe_valid(ie, db_entry, profile_num))
-			continue;
-
-		security->sec_profile_num = profile_num;
-		security->sec_profile_valid = true;
-		security->key_mgmt = sec_profile_akm_map[profile_num];
-		security->ucastcipherset = 0;
-		QDF_SET_PARAM(security->ucastcipherset,
-			      WLAN_CRYPTO_CIPHER_AES_GCM_256);
-		security->rsn_caps = ap_crypto->rsn_caps;
-		security->mcastcipherset =
-			ap_crypto->mcastcipherset & filter->mcastcipherset;
-		scm_debug(QDF_MAC_ADDR_FMT
-			  "Security Profile match: profile %d",
-			  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
-			  profile_num);
-		return true;
-	}
-
-	scm_debug(QDF_MAC_ADDR_FMT " no matching Security Profile found",
-		  QDF_MAC_ADDR_REF(db_entry->bssid.bytes));
-	return false;
-}
-#else
-static inline bool
-scm_check_security_profile(struct scan_filter *filter,
-			   struct scan_cache_entry *db_entry,
-			   struct security_info *security,
-			   struct wlan_crypto_params *ap_crypto)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_SECURITY_PROFILE */
-
 static bool scm_chk_crypto_params(struct scan_filter *filter,
 				  struct wlan_crypto_params *ap_crypto,
 				  bool is_adaptive_11r,
 				  struct scan_cache_entry *db_entry,
 				  struct security_info *security)
 {
-	if (scm_check_security_profile(filter, db_entry,
-				       security, ap_crypto))
-		return true;
-
 	if (!scm_chk_if_cipher_n_akm_match(filter, ap_crypto)) {
 		scm_debug(QDF_MAC_ADDR_FMT": fail. adaptive 11r %d Self: AKM %x CIPHER: mc %x uc %x mgmt %x pmf %d AP: AKM %x CIPHER: mc %x uc %x mgmt %x, RSN caps %x",
 			  QDF_MAC_ADDR_REF(db_entry->bssid.bytes), is_adaptive_11r,
@@ -546,7 +320,7 @@ static bool scm_check_rsn(struct scan_filter *filter,
 			continue;
 		}
 
-		status = wlan_crypto_rsnie_check(ap_crypto, rsn, NULL);
+		status = wlan_crypto_rsnie_check(ap_crypto, rsn);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			scm_err(QDF_MAC_ADDR_FMT ": failed to parse RSN IE gen %d, status %d",
 				QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
@@ -562,17 +336,6 @@ static bool scm_check_rsn(struct scan_filter *filter,
 		/* If adaptive 11r is enabled set the FT AKM for AP */
 		if (is_adaptive_11r)
 			scm_check_and_update_adaptive_11r_key_mgmt_support(ap_crypto);
-
-		/*
-		 * Per IEEE P802.11bn sec. 37.32, when a Security Profile
-		 * element is present, override the Extended Key ID and OCVC
-		 * bits in ap_crypto->rsn_caps before matching so that
-		 * scm_chk_crypto_params() and security->rsn_caps both
-		 * reflect the Security Profile values for those bits.
-		 * All other RSN cap bits remain from the RSNE.
-		 */
-		util_scan_get_security_profile_rsn_caps(db_entry,
-							&ap_crypto->rsn_caps);
 
 		match = scm_chk_crypto_params(filter, ap_crypto,
 					      is_adaptive_11r, db_entry,
@@ -623,8 +386,7 @@ static bool scm_check_wpa(struct scan_filter *filter,
 		return false;
 
 	status = wlan_crypto_wpaie_check(ap_crypto,
-					 util_scan_entry_wpa(db_entry),
-					 NULL);
+					 util_scan_entry_wpa(db_entry));
 	if (QDF_IS_STATUS_ERROR(status)) {
 		scm_err(QDF_MAC_ADDR_FMT": failed to parse WPA IE, status %d",
 			QDF_MAC_ADDR_REF(db_entry->bssid.bytes), status);
@@ -719,8 +481,7 @@ static bool scm_match_any_security(struct scan_filter *filter,
 
 	if (util_scan_entry_rsn(db_entry)) {
 		status = wlan_crypto_rsnie_check(ap_crypto,
-						 util_scan_entry_rsn(db_entry),
-						 NULL);
+						 util_scan_entry_rsn(db_entry));
 		if (QDF_IS_STATUS_ERROR(status)) {
 			scm_err(QDF_MAC_ADDR_FMT": failed to parse RSN IE, status %d",
 				QDF_MAC_ADDR_REF(db_entry->bssid.bytes), status);
@@ -737,8 +498,7 @@ static bool scm_match_any_security(struct scan_filter *filter,
 
 	if (util_scan_entry_wpa(db_entry)) {
 		status = wlan_crypto_wpaie_check(ap_crypto,
-						 util_scan_entry_wpa(db_entry),
-						 NULL);
+						 util_scan_entry_wpa(db_entry));
 		if (QDF_IS_STATUS_ERROR(status)) {
 			scm_err(QDF_MAC_ADDR_FMT": failed to parse WPA IE, status %d",
 				QDF_MAC_ADDR_REF(db_entry->bssid.bytes), status);
@@ -831,8 +591,6 @@ static bool scm_is_security_match(struct scan_filter *filter,
 		case WLAN_CRYPTO_AUTH_RSNA:
 		case WLAN_CRYPTO_AUTH_CCKM:
 		case WLAN_CRYPTO_AUTH_SAE:
-		case WLAN_CRYPTO_AUTH_EPPKE:
-		case WLAN_CRYPTO_AUTH_8021X_IN_AUTH:
 		case WLAN_CRYPTO_AUTH_FILS_SK:
 			/* First check if there is a RSN match */
 			match = scm_check_rsn(filter, db_entry, security);
@@ -859,8 +617,6 @@ scm_ignore_ssid_check_for_hidden_bss(struct scan_filter *filter,
 
 	is_hidden = util_scan_entry_is_hidden_ap(db_entry);
 	if (is_hidden &&
-	    (!qdf_is_macaddr_zero(&filter->bssid_hint) ||
-	     QDF_HAS_PARAM(filter->key_mgmt, WLAN_CRYPTO_KEY_MGMT_OWE)) &&
 	    util_is_bssid_match(&filter->bssid_hint, &db_entry->bssid))
 		return true;
 
@@ -972,46 +728,6 @@ static bool scm_check_dot11mode(struct scan_cache_entry *db_entry,
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
-static bool
-scm_check_mlo_cfg_partner_match(struct wlan_objmgr_pdev *pdev,
-				struct partner_link_info *partner_link)
-{
-	struct wlan_objmgr_psoc *psoc;
-	struct qdf_mac_addr bssid_list[WLAN_MAX_NUM_ALLOWED_BSSIDS];
-	bool cfg_link_found = false;
-	uint8_t num_links, idx = 0;
-
-	psoc = wlan_pdev_get_psoc(pdev);
-	num_links = wlan_cm_get_mlo_allowed_bss_links(psoc, bssid_list);
-	if (num_links >= WLAN_MAX_NUM_ALLOWED_BSSIDS) {
-		cfg_link_found = true;
-		scm_debug("Num links %d exceed max allowed links, ignore list",
-			  num_links);
-		return cfg_link_found;
-	}
-
-	if (num_links == 0) {
-		cfg_link_found = true;
-		scm_debug_rl("No configured partner links");
-		return cfg_link_found;
-	}
-
-	cfg_link_found = false;
-	idx = 0;
-
-	while (num_links) {
-		if (qdf_is_macaddr_equal(&bssid_list[idx],
-					 &partner_link->link_addr)) {
-			cfg_link_found = true;
-			break;
-		}
-		num_links--;
-		idx++;
-	}
-
-	return cfg_link_found;
-}
-
 static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 				 struct scan_filter *filter,
 				 struct scan_cache_entry *db_entry)
@@ -1048,10 +764,8 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 
 	if (!db_entry->ie_list.multi_link_bv)
 		return true;
-
-	/* Allow all bands for an invalid band bitmap */
 	if (!filter->band_bitmap)
-		filter->band_bitmap = 0x77;
+		return true;
 
 	/* Apply assoc band filter only for assoc link */
 	band_bitmap = filter->band_bitmap & 0xf;
@@ -1064,17 +778,14 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			  db_entry->channel.chan_freq, filter->band_bitmap);
 		return false;
 	}
-
 	for (i = 0; i < db_entry->ml_info.num_links; i++) {
 		partner_link = &db_entry->ml_info.link_info[i];
+		band = wlan_reg_freq_to_band(partner_link->freq);
 
-		/* Set the link as invalid by default */
-		partner_link->is_valid_link = false;
-
-		is_disabled =
-			wlan_reg_is_disable_for_pwrmode(pdev,
-							partner_link->freq,
-							REG_BEST_PWR_MODE);
+		is_disabled = wlan_reg_is_disable_for_pwrmode(
+				    pdev,
+				    partner_link->freq,
+				    REG_BEST_PWR_MODE);
 		if (is_disabled) {
 			scm_debug(QDF_MAC_ADDR_FMT ": Partner " QDF_MAC_ADDR_FMT " link id %d freq %d disabled",
 				  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
@@ -1089,6 +800,7 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			scm_debug(QDF_MAC_ADDR_FMT " dup link id %d",
 				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
 				  partner_link->link_id);
+			partner_link->is_valid_link = false;
 			continue;
 		}
 
@@ -1097,6 +809,7 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			scm_debug(QDF_MAC_ADDR_FMT " link id %d dup mac",
 				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
 				  partner_link->link_id);
+			partner_link->is_valid_link = false;
 			continue;
 		}
 
@@ -1106,17 +819,10 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			scm_debug(QDF_MAC_ADDR_FMT " link (%d) dup mac with tx mbssid",
 				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
 				  partner_link->freq);
+			partner_link->is_valid_link = false;
 			continue;
 		}
 
-		if (!scm_check_mlo_cfg_partner_match(pdev, partner_link)) {
-			scm_debug(QDF_MAC_ADDR_FMT " link (%d) not part of configured links",
-				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
-				  partner_link->freq);
-			continue;
-		}
-
-		band = wlan_reg_freq_to_band(partner_link->freq);
 		if (band_bitmap & BIT(band))
 			partner_link->is_valid_link = true;
 	}
@@ -1131,39 +837,6 @@ static inline bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 	return true;
 }
 #endif
-
-QDF_STATUS
-scm_fetch_entry_chan_linkid_params_for_rnr(struct wlan_objmgr_pdev *pdev,
-					   struct qdf_mac_addr *bssid,
-					   uint8_t *entry_chan_num,
-					   uint8_t *entry_op_class,
-					   uint8_t *entry_link_id)
-{
-	enum wlan_phymode phymode;
-	enum phy_ch_width ch_width;
-	enum behav_limit behav_limit;
-	uint8_t op_class, chan_num;
-	struct scan_cache_entry *entry;
-
-	entry = scm_scan_get_entry_by_bssid(pdev, bssid);
-	if (!entry)
-		return QDF_STATUS_E_NOENT;
-
-	phymode = util_scan_entry_phymode(entry);
-	ch_width = wlan_mlme_get_ch_width_from_phymode(phymode);
-	behav_limit = wlan_reg_get_behav_limit_from_phymode(phymode);
-	wlan_reg_freq_width_to_chan_op_class(pdev, entry->channel.chan_freq,
-					     wlan_reg_get_bw_value(ch_width),
-					     true, BIT(behav_limit), &op_class,
-					     &chan_num);
-	*entry_chan_num = chan_num;
-	*entry_op_class = op_class;
-	*entry_link_id = util_scan_entry_self_linkid(entry);
-
-	util_scan_free_cache_entry(entry);
-
-	return QDF_STATUS_SUCCESS;
-}
 
 #ifdef WLAN_FEATURE_11BE
 
@@ -1459,9 +1132,6 @@ bool scm_filter_match(struct wlan_objmgr_psoc *psoc,
 		return false;
 	}
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_SCAN_ID);
-
-	if (!util_is_local_generated_entry(filter->flush_local_gen, db_entry))
-		return false;
 
 	return true;
 }

@@ -20,12 +20,6 @@
 #ifndef _DP_RINGS_H_
 #define _DP_RINGS_H_
 
-#ifdef CONFIG_IO_COHERENCY
-#define DP_SRNG_ALLOC_CACHED 1
-#else
-#define DP_SRNG_ALLOC_CACHED 0
-#endif
-
 #include <dp_types.h>
 #include <dp_internal.h>
 #ifdef WIFI_MONITOR_SUPPORT
@@ -139,6 +133,16 @@ int dp_process_lmac_rings(struct dp_intr *int_ctx, int total_budget);
 void dp_service_lmac_rings(void *arg);
 
 /**
+ * dp_service_srngs() - Top level interrupt handler for DP Ring interrupts
+ * @dp_ctx: DP SOC handle
+ * @dp_budget: Number of frames/descriptors that can be processed in one shot
+ * @cpu: CPU on which this instance is running
+ *
+ * Return: remaining budget/quota for the soc device
+ */
+uint32_t dp_service_srngs(void *dp_ctx, uint32_t dp_budget, int cpu);
+
+/**
  * dp_soc_set_interrupt_mode() - Set the interrupt mode in soc
  * @soc: DP soc handle
  *
@@ -182,7 +186,7 @@ static inline int dp_srng_find_ring_in_mask(int ring_num, uint8_t *grp_mask)
  *
  * For MCL, monitor mode rings are being processed in timer contexts (polled).
  * This function is returning 0, since in interrupt mode(softirq based RX),
- * we do not want to process monitor mode rings in a softirq.
+ * we donot want to process monitor mode rings in a softirq.
  *
  * So, in case packet log is enabled for SAP/STA/P2P modes,
  * regular interrupt processing will not process monitor mode rings. It would be
@@ -203,7 +207,7 @@ dp_soc_get_mon_mask_for_interrupt_mode(struct dp_soc *soc, int intr_ctx_num)
  *
  * For MCL, monitor mode rings are being processed in timer contexts (polled).
  * This function is returning 0, since in interrupt mode(softirq based RX),
- * we do not want to process monitor mode rings in a softirq.
+ * we donot want to process monitor mode rings in a softirq.
  *
  * So, in case packet log is enabled for SAP/STA/P2P modes,
  * regular interrupt processing will not process monitor mode rings. It would be
@@ -274,7 +278,7 @@ static inline bool dp_skip_msi_cfg(struct dp_soc *soc, int ring_type)
 		if (ring_type == REO_DST || ring_type == RXDMA_DST)
 			return true;
 	} else if (ring_type == RXDMA_MONITOR_STATUS &&
-		  !dp_is_local_pkt_capture_allowed(soc)) {
+		  !dp_mon_mode_local_pkt_capture(soc)) {
 		return true;
 	}
 
@@ -471,8 +475,6 @@ dp_peer_setup_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		    struct cdp_peer_setup_info *setup_info);
 
 uint32_t dp_get_tx_rings_grp_bitmap(struct cdp_soc_t *soc_hdl);
-
-uint32_t dp_get_rx_rings_grp_bitmap(struct cdp_soc_t *soc_hdl);
 
 /*
  * dp_set_ba_aging_timeout() - set ba aging timeout per AC

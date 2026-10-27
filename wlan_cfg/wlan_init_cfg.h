@@ -25,14 +25,7 @@
  * or platform configuration
  */
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
-/* Cached ring desc disabled by default for single-pdev;
- * enable via QCA_CACHED_RING_DESC
- */
-#ifdef QCA_CACHED_RING_DESC
-#define WLAN_CFG_DST_RING_CACHED_DESC 1
-#else
 #define WLAN_CFG_DST_RING_CACHED_DESC 0
-#endif
 #define MAX_PDEV_CNT 1
 
 #ifdef CONFIG_BERYLLIUM
@@ -43,6 +36,7 @@
 #define WLAN_CFG_INT_NUM_CONTEXTS 7
 #define WLAN_CFG_INT_NUM_CONTEXTS_MAX 14
 #endif
+#define WLAN_CFG_RXDMA1_ENABLE 1
 /*
  * This mask defines how many transmit frames account for 1 NAPI work unit
  * 0 means each tx completion is 1 unit
@@ -53,8 +47,7 @@
 #define DP_PPDU_TXLITE_STATS_BITMASK_CFG 0x3FFF
 
 #if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN6450) || \
-    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072) || \
-    defined(QCA_WIFI_WCN8750)
+    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
 #define NUM_RXDMA_STATUS_RINGS_PER_PDEV 1
 #else
 #define NUM_RXDMA_STATUS_RINGS_PER_PDEV 2
@@ -85,13 +78,8 @@
 /* Tx configuration */
 #define MAX_LINK_DESC_BANKS 8
 
-#ifdef CONFIG_BORON
-#define MAX_REO_DEST_RINGS 9
-#define MAX_TCL_DATA_RINGS 7
-#else
 #define MAX_REO_DEST_RINGS 8
 #define MAX_TCL_DATA_RINGS 5
-#endif
 
 #define MAX_RX_MAC_RINGS 2
 

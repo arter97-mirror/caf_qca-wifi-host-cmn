@@ -16,7 +16,7 @@
 
 /*
  * Layer b/w umac and target_if (ol) txops
- * It contains wrappers for txops
+ * It contains wrapers for txops
  */
 
 #include <wlan_wifi_radar_tgt_api.h>

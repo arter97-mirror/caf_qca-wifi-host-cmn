@@ -32,9 +32,17 @@
 typedef void (*dp_rxtid_stats_cmd_cb)(struct dp_soc *soc, void *cb_ctxt,
 				      union hal_reo_status *reo_status);
 
-#if !defined(WLAN_SOFTUMAC_SUPPORT) && !defined(CONFIG_BORON)
+#ifndef WLAN_SOFTUMAC_SUPPORT
 void dp_rx_tid_stats_cb(struct dp_soc *soc, void *cb_ctxt,
 			union hal_reo_status *reo_status);
+
+/**
+ * dp_peer_rx_cleanup() - Cleanup receive TID state
+ * @vdev: Datapath vdev
+ * @peer: Datapath peer
+ *
+ */
+void dp_peer_rx_cleanup(struct dp_vdev *vdev, struct dp_peer *peer);
 
 /**
  * dp_rx_tid_setup_wifi3() - Set up receive TID state
@@ -74,7 +82,7 @@ void dp_rx_tid_delete_cb(struct dp_soc *soc,
 			 void *cb_ctxt,
 			 union hal_reo_status *reo_status);
 
-#if defined(IPA_OFFLOAD) && defined(ATH_SUPPORT_EXT_STAT)
+#ifdef IPA_OFFLOAD
 void dp_peer_update_tid_stats_from_reo(struct dp_soc *soc, void *cb_ctxt,
 				       union hal_reo_status *reo_status);
 int dp_peer_get_rxtid_stats_ipa(struct dp_peer *peer,
@@ -152,6 +160,17 @@ int dp_addba_requestprocess_wifi3(struct cdp_soc_t *cdp_soc,
 				  uint16_t buffersize,
 				  uint16_t startseqnum);
 
+/**
+ * dp_set_addba_response() - Set a user defined ADDBA response status code
+ * @cdp_soc: Datapath soc handle
+ * @peer_mac: Datapath peer mac address
+ * @vdev_id: id of atapath vdev
+ * @tid: TID number
+ * @statuscode: response status code to be set
+ */
+QDF_STATUS
+dp_set_addba_response(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
+		      uint16_t vdev_id, uint8_t tid, uint16_t statuscode);
 
 /**
  * dp_delba_process_wifi3() - Process DELBA from peer
@@ -196,6 +215,9 @@ QDF_STATUS
 dp_set_pn_check_wifi3(struct cdp_soc_t *soc, uint8_t vdev_id,
 		      uint8_t *peer_mac, enum cdp_sec_type sec_type,
 		      uint32_t *rx_pn);
+QDF_STATUS
+dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
+			uint8_t tid, uint16_t win_sz);
 
 /**
  * dp_peer_rxtid_stats() - Retried Rx TID (REO queue) stats from HW
@@ -208,15 +230,6 @@ dp_set_pn_check_wifi3(struct cdp_soc_t *soc, uint8_t vdev_id,
 int dp_peer_rxtid_stats(struct dp_peer *peer,
 			dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
 			void *cb_ctxt);
-
-static inline
-int dp_peer_rxtid_stats_wrapper(struct dp_peer *peer,
-				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
-				void *cb_ctxt, uint32_t stats_cookie_type)
-{
-	return dp_peer_rxtid_stats(peer, dp_stats_cmd_cb, cb_ctxt);
-}
-
 QDF_STATUS dp_peer_rx_tids_create(struct dp_peer *peer);
 void dp_peer_rx_tids_destroy(struct dp_peer *peer);
 
@@ -268,38 +281,12 @@ static inline void dp_get_rx_reo_queue_info(struct cdp_soc_t *soc_hdl,
 {
 }
 #endif /* DUMP_REO_QUEUE_INFO_IN_DDR */
+void dp_peer_rx_tid_setup(struct dp_peer *peer);
 #else
-#ifdef CONFIG_BORON
-/**
- * dp_peer_rxtid_stats_bn() - Rx TID (REO queue) stats query
- *                            for Boron architecture
- * @peer: DP peer handle
- * @stats_cookie_type: cookie type to identify the query from
- *
- * Return: count of tid stats cmd send succeeded
- */
-int dp_peer_rxtid_stats_bn(struct dp_peer *peer,
-			   uint32_t stats_cookie_type);
-static inline
-int dp_peer_rxtid_stats_wrapper(struct dp_peer *peer,
-				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
-				void *cb_ctxt, uint32_t stats_cookie_type)
-{
-	return dp_peer_rxtid_stats_bn(peer, stats_cookie_type);
-}
-#else
-static inline
-int dp_peer_rxtid_stats_wrapper(struct dp_peer *peer,
-				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
-				void *cb_ctxt, uint32_t stats_cookie_type)
-{
-	return 0;
-}
-#endif
-
 static inline void dp_rx_tid_stats_cb(struct dp_soc *soc, void *cb_ctxt,
 				      union hal_reo_status *reo_status) {}
-
+static inline void dp_peer_rx_cleanup(struct dp_vdev *vdev,
+				      struct dp_peer *peer) {}
 static inline int dp_addba_resp_tx_completion_wifi3(struct cdp_soc_t *cdp_soc,
 						    uint8_t *peer_mac,
 						    uint16_t vdev_id,
@@ -334,6 +321,12 @@ dp_addba_requestprocess_wifi3(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
 	return QDF_STATUS_SUCCESS;
 }
 
+static inline QDF_STATUS
+dp_set_addba_response(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
+		      uint16_t vdev_id, uint8_t tid, uint16_t statuscode)
+{
+	return QDF_STATUS_SUCCESS;
+}
 
 static inline int
 dp_delba_process_wifi3(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
@@ -358,6 +351,13 @@ dp_set_pn_check_wifi3(struct cdp_soc_t *soc, uint8_t vdev_id,
 	return QDF_STATUS_SUCCESS;
 }
 
+static inline QDF_STATUS
+dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
+			uint8_t tid, uint16_t win_sz)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
 static inline int
 dp_peer_rxtid_stats(struct dp_peer *peer,
 		    dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
@@ -375,6 +375,7 @@ static inline void dp_peer_rx_tids_destroy(struct dp_peer *peer) {}
 
 static inline void dp_get_rx_reo_queue_info(struct cdp_soc_t *soc_hdl,
 					    uint8_t vdev_id) {}
+static inline void dp_peer_rx_tid_setup(struct dp_peer *peer) {}
 
 static inline QDF_STATUS
 dp_rx_tid_setup_wifi3(struct dp_peer *peer, int tid,
@@ -382,44 +383,5 @@ dp_rx_tid_setup_wifi3(struct dp_peer *peer, int tid,
 {
 	return QDF_STATUS_SUCCESS;
 }
-#endif
-
-#ifndef WLAN_SOFTUMAC_SUPPORT
-/**
- * dp_rx_delba_ind_handler() - DELBA indication handler
- * @soc_handle: handle to datapath soc
- * @peer_id: peer id
- * @tid: tid
- * @win_sz: window size
- *
- * Return: QDF status
- */
-QDF_STATUS
-dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
-			uint8_t tid, uint16_t win_sz);
-
-void dp_peer_rx_tid_setup(struct dp_peer *peer);
-
-/**
- * dp_peer_rx_cleanup() - Cleanup receive TID state
- * @vdev: Datapath vdev
- * @peer: Datapath peer
- *
- * Return: None
- */
-void dp_peer_rx_cleanup(struct dp_vdev *vdev, struct dp_peer *peer);
-#else
-static inline QDF_STATUS
-dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
-			uint8_t tid, uint16_t win_sz)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline void dp_peer_rx_tid_setup(struct dp_peer *peer) {}
-
-static inline void dp_peer_rx_cleanup(struct dp_vdev *vdev,
-				      struct dp_peer *peer) {}
-
 #endif
 #endif /* _DP_RX_TID_H_ */

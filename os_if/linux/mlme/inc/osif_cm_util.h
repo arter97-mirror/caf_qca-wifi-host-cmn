@@ -31,7 +31,9 @@
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 #include "wlan_cm_roam_public_struct.h"
 #endif
+#ifdef CONN_MGR_ADV_FEATURE
 #include <cdp_txrx_mob_def.h>
+#endif
 
 /**
  * osif_cm_mac_to_qca_connect_fail_reason() - Convert to qca internal connect
@@ -138,20 +140,9 @@ enum osif_cb_type {
 	OSIF_NOT_HANDLED,
 };
 
+#ifdef CONN_MGR_ADV_FEATURE
 typedef void (*osif_cm_connect_active_notify_cb)(uint8_t vdev_id);
-typedef void (*osif_cm_connect_start_notify_cb)(uint8_t vdev_id);
-
-typedef void (*osif_cm_roam_connect_complete_cb)(struct wlan_objmgr_vdev *vdev);
-
-/**
- * typedef osif_cm_reset_scan_reject_params_cb - Callback to reset scan reject
- * parameters
- * @vdev: vdev pointer
- *
- * Return: QDF_STATUS
- */
-typedef QDF_STATUS
-(*osif_cm_reset_scan_reject_params_cb)(struct wlan_objmgr_vdev *vdev);
+#endif
 
 /**
  * typedef osif_cm_connect_comp_cb  - Connect complete callback
@@ -229,6 +220,7 @@ typedef QDF_STATUS
 				      struct wlan_cm_discon_rsp *rsp,
 				      enum osif_cb_type type);
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * typedef osif_cm_get_scan_ie_params_cb  - get scan ie params cb
  * @vdev: vdev pointer
@@ -288,13 +280,6 @@ typedef QDF_STATUS
 			     bool pairwise,
 			     enum wlan_crypto_cipher_type cipher_type);
 
-typedef QDF_STATUS
-(*osif_cm_mgmt_frame_tx_status_cb)(struct wlan_objmgr_vdev *vdev,
-				   uint64_t cookie,
-				   const uint8_t *buf,
-				   uint32_t len,
-				   bool ack);
-
 /**
  * osif_cm_unlink_bss() - function to unlink bss from kernel and scan database
  * on connect timeouts reasons
@@ -308,6 +293,11 @@ typedef QDF_STATUS
  */
 void osif_cm_unlink_bss(struct wlan_objmgr_vdev *vdev,
 			struct qdf_mac_addr *bssid);
+#else
+static inline
+void osif_cm_unlink_bss(struct wlan_objmgr_vdev *vdev,
+			struct qdf_mac_addr *bssid) {}
+#endif
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /**
@@ -394,7 +384,6 @@ typedef struct net_device *
 /**
  * struct osif_cm_ops - connection manager legacy callbacks
  * @connect_active_notify_cb: callback for connect active to legacy modules
- * @connect_start_notify_cb: callback for connect start to legacy modules
  * @connect_complete_cb: callback for connect complete to legacy
  * modules
  * @disconnect_complete_cb: callback for disconnect complete to
@@ -404,13 +393,10 @@ typedef struct net_device *
  * @napi_serialize_control_cb: callback to legacy module to take
  * actions on napi serialization
  * @save_gtk_cb : callback to legacy module to save gtk
- * @mgmt_tx_status_cb: Callback to indicate mgmt frame tx status
  * @send_vdev_keys_cb: callback to send vdev keys
  * @get_scan_ie_params_cb: callback to get scan ie params
  * @set_hlp_data_cb: callback to legacy module to save hlp data
  * @roam_rt_stats_event_cb: callback to send roam stats to userspace
- * @roam_complete_notify_cb: callback to cleanup roaming context
- * @reset_scan_reject_params_cb: callback to reset scan reject params
  * @ft_preauth_complete_cb: callback to legacy module to send fast
  * transition event
  * @cckm_preauth_complete_cb: callback to legacy module to send cckm
@@ -421,23 +407,23 @@ typedef struct net_device *
  * @osif_get_mld_netdev_cb: callback to get ML netdev from vdev
  */
 struct osif_cm_ops {
+#ifdef CONN_MGR_ADV_FEATURE
 	osif_cm_connect_active_notify_cb connect_active_notify_cb;
-	osif_cm_connect_start_notify_cb connect_start_notify_cb;
+#endif
 	osif_cm_connect_comp_cb connect_complete_cb;
 	osif_cm_disconnect_comp_cb disconnect_complete_cb;
+#ifdef CONN_MGR_ADV_FEATURE
 	osif_cm_netif_queue_ctrl_cb netif_queue_control_cb;
 	os_if_cm_napi_serialize_ctrl_cb napi_serialize_control_cb;
 	osif_cm_save_gtk_cb save_gtk_cb;
 	osif_cm_send_vdev_keys_cb send_vdev_keys_cb;
 	osif_cm_get_scan_ie_params_cb get_scan_ie_params_cb;
-	osif_cm_mgmt_frame_tx_status_cb mgmt_tx_status_cb;
+#endif
 #ifdef WLAN_FEATURE_FILS_SK
 	osif_cm_set_hlp_data_cb set_hlp_data_cb;
 #endif
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	osif_cm_roam_rt_stats_cb roam_rt_stats_event_cb;
-	osif_cm_roam_connect_complete_cb roam_complete_notify_cb;
-	osif_cm_reset_scan_reject_params_cb reset_scan_reject_params_cb;
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	osif_cm_ft_preauth_complete_cb ft_preauth_complete_cb;
@@ -456,6 +442,7 @@ struct osif_cm_ops {
 #endif
 };
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * osif_cm_connect_active_notify() - Function to notify connect active
  * @vdev_id: VDEV ID on which connect req is active
@@ -463,14 +450,7 @@ struct osif_cm_ops {
  * This API notifies connect active to legacy module
  */
 void osif_cm_connect_active_notify(uint8_t vdev_id);
-
-/**
- * osif_cm_connect_start_notify() - Function to notify connect start
- * @vdev_id: VDEV ID on which connect req start
- *
- * This API notifies connect start to legacy module
- */
-void osif_cm_connect_start_notify(uint8_t vdev_id);
+#endif
 
 /**
  * osif_cm_connect_comp_ind() - Function to indicate connect
@@ -529,6 +509,7 @@ QDF_STATUS osif_cm_disconnect_comp_ind(struct wlan_objmgr_vdev *vdev,
 				       struct wlan_cm_discon_rsp *rsp,
 				       enum osif_cb_type type);
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * osif_cm_netif_queue_ind() - Function to indicate netif queue update
  * complete to legacy module
@@ -587,6 +568,13 @@ osif_cm_send_vdev_keys(struct wlan_objmgr_vdev *vdev,
 		       uint8_t key_index,
 		       bool pairwise,
 		       enum wlan_crypto_cipher_type cipher_type);
+#else
+static inline QDF_STATUS osif_cm_save_gtk(struct wlan_objmgr_vdev *vdev,
+					  struct wlan_cm_connect_resp *rsp)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 #ifdef WLAN_FEATURE_FILS_SK
 /**
@@ -653,21 +641,4 @@ QDF_STATUS osif_cm_perfd_set_cpufreq(bool action)
 }
 #endif
 
-/**
- * osif_get_bss_mac_addr() - Get bss mac from vdev
- * @vdev: vdev pointer
- *
- * This function fetches bss mac addr when vdev is connected
- *
- * Return: pointer for mac_addr
- */
-uint8_t *osif_get_bss_mac_addr(struct wlan_objmgr_vdev *vdev);
-
-/*
- * osif_cm_roam_complete_cb() - Callback to complete the roaming
- * @vdev: pointer to vdev object
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS osif_cm_roam_complete_cb(struct wlan_objmgr_vdev *vdev);
 #endif /* __OSIF_CM_UTIL_H */

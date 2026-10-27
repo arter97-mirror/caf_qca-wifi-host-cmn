@@ -29,7 +29,6 @@
 #include <asm/checksum.h>
 #include <net/ip6_checksum.h>
 #include <net/tcp.h>
-#include <linux/inet.h>
 
 typedef struct in6_addr __in6_addr_t;
 typedef __wsum __wsum_t;
@@ -61,12 +60,6 @@ static inline
 uint16_t __qdf_ip_fast_csum(void *ip_hdr, uint8_t ip_hl)
 {
 	return ip_fast_csum((struct iphdr *)ip_hdr, ip_hl);
-}
-
-static inline
-int __qdf_in6_pton(char *str_ptr, uint8_t *addr)
-{
-	return in6_pton(str_ptr, -1, addr, -1, NULL);
 }
 
 #define __QDF_TCPHDR_FIN TCPHDR_FIN

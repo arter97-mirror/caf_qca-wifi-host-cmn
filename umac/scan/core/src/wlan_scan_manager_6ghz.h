@@ -82,17 +82,6 @@ scm_update_6ghz_channel_list(struct scan_start_request *req,
 			     struct wlan_scan_obj *scan_obj);
 
 /**
- * scm_add_rnr_info() - Add cached RNR hint info to scan request
- * @pdev: pdev on which scan request is issued
- * @req: scan start request
- *
- * Return: None
- */
-void
-scm_add_rnr_info(struct wlan_objmgr_pdev *pdev,
-		 struct scan_start_request *req);
-
-/**
  * scm_is_6ghz_scan_optimization_supported() - Check firmware capability
  * @psoc: psoc
  *
@@ -140,12 +129,6 @@ scm_add_channel_flags(struct wlan_objmgr_vdev *vdev,
 static inline void
 scm_update_6ghz_channel_list(struct scan_start_request *req,
 			     struct wlan_scan_obj *scan_obj)
-{
-}
-
-static inline void
-scm_add_rnr_info(struct wlan_objmgr_pdev *pdev,
-		 struct scan_start_request *req)
 {
 }
 

@@ -19,11 +19,6 @@
 #define _DP_IPA_H_
 
 #include "wlan_ipa_public_struct.h"
-#ifdef CONFIG_BORON
-/* Assign last ring to IPA */
-#define IPA_TCL_DATA_RING_IDX	5
-#define IPA_TX_COMP_RING_IDX IPA_TCL_DATA_RING_IDX
-#else
 #if defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
     defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
 /* Index into soc->tcl_data_ring[] */
@@ -33,34 +28,17 @@
 #endif
 /* Index into soc->tx_comp_ring[] */
 #define IPA_TX_COMP_RING_IDX IPA_TCL_DATA_RING_IDX
-#endif /* CONFIG_BORON */
 
 #ifdef IPA_OFFLOAD
-#define DP_IPA_MAX_IFACE	3
 
-#ifdef MDM_PLATFORM
-#define IPA_ALT_REO_DEST_RING_IDX	2
+#define DP_IPA_MAX_IFACE	3
 #define IPA_REO_DEST_RING_IDX	3
-#elif defined(CONFIG_BORON)
-/* REO2SW9 */
-#define IPA_REO_DEST_RING_IDX	8
-#else
-#define IPA_REO_DEST_RING_IDX	3
-#endif /* MDM_PLATFORM */
+#define IPA_REO_DEST_RING_IDX_2	7
 
 #define IPA_RX_REFILL_BUF_RING_IDX	2
 
+#define IPA_ALT_REO_DEST_RING_IDX	2
 #define IPA_RX_ALT_REFILL_BUF_RING_IDX	3
-
-#if defined(MDM_PLATFORM) && defined(IPA_WDI3_VLAN_SUPPORT)
-/* Remove the IPA REO2SW rings from REO destination remap */
-#define DP_REO_DST_REMAP_REMOVE_IPA(_reo_config) \
-	((_reo_config) &= ~((1 << (IPA_REO_DEST_RING_IDX)) | \
-			    (1 << (IPA_ALT_REO_DEST_RING_IDX))))
-#else
-#define DP_REO_DST_REMAP_REMOVE_IPA(_reo_config) \
-	((_reo_config) &= ~(1 << (IPA_REO_DEST_RING_IDX)))
-#endif
 
 /* Adding delay before disabling ipa pipes if any Tx Completions are pending */
 #define TX_COMP_DRAIN_WAIT_MS	50
@@ -412,25 +390,9 @@ QDF_STATUS dp_ipa_disable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 QDF_STATUS dp_ipa_set_perf_level(int client, uint32_t max_supported_bw_mbps,
 				 qdf_ipa_wdi_hdl_t hdl);
 #ifdef IPA_OPT_WIFI_DP
-#ifdef CONFIG_BORON
-/**
- * dp_ipa_set_tx_classify_idx() - set tx pkt classify info
- * @soc: dp soc
- * @vdev_id: vdev id
- * @peer_classify_info_idx: peer classify info idx
- *
- * Return
- */
-void dp_ipa_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
-				uint8_t peer_classify_info_idx);
-#endif
-
 QDF_STATUS dp_ipa_rx_super_rule_setup(struct cdp_soc_t *soc_hdl,
 				      void *flt_params);
 
-void dp_ipa_print_opt_dp_log(struct cdp_soc_t *soc_hdl,
-			     bool is_opt_dp_flt_active,
-			     void *flt_params);
 /**
  * dp_ipa_tx_super_rule_setup() - TX super rule setup
  * @soc_hdl: handle to the soc
@@ -459,38 +421,6 @@ bool dp_ipa_get_opt_dp_ctrl_refill_cap(struct cdp_soc_t *soc_hdl);
 
 int dp_ipa_pcie_link_up(struct cdp_soc_t *soc_hdl);
 void dp_ipa_pcie_link_down(struct cdp_soc_t *soc_hdl);
-
-/**
- * dp_ipa_dump_ring_hp_tp() - dump hp-tp of IPA and error rings
- * @soc_hdl: handle to the soc
- *
- * Return:
- */
-void dp_ipa_dump_ring_hp_tp(struct cdp_soc_t *soc_hdl);
-
-/**
- * dp_ipa_tx_buf_alloc_map() - Allocate and dma map tx buffer
- * for opt_dp use case
- * @soc_hdl: handle to the soc
- *
- * Return: 0 on success, negative on failure
- */
-int dp_ipa_tx_buf_alloc_map(struct cdp_soc_t *soc_hdl);
-
-/**
- * dp_ipa_opt_dp_set_tx_doorbell() - Set tx doorbell address
- * for opt_dp usecase
- * @soc_hdl: handle to the soc
- */
-void dp_ipa_opt_dp_set_tx_doorbell(struct cdp_soc_t *soc_hdl);
-
-/**
- * dp_ipa_opt_dp_reset_tx_doorbell() - reset hp paddr with ddr
- * address
- * @soc_hdl: handle to the soc
- */
-void dp_ipa_opt_dp_reset_tx_doorbell(struct cdp_soc_t *soc_hdl);
-
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * dp_ipa_wdi_opt_dpath_ctrl_notify_flt_install() - send tx super rule filter
@@ -526,22 +456,6 @@ void dp_ipa_wdi_opt_dpath_ctrl_notify_flt_delete(struct filter_response
 bool dp_ipa_is_completion_pending(struct cdp_soc_t *soc_hdl);
 #endif /* IPA_WDI3_PENDING_BUFF_REPORT */
 #endif
-
-/**
- * dp_ipa_rx_pp_cntrs_init() - Init IPA RX page pool counters
- * @soc_hdl: handle to the soc
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS dp_ipa_rx_pp_cntrs_init(struct cdp_soc_t *soc_hdl);
-
-/**
- * dp_ipa_rx_pp_cntrs_deinit() - Deinit IPA RX page pool counters
- * @soc_hdl: handle to the soc
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS dp_ipa_rx_pp_cntrs_deinit(struct cdp_soc_t *soc_hdl);
 
 #ifdef QCA_SUPPORT_WDS_EXTENDED
 /**
@@ -652,13 +566,12 @@ dp_rx_add_to_ipa_desc_free_list(struct dp_soc *soc,
  * @pdev_id: pdev id number, to get the handle
  * @func: caller function
  * @line: line number
- * @is_opt_dp: smmu map called from opt_dp
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS dp_ipa_tx_buf_smmu_mapping(struct cdp_soc_t *soc_hdl,
 				      uint8_t pdev_id, const char *func,
-				      uint32_t line, bool is_opt_dp);
+				      uint32_t line);
 
 /**
  * dp_ipa_tx_buf_smmu_unmapping() - Release SMMU mappings for IPA
@@ -718,20 +631,6 @@ dp_ipa_ast_notify_cb(qdf_ipa_wdi_conn_in_params_t *pipe_in,
 #endif
 
 #ifdef IPA_OPT_WIFI_DP
-#ifdef CONFIG_BORON
-static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
-{
-	ix0_map[0] = REO_REMAP_SW0;
-	ix0_map[1] = REO_REMAP_SW1;
-	ix0_map[2] = REO_REMAP_SW2;
-	ix0_map[3] = REO_REMAP_SW3;
-	ix0_map[4] = REO_REMAP_SW9;
-	ix0_map[5] = REO_REMAP_RELEASE;
-	ix0_map[6] = REO_REMAP_FW;
-	ix0_map[7] = REO_REMAP_FW;
-}
-
-#else
 static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
 {
 	ix0_map[0] = REO_REMAP_SW1;
@@ -743,7 +642,6 @@ static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
 	ix0_map[6] = REO_REMAP_FW;
 	ix0_map[7] = REO_REMAP_FW;
 }
-#endif
 #else
 static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
 {
@@ -847,9 +745,7 @@ bool dp_ipa_is_ring_ipa_tx(struct dp_soc *soc, uint8_t ring_id);
  * Return: true if ring is used by IPA, else return false
  */
 bool dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id);
-#else /* IPA_OFFLOAD */
-#define DP_REO_DST_REMAP_REMOVE_IPA(_reo_config) /* no operation */
-
+#else
 static inline int dp_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
 {
 	return QDF_STATUS_SUCCESS;
@@ -907,8 +803,7 @@ static inline qdf_nbuf_t dp_ipa_handle_rx_reo_reinject(struct dp_soc *soc,
 static inline QDF_STATUS dp_ipa_tx_buf_smmu_mapping(struct cdp_soc_t *soc_hdl,
 						    uint8_t pdev_id,
 						    const char *func,
-						    uint32_t line,
-						    bool is_opt_dp)
+						    uint32_t line)
 {
 	return QDF_STATUS_SUCCESS;
 }
@@ -972,13 +867,6 @@ static inline bool
 dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id)
 {
 	return false;
-}
-#endif
-#ifndef IPA_OPT_WIFI_DP
-static inline
-void dp_ipa_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
-				uint8_t peer_classify_info_idx)
-{
 }
 #endif
 #endif /* _DP_IPA_H_ */

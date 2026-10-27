@@ -409,17 +409,13 @@ QDF_STATUS mlme_cm_reassoc_req(struct wlan_objmgr_vdev *vdev,
 	return ret;
 }
 
+#ifdef CONN_MGR_ADV_FEATURE
 void mlme_cm_osif_connect_active_notify(uint8_t vdev_id)
 {
 	if (glbl_cm_ops && glbl_cm_ops->mlme_cm_connect_active_notify_cb)
 		glbl_cm_ops->mlme_cm_connect_active_notify_cb(vdev_id);
 }
-
-void mlme_cm_osif_connect_start_notify(uint8_t vdev_id)
-{
-	if (glbl_cm_ops && glbl_cm_ops->mlme_cm_connect_start_notify_cb)
-		glbl_cm_ops->mlme_cm_connect_start_notify_cb(vdev_id);
-}
+#endif
 
 QDF_STATUS mlme_cm_connect_complete_ind(struct wlan_objmgr_vdev *vdev,
 					struct wlan_cm_connect_resp *rsp)
@@ -569,6 +565,7 @@ QDF_STATUS mlme_cm_osif_get_vendor_handoff_params(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef CONN_MGR_ADV_FEATURE
 QDF_STATUS mlme_cm_osif_roam_sync_ind(struct wlan_objmgr_vdev *vdev)
 {
 	QDF_STATUS ret = QDF_STATUS_SUCCESS;
@@ -618,34 +615,9 @@ QDF_STATUS mlme_cm_osif_link_reconfig_notify(struct wlan_objmgr_vdev *vdev)
 
 	return ret;
 }
-
-QDF_STATUS mlme_cm_osif_mgmt_tx_status(struct wlan_objmgr_vdev *vdev,
-				       uint64_t cookie,
-				       const uint8_t *buf,
-				       uint32_t len,
-				       bool ack)
-{
-	QDF_STATUS ret = QDF_STATUS_E_INVAL;
-
-	if (glbl_cm_ops &&
-	    glbl_cm_ops->mlme_cm_mgmt_tx_status_cb)
-		ret = glbl_cm_ops->mlme_cm_mgmt_tx_status_cb(vdev, cookie, buf,
-							     len, ack);
-
-	return ret;
-}
+#endif
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
-QDF_STATUS mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev)
-{
-	QDF_STATUS ret = QDF_STATUS_SUCCESS;
-
-	if (glbl_cm_ops && glbl_cm_ops->mlme_cm_roam_connect_complete_cb)
-		ret = glbl_cm_ops->mlme_cm_roam_connect_complete_cb(vdev);
-
-	return ret;
-}
-
 QDF_STATUS mlme_cm_osif_roam_start_ind(struct wlan_objmgr_vdev *vdev)
 {
 	QDF_STATUS ret = QDF_STATUS_SUCCESS;
@@ -705,16 +677,6 @@ mlme_cm_osif_roam_get_scan_params(struct wlan_objmgr_vdev *vdev,
 	return ret;
 }
 
-QDF_STATUS mlme_cm_osif_reset_scan_reject_params(struct wlan_objmgr_vdev *vdev)
-{
-	QDF_STATUS ret = QDF_STATUS_SUCCESS;
-
-	if (glbl_cm_ops &&
-	    glbl_cm_ops->mlme_cm_reset_scan_reject_params_cb)
-		ret = glbl_cm_ops->mlme_cm_reset_scan_reject_params_cb(vdev);
-
-	return ret;
-}
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
@@ -770,15 +732,6 @@ void mlme_send_scan_done_complete_cb(uint8_t vdev_id)
 							vdev_id);
 }
 
-void mlme_sta_csa_received(uint8_t vdev_id,
-			   struct csa_offload_params *csa_event)
-{
-	if (glbl_vdev_mgr_ops &&
-	    glbl_vdev_mgr_ops->mlme_vdev_mgr_sta_csa_received)
-		glbl_vdev_mgr_ops->mlme_vdev_mgr_sta_csa_received(vdev_id,
-								  csa_event);
-}
-
 bool mlme_max_chan_switch_is_set(struct wlan_objmgr_psoc *psoc)
 {
 	struct psoc_mlme_obj *mlme_psoc_obj;
@@ -823,16 +776,6 @@ void mlme_vdev_mgr_notify_set_mac_addr_response(uint8_t vdev_id,
 	    glbl_vdev_mgr_ops->mlme_vdev_mgr_set_mac_addr_response)
 		glbl_vdev_mgr_ops->mlme_vdev_mgr_set_mac_addr_response(
 							vdev_id, resp_status);
-}
-#endif
-
-#ifdef FEATURE_CQM_RSSI
-void mlme_vdev_mgr_notify_cqm_rssi_breach(struct vdev_cqm_rssi_breach_event
-					*event)
-{
-	if (glbl_vdev_mgr_ops &&
-	    glbl_vdev_mgr_ops->mlme_vdev_mgr_cqm_rssi_breach_cb)
-		glbl_vdev_mgr_ops->mlme_vdev_mgr_cqm_rssi_breach_cb(event);
 }
 #endif
 
@@ -1015,32 +958,14 @@ void mlme_cm_osif_perfd_reset_cpufreq(void)
 }
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO
-QDF_STATUS mlme_cm_send_link_reconfig_status(void *ctx)
+QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev)
 {
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	QDF_STATUS ret = QDF_STATUS_SUCCESS;
 
 	if (glbl_cm_ops &&
 	    glbl_cm_ops->mlme_cm_link_reconfig_status_cb)
-		status = glbl_cm_ops->mlme_cm_link_reconfig_status_cb(ctx);
+		ret = glbl_cm_ops->mlme_cm_link_reconfig_status_cb(vdev);
 
-	return status;
-}
-
-void *
-mlme_cm_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev)
-{
-	if (glbl_cm_ops &&
-	    glbl_cm_ops->mlme_cm_populate_link_recfg_done_data)
-		return glbl_cm_ops->mlme_cm_populate_link_recfg_done_data(
-								vdev);
-
-	return NULL;
-}
-
-void mlme_cm_free_link_reconfig_done_data(void *ctx)
-{
-	if (glbl_cm_ops &&
-	    glbl_cm_ops->mlme_cm_free_link_reconfig_done_data)
-		glbl_cm_ops->mlme_cm_free_link_reconfig_done_data(ctx);
+	return ret;
 }
 #endif

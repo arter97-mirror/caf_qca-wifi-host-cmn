@@ -128,26 +128,6 @@ static inline void restore_tx_packet(HTC_TARGET *target, HTC_PACKET *pPacket)
 	}
 }
 
-#ifdef CONFIG_HL_SUPPORT
-static bool htc_control_tx_force_free(HTC_TARGET *target,
-				      HTC_PACKET *packet)
-{
-	return FALSE;
-}
-#else
-static bool htc_control_tx_force_free(HTC_TARGET *target,
-				      HTC_PACKET *packet)
-{
-	bool ret = FALSE;
-
-	if (target->hif_dev && hif_get_target_status(target->hif_dev)) {
-		htc_free_control_tx_packet(target, packet);
-		ret = TRUE;
-	}
-	return ret;
-}
-#endif
-
 static void send_packet_completion(HTC_TARGET *target, HTC_PACKET *pPacket)
 {
 	HTC_ENDPOINT *pEndpoint = &target->endpoint[pPacket->Endpoint];
@@ -163,8 +143,10 @@ static void send_packet_completion(HTC_TARGET *target, HTC_PACKET *pPacket)
 	 * In case of SSR, we cannot call the upper layer completion
 	 * callbacks, hence just free the nbuf and HTC packet here.
 	 */
-	if (htc_control_tx_force_free(target, pPacket))
+	if (target->hif_dev && hif_get_target_status(target->hif_dev)) {
+		htc_free_control_tx_packet(target, pPacket);
 		return;
+	}
 
 	/* do completion */
 	AR_DEBUG_PRINTF(ATH_DEBUG_SEND,
@@ -353,14 +335,9 @@ htc_send_update_tx_bundle_stats(HTC_TARGET *target,
 				qdf_size_t data_len,
 				int TxCreditSize)
 {
-	int index;
+	int index = ((data_len + TxCreditSize - 1) / TxCreditSize) - 1;
 
-	if (TxCreditSize <= 0)
-		return;
-
-	index = ((data_len + TxCreditSize - 1) / TxCreditSize) - 1;
-
-	if (index >= 0 && index < HTC_MAX_MSG_PER_BUNDLE_TX)
+	if (index < HTC_MAX_MSG_PER_BUNDLE_TX)
 		target->tx_bundle_stats[index]++;
 }
 
@@ -1112,7 +1089,7 @@ void htc_inc_wmi_runtime_cnt(HTC_TARGET *target, uint8_t rtpm_code)
  * htc_send_pkts_get_rtpm_id() - get runtime pm dbgid by service_id
  * @service_id: service for endpoint
  *
- * For service_id HTT_DATA_MSG_SVC, HTT message do not have a tx complete
+ * For service_id HTT_DATA_MSG_SVC, HTT message donot have a tx complete
  * from CE level, so they need runtime put which only can happen in fw
  * response. runtime put will happens at 2 ways.
  *    1 if packet tag HTC_TX_PACKET_TAG_RUNTIME_PUT, runtime put
@@ -1400,11 +1377,7 @@ static void get_htc_send_packets(HTC_TARGET *target,
 			ret = hif_rtpm_get(HIF_RTPM_GET_ASYNC, rtpm_code);
 			if (ret) {
 				/* bus suspended, runtime resume issued */
-				if (HTC_PACKET_QUEUE_DEPTH(pQueue) > 0)
-					AR_DEBUG_PRINTF(ATH_DEBUG_WARN,
-							(" pQueue depth: %d\n",
-					      HTC_PACKET_QUEUE_DEPTH(pQueue)));
-
+				QDF_ASSERT(HTC_PACKET_QUEUE_DEPTH(pQueue) == 0);
 				pPacket = htc_get_pkt_at_head(tx_queue);
 				if (!pPacket ||
 				    (pPacket->Endpoint >= ENDPOINT_MAX) ||
@@ -1694,8 +1667,11 @@ static enum HTC_SEND_QUEUE_RESULT htc_try_send(HTC_TARGET *target,
 		if (pEndpoint->async_update &&
 			(!IS_TX_CREDIT_FLOW_ENABLED(pEndpoint)) &&
 			(!tx_resources)) {
+#if (defined(HIF_PCI) || defined(HIF_SNOC) || defined(HIF_AHB) || \
+						 defined(HIF_IPCI))
 			hif_schedule_ce_tasklet(target->hif_dev,
 						pEndpoint->UL_PipeID);
+#endif
 			break;
 		}
 
@@ -2307,7 +2283,7 @@ QDF_STATUS htc_send_data_pkt(HTC_HANDLE htc_hdl, qdf_nbuf_t netbuf, int ep_id,
 	QDF_NBUF_UPDATE_TX_PKT_COUNT(netbuf, QDF_NBUF_TX_PKT_HTC);
 	DPTRACE(qdf_dp_trace(netbuf, QDF_DP_TRACE_HTC_PACKET_PTR_RECORD,
 		QDF_TRACE_DEFAULT_PDEV_ID, qdf_nbuf_data_addr(netbuf),
-		qdf_nbuf_len(netbuf), QDF_TX));
+		sizeof(qdf_nbuf_data(netbuf)), QDF_TX));
 	status = hif_send_head(target->hif_dev,
 			       pEndpoint->UL_PipeID,
 			       pEndpoint->Id, actual_length, netbuf, data_attr);
@@ -2400,7 +2376,7 @@ QDF_STATUS htc_send_data_pkt(HTC_HANDLE HTCHandle, HTC_PACKET *pPacket,
 		QDF_NBUF_UPDATE_TX_PKT_COUNT(netbuf, QDF_NBUF_TX_PKT_HTC);
 		DPTRACE(qdf_dp_trace(netbuf, QDF_DP_TRACE_HTC_PACKET_PTR_RECORD,
 			  QDF_TRACE_DEFAULT_PDEV_ID, qdf_nbuf_data_addr(netbuf),
-				qdf_nbuf_len(netbuf), QDF_TX));
+				sizeof(qdf_nbuf_data(netbuf)), QDF_TX));
 	} else {
 		LOCK_HTC_TX(target);
 		pEndpoint = &target->endpoint[1];

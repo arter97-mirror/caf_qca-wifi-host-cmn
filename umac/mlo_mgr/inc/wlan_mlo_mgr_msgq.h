@@ -152,7 +152,7 @@ struct mlo_ctxt_switch_msg_s {
 
 /**
  * mlo_msgq_post() - Posts message to defer context
- * @type: msg type
+ * @type: msg tupe
  * @ml_dev: MLO dev context
  * @payload: msg buf
  *

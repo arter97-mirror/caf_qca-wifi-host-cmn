@@ -34,14 +34,4 @@
  */
 void wlan_vdev_mgr_get_param_bssid(struct wlan_objmgr_vdev *vdev,
 				   uint8_t *bssid);
-
-/**
- * wlan_vdev_mgr_set_param_bssid() - component MLME API to
- * set bssid in mlme vdev mgr component
- * @vdev: pointer to vdev object
- * @bssid: pointer to the bssid
- *
- */
-QDF_STATUS wlan_vdev_mgr_set_param_bssid(struct wlan_objmgr_vdev *vdev,
-					 const uint8_t *bssid);
 #endif

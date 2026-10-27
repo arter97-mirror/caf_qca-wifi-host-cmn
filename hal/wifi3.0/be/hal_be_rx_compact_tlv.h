@@ -24,14 +24,8 @@
 #ifdef BE_NON_AP_COMPACT_TLV
 /* 7 qwords for rx_mpdu_start without tag */
 #define MPDU_START_WMASK 0x07B8
-
-#ifdef DRIVER_PASSTHRU_MODE
-/* 9 qwords for rx_msdu_end without tag */
-#define MSDU_END_WMASK 0x155CA
-#else
 /* 8 qwords for rx_msdu_end without tag */
 #define MSDU_END_WMASK 0x115CA
-#endif
 
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
 struct rx_msdu_end_compact {
@@ -114,16 +108,6 @@ struct rx_msdu_end_compact {
                       ldpc                                                    :  1,
                       ip4_protocol_ip6_next_header                            :  8;
 	/* qword-11 */
-#ifdef CONFIG_BORON
-             uint32_t user_rssi                                               :  8,
-                      pkt_type                                                :  4,
-                      sgi                                                     :  2,
-                      rate_mcs                                                :  5,
-                      receive_bandwidth                                       :  3,
-                      reception_type                                          :  3,
-                      mimo_ss_bitmap                                          :  6,
-                      msdu_done_copy                                          :  1;
-#else
              uint32_t user_rssi                                               :  8,
                       pkt_type                                                :  4,
                       sgi                                                     :  2,
@@ -132,13 +116,7 @@ struct rx_msdu_end_compact {
                       reception_type                                          :  3,
                       mimo_ss_bitmap                                          :  7,
                       msdu_done_copy                                          :  1;
-#endif
              uint32_t flow_id_toeplitz                                        : 32;
-#ifdef DRIVER_PASSTHRU_MODE
-	/* qword-13 */
-             uint32_t ppdu_start_timestamp_31_0                               : 32;
-             uint32_t toeplitz_hash_2_or_4                                    : 32;
-#endif
 	/* qword-15 */
              uint32_t first_mpdu                                              :  1,
                       reserved_30a                                            :  1,
@@ -333,16 +311,6 @@ struct rx_msdu_end_compact {
                       decap_format                                            :  2,
                       msdu_number                                             :  8;
 	/* qword-11 */
-#ifdef CONFIG_BORON
-             uint32_t msdu_done_copy                                          :  1,
-                      mimo_ss_bitmap                                          :  6,
-                      reception_type                                          :  3,
-                      receive_bandwidth                                       :  3,
-                      rate_mcs                                                :  5,
-                      sgi                                                     :  2,
-                      pkt_type                                                :  4,
-                      user_rssi                                               :  8;
-#else
              uint32_t msdu_done_copy                                          :  1,
                       mimo_ss_bitmap                                          :  7,
                       reception_type                                          :  3,
@@ -351,13 +319,7 @@ struct rx_msdu_end_compact {
                       sgi                                                     :  2,
                       pkt_type                                                :  4,
                       user_rssi                                               :  8;
-#endif
              uint32_t flow_id_toeplitz                                        : 32;
-#ifdef DRIVER_PASSTHRU_MODE
-        /* qword-13 */
-             uint32_t toeplitz_hash_2_or_4                                    : 32;
-             uint32_t ppdu_start_timestamp_31_0                               : 32;
-#endif
 	/* qword-15 */
              uint32_t fcs_err                                                 :  1,
                       unencrypted_frame_err                                   :  1,

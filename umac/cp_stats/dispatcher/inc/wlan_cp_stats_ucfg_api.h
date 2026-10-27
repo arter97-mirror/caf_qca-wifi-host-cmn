@@ -106,66 +106,7 @@ bool ucfg_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 	return false;
 }
 #endif
-
-/**
- * ucfg_cp_stats_set_enhanced_stats_support() - set a enhanced_stats_support FW cap
- * @psoc: PSOC
- * @is_enhanced_stats_support: parameter is supported or not
- *
- * Return: QDF_STATUS_SUCCESS on Success, other QDF_STATUS error codes
- * on failure
- */
-QDF_STATUS
-ucfg_cp_stats_set_enhanced_stats_support(struct wlan_objmgr_psoc *psoc,
-					 bool is_enhanced_stats_support);
-
-/**
- * ucfg_cp_stats_get_enhanced_stats_support() - get a enhanced_stats_support FW cap
- * @psoc: PSOC
- *
- * Return: True if enhanced stats is supported
- *         false if not
- */
-bool ucfg_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc);
 #endif /* QCA_SUPPORT_CP_STATS */
-
-#ifdef WLAN_CHIPSET_STATS
-/**
- * ucfg_cp_stats_enable_direct_log_dispatch - UCFG API to control enhanced
- * chipset logging
- * @psoc: Pointer to the psoc object
- * @direct_log_dispatch: Boolean flag to enable or disable enhanced chipset
- * logging
- *
- * This function acts as a UCFG wrapper to invoke the underlying
- * wlan_cp_stats_enable_direct_log_dispatch() API, which performs
- * the actual enable/disable operation for enhanced chipset logging.
- *
- * Return: None
- */
-void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
-					      bool direct_log_dispatch);
-
-/**
- * ucfg_cp_stats_flush_host_buffer_if_pending() - UCFG wrapper to flush host
- * buffer
- * @psoc: Pointer to the psoc object
- *
- * Return: None
- */
-void ucfg_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc);
-#else
-static inline
-void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
-					      bool direct_log_dispatch)
-{
-}
-
-static inline void
-ucfg_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
-{
-}
-#endif
 
 /**
  * ucfg_cp_stats_cstats_register_tx_rx_ops() - Register chipset stats ops
@@ -184,32 +125,4 @@ void ucfg_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops);
  * Return : 0 on success and errno on failure
  */
 int ucfg_cp_stats_cstats_send_buffer_to_user(enum cstats_types type);
-
-/**
- * ucfg_cp_stats_is_bcn_rssi_history_report_cfg_enable() - check whether
- * bcn_rssi_history_report_cfg is enable or not
- * @psoc: pointer to psoc
- *
- * Return: True/False
- */
-bool ucfg_cp_stats_is_bcn_rssi_history_report_cfg_enable(
-					struct wlan_objmgr_psoc *psoc);
-
-#ifdef FEATURE_SNR_STATS
-/**
- * ucfg_cp_stats_is_snr_stats_report_cfg_enable() - Check if IPI SNR stats
- * report is enabled in configuration
- * @psoc: pointer to psoc
- *
- * Return: true if enabled, false otherwise
- */
-bool
-ucfg_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc);
-#else
-static inline bool
-ucfg_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc)
-{
-	return false;
-}
-#endif /* FEATURE_SNR_STATS */
 #endif /* __WLAN_CP_STATS_UCFG_API_H__ */

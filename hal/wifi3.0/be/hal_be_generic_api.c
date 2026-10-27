@@ -23,23 +23,19 @@
 #include "hal_be_reo.h"
 #include "hal_tx.h"	//HAL_SET_FLD
 #include "hal_be_rx.h"	//HAL_RX_BUF_RBM_GET
-#ifndef CONFIG_BORON
 #include "rx_reo_queue_1k.h"
-#endif /* !CONFIG_BORON */
 #include "hal_be_rx_tlv.h"
-#include "hal_hw_headers.h"
 
 /*
  * The 4 bits REO destination ring value is defined as: 0: TCL
  * 1:SW1  2:SW2  3:SW3  4:SW4  5:Release  6:FW(WIFI)  7:SW5
- * 8:SW6 9:SW7  10:SW8  11: SW9.
+ * 8:SW6 9:SW7  10:SW8  11: NOT_USED.
  *
  */
 uint32_t reo_dest_ring_remap[] = {REO_REMAP_SW1, REO_REMAP_SW2,
 				  REO_REMAP_SW3, REO_REMAP_SW4,
 				  REO_REMAP_SW5, REO_REMAP_SW6,
-				  REO_REMAP_SW7, REO_REMAP_SW8,
-				  REO_REMAP_SW9};
+				  REO_REMAP_SW7, REO_REMAP_SW8};
 /*
  * WBM idle link descriptor for Return Buffer Manager in case of
  * multi-chip configuration.
@@ -161,7 +157,7 @@ void hal_reo_setup_generic_be(struct hal_soc *soc, void *reoparams,
 				       REO_REG_REG_BASE)));
 	}
 
-	/* TODO: Check if the following registers should be setup by host:
+	/* TODO: Check if the following registers shoould be setup by host:
 	 * AGING_CONTROL
 	 * HIGH_MEMORY_THRESHOLD
 	 * GLOBAL_LINK_DESC_COUNT_THRESH_IX_0[1,2]
@@ -190,12 +186,6 @@ static uint16_t hal_get_rx_max_ba_window_be(int tid)
 	return  HAL_RX_BA_WINDOW_256;
 }
 
-#ifdef CONFIG_BORON
-static uint32_t hal_get_reo_qdesc_size_be(uint32_t ba_window_size, int tid)
-{
-	return 0;
-}
-#else
 static uint32_t hal_get_reo_qdesc_size_be(uint32_t ba_window_size, int tid)
 {
 	/* Hardcode the ba_window_size to HAL_RX_MAX_BA_WINDOW for
@@ -228,7 +218,6 @@ static uint32_t hal_get_reo_qdesc_size_be(uint32_t ba_window_size, int tid)
 	return sizeof(struct rx_reo_queue) +
 		(3 * sizeof(struct rx_reo_queue_ext));
 }
-#endif /* !CONFIG_BORON */
 
 void *hal_rx_msdu_ext_desc_info_get_ptr_be(void *msdu_details_ptr)
 {
@@ -285,13 +274,6 @@ uint32_t hal_tx_comp_get_buffer_source_generic_be(void *hal_desc)
 					     HAL_BE_WBM_RELEASE_DIR_TX);
 }
 
-#ifdef CONFIG_BORON
-static uint8_t hal_tx_comp_get_release_reason_generic_be(void *hal_desc)
-{
-	/* Overwritten by hal_hw_txrx_ops_attach_ */
-	return 0xFF;
-}
-#else
 /**
  * hal_tx_comp_get_release_reason_generic_be() - TQM Release reason
  * @hal_desc: completion ring descriptor pointer
@@ -309,7 +291,6 @@ static uint8_t hal_tx_comp_get_release_reason_generic_be(void *hal_desc)
 		WBM2SW_COMPLETION_RING_TX_TQM_RELEASE_REASON_MASK) >>
 		WBM2SW_COMPLETION_RING_TX_TQM_RELEASE_REASON_LSB;
 }
-#endif
 
 /**
  * hal_get_wbm_internal_error_generic_be() - is WBM internal error
@@ -401,38 +382,6 @@ static void hal_rx_reo_buf_paddr_get_be(hal_ring_desc_t rx_desc,
 	buf_info->sw_cookie = HAL_RX_REO_BUF_COOKIE_GET(reo_ring);
 }
 
-#ifdef CONFIG_BORON
-static void hal_rx_msdu_link_desc_set_be(hal_soc_handle_t hal_soc_hdl,
-					 void *src_srng_desc,
-					 hal_buff_addrinfo_t buf_addr_info,
-					 uint8_t bm_action)
-{
-	/* Use struct wbm_release_ring_rx for Boron*/
-	struct wbm_release_ring_rx *wbm_rel_srng =
-			(struct wbm_release_ring_rx *)src_srng_desc;
-	uint32_t addr_31_0;
-	uint8_t addr_39_32;
-
-	wbm_rel_srng->released_buff_or_desc_addr_info =
-				*((struct buffer_addr_info *)buf_addr_info);
-
-	addr_31_0 =
-	wbm_rel_srng->released_buff_or_desc_addr_info.buffer_addr_31_0;
-	addr_39_32 =
-	wbm_rel_srng->released_buff_or_desc_addr_info.buffer_addr_39_32;
-
-	HAL_DESC_SET_FIELD(src_srng_desc, HAL_SW2WBM_RELEASE_RING,
-			   RELEASE_SOURCE_MODULE, HAL_RX_WBM_ERR_SRC_SW);
-	HAL_DESC_SET_FIELD(src_srng_desc, HAL_SW2WBM_RELEASE_RING,
-			   BUFFER_OR_DESC_TYPE,
-			   HAL_RX_WBM_BUF_TYPE_MSDU_LINK_DESC);
-
-	if (qdf_unlikely(!addr_31_0 && !addr_39_32)) {
-		hal_dump_wbm_rel_desc(src_srng_desc);
-		qdf_assert_always(0);
-	}
-}
-#else
 static void hal_rx_msdu_link_desc_set_be(hal_soc_handle_t hal_soc_hdl,
 					 void *src_srng_desc,
 					 hal_buff_addrinfo_t buf_addr_info,
@@ -477,7 +426,6 @@ static void hal_rx_msdu_link_desc_set_be(hal_soc_handle_t hal_soc_hdl,
 		qdf_assert_always(0);
 	}
 }
-#endif
 
 /**
  * hal_rx_buf_cookie_rbm_get_be() - Get the cookie and return buffer
@@ -599,15 +547,6 @@ static uint8_t hal_rx_err_status_get_be(hal_ring_desc_t rx_desc)
 	return HAL_RX_ERROR_STATUS_GET(rx_desc);
 }
 
-#ifdef CONFIG_BORON
-static QDF_STATUS hal_reo_status_update_be(hal_soc_handle_t hal_soc_hdl,
-					   hal_ring_desc_t reo_desc,
-					   void *st_handle,
-					   uint32_t tlv, int *num_ref)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#else /* !CONFIG_BORON */
 static QDF_STATUS hal_reo_status_update_be(hal_soc_handle_t hal_soc_hdl,
 					   hal_ring_desc_t reo_desc,
 					   void *st_handle,
@@ -672,7 +611,6 @@ static QDF_STATUS hal_reo_status_update_be(hal_soc_handle_t hal_soc_hdl,
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif /* !CONFIG_BORON */
 
 static uint8_t hal_rx_reo_buf_type_get_be(hal_ring_desc_t rx_desc)
 {
@@ -765,94 +703,6 @@ uint32_t hal_rx_msdu_reo_dst_ind_get_be(hal_soc_handle_t hal_soc_hdl,
 	dst_ind = HAL_RX_MSDU_REO_DST_IND_GET(msdu_desc_info);
 	return dst_ind;
 }
-
-void
-hal_reo_remap_ix2_ix3_value_get_be(hal_soc_handle_t hal_soc_hdl,
-				   uint32_t rx_ring_mask,
-				   uint32_t *remap_ix2,
-				   uint32_t *remap_ix3)
-
-{
-	uint32_t num_rings = 0;
-	uint32_t i = 0;
-	uint32_t ring_remap_arr[HAL_MAX_REO2SW_RINGS] = {0};
-	uint32_t ring_idx = 0;
-	uint8_t ix2_map[HAL_NUM_RX_RING_PER_IX_MAP] = {0};
-	uint8_t ix3_map[HAL_NUM_RX_RING_PER_IX_MAP] = {0};
-
-	/* create reo ring remap array */
-	while (i < HAL_MAX_REO2SW_RINGS) {
-		if (rx_ring_mask & (1 << i)) {
-			ring_remap_arr[num_rings] = reo_dest_ring_remap[i];
-			num_rings++;
-		}
-		i++;
-	}
-
-	for (i = 0; i < HAL_NUM_RX_RING_PER_IX_MAP; i++) {
-		if (rx_ring_mask) {
-			ix2_map[i] = ring_remap_arr[ring_idx];
-			ring_idx = ((ring_idx + 1) % num_rings);
-		} else {
-			/* if ring mask is zero configure to release to WBM */
-			ix2_map[i] = REO_REMAP_RELEASE;
-		}
-	}
-
-	for (i = 0; i < HAL_NUM_RX_RING_PER_IX_MAP; i++) {
-		if (rx_ring_mask) {
-			ix3_map[i] = ring_remap_arr[ring_idx];
-			ring_idx = ((ring_idx + 1) % num_rings);
-		} else {
-			/* if ring mask is zero configure to release to WBM */
-			ix3_map[i] = REO_REMAP_RELEASE;
-		}
-	}
-
-	*remap_ix2 = HAL_REO_REMAP_IX2(ix2_map[0], 16) |
-		     HAL_REO_REMAP_IX2(ix2_map[1], 17) |
-		     HAL_REO_REMAP_IX2(ix2_map[2], 18) |
-		     HAL_REO_REMAP_IX2(ix2_map[3], 19) |
-		     HAL_REO_REMAP_IX2(ix2_map[4], 20) |
-		     HAL_REO_REMAP_IX2(ix2_map[5], 21) |
-		     HAL_REO_REMAP_IX2(ix2_map[6], 22) |
-		     HAL_REO_REMAP_IX2(ix2_map[7], 23);
-
-	*remap_ix3 = HAL_REO_REMAP_IX3(ix3_map[0], 24) |
-		     HAL_REO_REMAP_IX3(ix3_map[1], 25) |
-		     HAL_REO_REMAP_IX3(ix3_map[2], 26) |
-		     HAL_REO_REMAP_IX3(ix3_map[3], 27) |
-		     HAL_REO_REMAP_IX3(ix3_map[4], 28) |
-		     HAL_REO_REMAP_IX3(ix3_map[5], 29) |
-		     HAL_REO_REMAP_IX3(ix3_map[6], 30) |
-		     HAL_REO_REMAP_IX3(ix3_map[7], 31);
-}
-
-#ifdef CONFIG_BORON
-void
-hal_reo_remap_ix1_value_get_be(uint32_t *remap0)
-{
-	uint8_t ix1_map[8] = {0};
-
-	ix1_map[0] = 8;
-	ix1_map[1] = 9;
-	ix1_map[2] = 0xA;
-	ix1_map[3] = 0xB;
-	ix1_map[4] = 6;
-	ix1_map[5] = 6;
-	ix1_map[6] = 6;
-	ix1_map[7] = 6;
-
-	*remap0 = HAL_REO_REMAP_IX1(ix1_map[0], 8) |
-		  HAL_REO_REMAP_IX1(ix1_map[1], 9) |
-		  HAL_REO_REMAP_IX1(ix1_map[2], 10) |
-		  HAL_REO_REMAP_IX1(ix1_map[3], 11) |
-		  HAL_REO_REMAP_IX1(ix1_map[4], 12) |
-		  HAL_REO_REMAP_IX1(ix1_map[5], 13) |
-		  HAL_REO_REMAP_IX1(ix1_map[6], 14) |
-		  HAL_REO_REMAP_IX1(ix1_map[7], 15);
-}
-#endif /* CONFIG_BORON */
 
 uint32_t
 hal_reo_ix_remap_value_get_be(hal_soc_handle_t hal_soc_hdl,
@@ -977,13 +827,6 @@ void hal_register_reo_send_cmd_be(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_reo_send_cmd = hal_reo_send_cmd_be;
 }
 
-#ifdef CONFIG_BORON
-static void
-hal_reset_rx_reo_tid_q_be(struct hal_soc *hal_soc, void *hw_qdesc_vaddr,
-			  uint32_t size)
-{
-}
-#else
 /**
  * hal_reset_rx_reo_tid_q_be() - reset the reo tid queue.
  * @hal_soc: HAL soc handle
@@ -1079,31 +922,11 @@ hal_reset_rx_reo_tid_q_be(struct hal_soc *hal_soc, void *hw_qdesc_vaddr,
 		}
 	}
 }
-#endif /* !CONFIG_BORON */
-#endif /* DP_UMAC_HW_RESET_SUPPORT */
+#endif
 
 static inline uint8_t hal_rx_get_phy_ppdu_id_size_be(void)
 {
 	return sizeof(uint64_t);
-}
-
-/**
- * hal_rx_msdu_stats_tlv_resolve_be() - resolve msdu stats TLV for be targets
- * @first_msdu_tlv: rx_pkt_tlvs pointer of the first (head) fragment
- * @last_msdu_tlv: rx_pkt_tlvs pointer of the last (tail) fragment
- *
- * be-family targets do not have a separate msdu_start TLV -- the rate/bw/
- * sgi/reception_type/nss/pkt_type/mic_err/decrypt_err fields consumed by
- * dp_rx_msdu_extd_stats_update() all live in msdu_end, which HW only
- * populates on the last fragment of a scatter-gathered MSDU.
- *
- * Return: last_msdu_tlv
- */
-static inline uint8_t *
-hal_rx_msdu_stats_tlv_resolve_be(uint8_t *first_msdu_tlv,
-				 uint8_t *last_msdu_tlv)
-{
-	return last_msdu_tlv;
 }
 
 void hal_hw_txrx_default_ops_attach_be(struct hal_soc *hal_soc)
@@ -1135,8 +958,6 @@ void hal_hw_txrx_default_ops_attach_be(struct hal_soc *hal_soc)
 					hal_get_wbm_internal_error_generic_be;
 	hal_soc->ops->hal_rx_mpdu_desc_info_get =
 				hal_rx_mpdu_desc_info_get_be;
-	hal_soc->ops->hal_rx_msdu_stats_tlv_resolve =
-				hal_rx_msdu_stats_tlv_resolve_be;
 	hal_soc->ops->hal_rx_err_status_get = hal_rx_err_status_get_be;
 	hal_soc->ops->hal_rx_reo_buf_type_get = hal_rx_reo_buf_type_get_be;
 	hal_soc->ops->hal_rx_wbm_err_src_get = hal_rx_wbm_err_src_get_be;

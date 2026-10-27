@@ -133,11 +133,6 @@ extern "C" {
 #define TARGET_TYPE_FIG    43
 #endif
 
-/* Kasai */
-#ifndef TARGET_TYPE_WCN8750
-#define TARGET_TYPE_WCN8750    44
-#endif
-
 #ifdef __cplusplus
 }
 #endif

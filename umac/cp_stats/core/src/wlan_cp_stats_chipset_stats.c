@@ -24,30 +24,10 @@
 static struct chipset_stats cstats;
 static struct cstats_node *gcstats_buffer[CSTATS_MAX_TYPE];
 
-void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
-					      bool direct_log_dispatch)
-{
-	struct cstats_node *node;
-	int type;
-
-	cstats.is_direct_log_dispatch_enabled = direct_log_dispatch;
-
-	for (type = CSTATS_HOST_TYPE; type < CSTATS_MAX_TYPE; type++) {
-		node = cstats.ccur_node[type];
-		if (!node) {
-			qdf_err("Current Node is NULL");
-			return;
-		}
-
-		memset(node->logbuf, 0, sizeof(node->logbuf));
-		node->filled_length = 0;
-	}
-}
-
 QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 {
 	qdf_list_node_t *tmp_node = NULL;
-	int i, j, k, node_count;
+	int i, j, k;
 
 	if (!wlan_cp_stats_get_chipset_stats_enable(psoc)) {
 		qdf_info("Chipset Stats feature is disabled");
@@ -57,27 +37,11 @@ QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 
 	cstats.is_cstats_ini_enabled = true;
 
-	cstats.chipset_stats_push_rbs_delay_val_ms =
-				wlan_cp_stats_get_user_delay_value_ms(psoc);
-	cstats.chipset_stats_push_rbs_delay_interval =
-				wlan_cp_stats_get_user_delay_interval(psoc);
-
-	cstats.is_cp_stats_debug_logging_enable  =
-			wlan_cp_stats_is_debug_logging_enabled(psoc);
-
 	for (i = 0; i < CSTATS_MAX_TYPE; i++) {
 		qdf_spinlock_create(&cstats.cstats_lock[i]);
 
-		if (i == CSTATS_HOST_TYPE)
-			node_count = HOST_TYPE_NODE_COUNT;
-		else if (i == CSTATS_FW_TYPE)
-			node_count = FW_TYPE_NODE_COUNT;
-		else
-			continue;
-
-		gcstats_buffer[i] = qdf_mem_valloc(node_count *
+		gcstats_buffer[i] = qdf_mem_valloc(MAX_CSTATS_NODE_COUNT *
 						   sizeof(struct cstats_node));
-
 		if (!gcstats_buffer[i]) {
 			qdf_err("Could not allocate memory for chipset stats");
 			for (k = 0; k < i ; k++) {
@@ -92,14 +56,14 @@ QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 			return QDF_STATUS_E_NOMEM;
 		}
 
-		qdf_mem_zero(gcstats_buffer[i], node_count *
+		qdf_mem_zero(gcstats_buffer[i], MAX_CSTATS_NODE_COUNT *
 			     sizeof(struct cstats_node));
 
 		qdf_spin_lock_bh(&cstats.cstats_lock[i]);
 		qdf_init_list_head(&cstats.cstat_free_list[i].anchor);
 		qdf_init_list_head(&cstats.cstat_filled_list[i].anchor);
 
-		for (j = 0; j < node_count; j++) {
+		for (j = 0; j < MAX_CSTATS_NODE_COUNT; j++) {
 			qdf_list_insert_front(&cstats.cstat_free_list[i],
 					      &gcstats_buffer[i][j].node);
 			gcstats_buffer[i][j].index = j;
@@ -172,187 +136,6 @@ static void wlan_cp_stats_get_cstats_free_node(enum cstats_types type)
 	cstats.ccur_node[type]->filled_length = 0;
 }
 
-void wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
-					     void *to_be_sent, uint32_t plen)
-{
-	char *buf, *ptr;
-	unsigned int total_len;
-	uint64_t *event_l, second_64_hex;
-
-	if (!cstats.is_cstats_ini_enabled ||
-	    !cstats.is_direct_log_dispatch_enabled || !to_be_sent)
-		return;
-
-	/* ensure buffer node exists before writing */
-	if (!cstats.ccur_node[type]) {
-		qdf_err("Current Node is NULL");
-		return;
-	}
-
-	/* reject oversized payloads that would overflow logbuf */
-	if ((sizeof(tAniNlHdr) + (2 * CSTATS_MARKER_SZ) + plen) >
-	    MAX_CSTATS_NODE_LENGTH) {
-		qdf_err("FW log event too large: plen %u", plen);
-		return;
-	}
-
-	/*
-	 * If debug logging is enabled, extract timestamp from payload and
-	 * log it.
-	 */
-	if (cstats.is_cp_stats_debug_logging_enable) {
-		event_l = (uint64_t *)to_be_sent;
-		/* timestamp is stored in the second 64 bits */
-		qdf_mem_copy(&second_64_hex, event_l + 1, 8);
-		cp_stats_debug("CSTATS FW EVENT received at timestamp: %llu, event_len: %d",
-			       second_64_hex, plen);
-	}
-
-	qdf_spin_lock_bh(&cstats.cstats_lock[type]);
-
-	/* point to beginning of log buffer */
-	buf = cstats.ccur_node[type]->logbuf;
-
-	/* point to buffer position after header to insert content */
-	ptr = &buf[sizeof(tAniNlHdr)];
-	/* insert firmware start marker */
-	memcpy(ptr, CSTATS_FW_START_MARKER, CSTATS_MARKER_SZ);
-	/* copy actual firmware payload */
-	memcpy(ptr + CSTATS_MARKER_SZ, to_be_sent, plen);
-	/* append firmware end marker */
-	memcpy(ptr + CSTATS_MARKER_SZ + plen, CSTATS_FW_END_MARKER,
-	       CSTATS_MARKER_SZ);
-
-	/* calculate total message length including header and markers */
-	total_len = sizeof(tAniNlHdr) + plen + 2 * CSTATS_MARKER_SZ;
-
-	/*
-	 * no need to check for space in the current buffer, firmware handles
-	 * it so sends logs directly to userspace.
-	 */
-	if (cstats.ops.cstats_send_data_to_usr)
-		cstats.ops.cstats_send_data_to_usr(buf, total_len, type,
-				cstats.is_cp_stats_debug_logging_enable);
-
-	/* reset the current node values */
-	cstats.ccur_node[type]->filled_length = 0;
-
-	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
-}
-
-void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
-					 void *to_be_sent, uint32_t plen)
-{
-	struct cstats_node *node;
-	char *buf, *ptr;
-	unsigned int *pfilled_length;
-	uint32_t header_len = sizeof(tAniNlHdr);
-	uint32_t marker_len = CSTATS_MARKER_SZ;
-	uint32_t total_len;
-
-	if (!cstats.is_cstats_ini_enabled ||
-	    !cstats.is_direct_log_dispatch_enabled || !to_be_sent)
-		return;
-
-	node = cstats.ccur_node[type];
-	if (!node) {
-		qdf_err("Current Node is NULL");
-		return;
-	}
-
-	qdf_spin_lock_bh(&cstats.cstats_lock[type]);
-
-	buf = node->logbuf;
-	pfilled_length = &node->filled_length;
-
-	if (cstats.is_cp_stats_debug_logging_enable)
-		qdf_debug("Current pfilled_length: %u, new payload length: %u",
-			  *pfilled_length, plen);
-
-	/* Total required space: start + payload + end */
-	total_len = 2 * marker_len + plen;
-
-	/* If buffer can't fit new data, flush it */
-	if ((header_len + *pfilled_length + total_len) >
-	    MAX_CSTATS_NODE_LENGTH) {
-		/*
-		 * In hdd_cstats_send_data_to_userspace(), the host appends the
-		 * Netlink header to the buffer.
-		 */
-		if (cstats.ops.cstats_send_data_to_usr)
-			cstats.ops.cstats_send_data_to_usr(buf,
-				header_len + *pfilled_length, type,
-				cstats.is_cp_stats_debug_logging_enable);
-		/* Reset buffer after flush */
-		*pfilled_length = 0;
-		qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
-		return;
-	}
-
-	/*
-	 * Format of accommodated buffer is like:
-	 * [START_MARKER][PAYLOAD_1][END_MARKER]
-	 * [START_MARKER][PAYLOAD_2][END_MARKER]
-	 * .........
-	 * [START_MARKER][PAYLOAD_n][END_MARKER]
-	 */
-
-	/* Compute where to start writing in buffer
-	 * (after header + existing content)
-	 */
-	ptr = &buf[header_len + *pfilled_length];
-	/* Copy start marker */
-	memcpy(ptr, CSTATS_HOST_START_MARKER, marker_len);
-	/* Copy payload immediately after marker */
-	memcpy(ptr + marker_len, to_be_sent, plen);
-	/* Copy end marker after payload*/
-	memcpy(ptr + marker_len + plen, CSTATS_HOST_END_MARKER, marker_len);
-
-	/* Update filled length to reflect newly added data */
-	*pfilled_length += total_len;
-
-	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
-}
-
-void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
-{
-	struct cstats_node *node;
-	char *buf;
-	unsigned int *pfilled_length;
-	uint32_t header_len = sizeof(tAniNlHdr);
-
-	node = cstats.ccur_node[CSTATS_HOST_TYPE];
-	if (!node) {
-		qdf_err("Current Node is NULL");
-		return;
-	}
-
-	qdf_spin_lock_bh(&cstats.cstats_lock[CSTATS_HOST_TYPE]);
-
-	buf = node->logbuf;
-	pfilled_length = &node->filled_length;
-	if (cstats.is_cp_stats_debug_logging_enable)
-		qdf_debug("Filled length value: %u", *pfilled_length);
-
-	if (*pfilled_length == 0) {
-		qdf_debug("Host buffer is empty. No data to flush.");
-		goto unlock_and_return;
-	}
-
-	if (cstats.ops.cstats_send_data_to_usr) {
-		cstats.ops.cstats_send_data_to_usr(buf,
-			header_len + *pfilled_length, CSTATS_HOST_TYPE,
-			cstats.is_cp_stats_debug_logging_enable);
-	}
-
-	qdf_debug("Pending host buffer flush complete");
-	/* Reset buffer after flush */
-	*pfilled_length = 0;
-
-unlock_and_return:
-	qdf_spin_unlock_bh(&cstats.cstats_lock[CSTATS_HOST_TYPE]);
-}
-
 void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 					void *to_be_sent,
 					uint32_t plen)
@@ -360,8 +143,6 @@ void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 	char *ptr;
 	unsigned int *pfilled_length;
 	unsigned int tlen;
-	uint64_t *event_l;
-	uint64_t second_64_hex;
 
 	if (!cstats.is_cstats_ini_enabled)
 		return;
@@ -377,14 +158,6 @@ void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 	if (!cstats.ccur_node[type]) {
 		qdf_err("Current Node is NULL");
 		return;
-	}
-
-	if (cstats.is_cp_stats_debug_logging_enable) {
-		event_l = (uint64_t *)to_be_sent;
-		/* second 64 bits of the event represent the timestamp */
-		qdf_mem_copy(&second_64_hex, event_l + 1, 8);
-		cp_stats_debug("CSTATS FW EVENT received at timestamp: %llu, event_len: %d",
-			       second_64_hex, plen);
 	}
 
 	qdf_spin_lock_bh(&cstats.cstats_lock[type]);
@@ -417,24 +190,6 @@ void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
 }
 
-void wlan_cp_stats_host_log_event_dispatcher(enum cstats_types type,
-					     void *event, uint32_t event_len)
-{
-	if (cstats.is_direct_log_dispatch_enabled)
-		wlan_cp_stats_host_append_and_flush(type, event, event_len);
-	else
-		wlan_cp_stats_cstats_write_to_buff(type, event, event_len);
-}
-
-void wlan_cp_stats_fw_log_event_dispatcher(enum cstats_types type, void *event,
-					   int event_len)
-{
-	if (cstats.is_direct_log_dispatch_enabled)
-		wlan_cp_stats_fw_log_event_direct_flush(type, event, event_len);
-	else
-		wlan_cp_stats_cstats_write_to_buff(type, event, event_len);
-}
-
 static int wlan_cp_stats_cstats_send_version_to_usr(void)
 {
 	uint8_t buff[MAX_CSTATS_VERSION_BUFF_LENGTH] = {0};
@@ -463,8 +218,7 @@ static int wlan_cp_stats_cstats_send_version_to_usr(void)
 	if (cstats.ops.cstats_send_data_to_usr) {
 		ret = cstats.ops.cstats_send_data_to_usr(buff,
 							 metadata_len + n,
-							 CSTATS_HOST_TYPE,
-							 false);
+							 CSTATS_HOST_TYPE);
 	}
 
 	if (ret)
@@ -476,14 +230,11 @@ static int wlan_cp_stats_cstats_send_version_to_usr(void)
 int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 {
 	int ret = -1;
-	size_t counter = 1;
 	struct cstats_node *clog_msg;
 	struct cstats_node *next;
 	int payload_len;
 	int mark_total;
 	char *ptr = NULL;
-	size_t fw_list_len = 0;
-	size_t host_list_len = 0;
 
 	if (!cstats.is_cstats_ini_enabled)
 		return QDF_STATUS_SUCCESS;
@@ -523,11 +274,6 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 				     CSTATS_MARKER_SZ);
 		}
 
-		if (type == CSTATS_FW_TYPE)
-			fw_list_len++;
-		else if (type == CSTATS_HOST_TYPE)
-			host_list_len++;
-
 		if (!cstats.cstats_no_flush[type]) {
 			qdf_list_remove_node(&cstats.cstat_free_list[type],
 					     &clog_msg->node);
@@ -538,15 +284,9 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 		payload_len = clog_msg->filled_length + sizeof(tAniHdr) +
 			      mark_total;
 
-		if (cstats.chipset_stats_push_rbs_delay_interval &&
-		    !(counter % cstats.chipset_stats_push_rbs_delay_interval)) {
-			qdf_mdelay(cstats.chipset_stats_push_rbs_delay_val_ms);
-		}
-
 		if (cstats.ops.cstats_send_data_to_usr) {
 			ret = cstats.ops.cstats_send_data_to_usr
-			       (clog_msg->logbuf, payload_len, type,
-			       cstats.is_cp_stats_debug_logging_enable);
+			       (clog_msg->logbuf, payload_len, type);
 		}
 
 		if (ret) {
@@ -560,15 +300,6 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 					     &clog_msg->node);
 			qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
 		}
-
-		counter++;
-	}
-
-	if (cstats.is_cp_stats_debug_logging_enable) {
-		if (type == CSTATS_FW_TYPE)
-			qdf_debug("FW List len : %zu", fw_list_len);
-		else if (type == CSTATS_HOST_TYPE)
-			qdf_debug("HOST List len : %zu", host_list_len);
 	}
 
 	return ret;

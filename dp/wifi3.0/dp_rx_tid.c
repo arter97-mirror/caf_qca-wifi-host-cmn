@@ -44,7 +44,6 @@
 #include <target_if_dp.h>
 #endif
 
-#ifndef CONFIG_BORON
 #ifdef REO_QDESC_HISTORY
 #define REO_QDESC_HISTORY_SIZE 512
 uint64_t reo_qdesc_history_idx;
@@ -128,7 +127,7 @@ dp_set_ssn_valid_flag(struct hal_reo_cmd_params *params,
 		      valid);
 }
 
-#if defined(IPA_OFFLOAD) && defined(ATH_SUPPORT_EXT_STAT)
+#ifdef IPA_OFFLOAD
 void dp_peer_update_tid_stats_from_reo(struct dp_soc *soc, void *cb_ctxt,
 				       union hal_reo_status *reo_status)
 {
@@ -274,6 +273,50 @@ static void dp_rx_tid_update_cb(struct dp_soc *soc, void *cb_ctxt,
 			    soc, reo_status->rx_queue_status.header.status,
 			    rx_tid->tid);
 	}
+}
+
+#ifdef WLAN_FEATURE_11BE_MLO
+static inline QDF_STATUS
+dp_get_vdev_id(struct cdp_soc_t *soc_hdl, struct dp_peer *peer,
+	       uint8_t *vdev_id)
+{
+	return dp_get_vdevid(soc_hdl, peer->mac_addr.raw,
+			     peer->peer_type, vdev_id);
+}
+#else
+static inline QDF_STATUS
+dp_get_vdev_id(struct cdp_soc_t *soc_hdl, struct dp_peer *peer,
+	       uint8_t *vdev_id)
+{
+	return dp_get_vdevid(soc_hdl, peer->mac_addr.raw,
+			     CDP_WILD_PEER_TYPE, vdev_id);
+}
+#endif
+
+bool dp_get_peer_vdev_roaming_in_progress(struct dp_peer *peer)
+{
+	struct ol_if_ops *ol_ops = NULL;
+	bool is_roaming = false;
+	uint8_t vdev_id = -1;
+	struct cdp_soc_t *soc;
+
+	if (!peer) {
+		dp_peer_info("Peer is NULL. No roaming possible");
+		return false;
+	}
+
+	soc = dp_soc_to_cdp_soc_t(peer->vdev->pdev->soc);
+	ol_ops = peer->vdev->pdev->soc->cdp_soc.ol_ops;
+
+	if (ol_ops && ol_ops->is_roam_inprogress) {
+		dp_get_vdev_id(soc, peer, &vdev_id);
+		is_roaming = ol_ops->is_roam_inprogress(vdev_id);
+	}
+
+	dp_peer_info("peer: " QDF_MAC_ADDR_FMT ", vdev_id: %d, is_roaming: %d",
+		     QDF_MAC_ADDR_REF(peer->mac_addr.raw), vdev_id, is_roaming);
+
+	return is_roaming;
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -593,15 +636,7 @@ dp_single_rx_tid_setup(struct dp_peer *peer, int tid,
 	void *hw_qdesc_vaddr;
 	uint32_t alloc_tries = 0, ret;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct dp_txrx_peer *txrx_peer = dp_get_txrx_peer(peer);
-
-	if (!txrx_peer) {
-		dp_peer_err("peer %u txrx peer NULL " QDF_MAC_ADDR_FMT,
-			    peer->peer_id,
-			    QDF_MAC_ADDR_REF(peer->mac_addr.raw));
-
-		return QDF_STATUS_E_INVAL;
-	}
+	struct dp_txrx_peer *txrx_peer;
 
 	rx_tid->delba_tx_status = 0;
 	rx_tid->ppdu_id_2k = 0;
@@ -610,7 +645,6 @@ dp_single_rx_tid_setup(struct dp_peer *peer, int tid,
 	rx_tid->num_of_addba_resp = 0;
 	rx_tid->num_addba_rsp_failed = 0;
 	rx_tid->num_addba_rsp_success = 0;
-	rx_tid->num_addba_req_rejected = 0;
 	rx_tid->delba_tx_success_cnt = 0;
 	rx_tid->delba_tx_fail_cnt = 0;
 	rx_tid->statuscode = 0;
@@ -671,6 +705,8 @@ try_desc_alloc:
 	}
 	rx_tid->hw_qdesc_vaddr_aligned = hw_qdesc_vaddr;
 
+	txrx_peer = dp_get_txrx_peer(peer);
+
 	/* TODO: Ensure that sec_type is set before ADDBA is received.
 	 * Currently this is set based on htt indication
 	 * HTT_T2H_MSG_TYPE_SEC_IND from target
@@ -708,10 +744,9 @@ try_desc_alloc:
 
 	if (dp_reo_desc_addr_chk(rx_tid->hw_qdesc_paddr) !=
 			QDF_STATUS_SUCCESS || ret) {
-		qdf_mem_free(rx_tid->hw_qdesc_vaddr_unaligned);
-		rx_tid->hw_qdesc_vaddr_unaligned = NULL;
-
 		if (alloc_tries++ < 10) {
+			qdf_mem_free(rx_tid->hw_qdesc_vaddr_unaligned);
+			rx_tid->hw_qdesc_vaddr_unaligned = NULL;
 			goto try_desc_alloc;
 		} else {
 			dp_peer_err("%pK: Rx tid %d desc alloc fail (lowmem)",
@@ -1608,24 +1643,6 @@ int dp_addba_requestprocess_wifi3(struct cdp_soc_t *cdp_soc,
 	rx_tid = &peer->rx_tid[tid];
 	qdf_spin_lock_bh(&rx_tid->tid_lock);
 	rx_tid->num_of_addba_req++;
-
-	/*
-	 * Reject ADDBA request if DELBA TX completion is pending.
-	 * This prevents race condition where ADDBA request arrives
-	 * before DELBA TX completion, which can cause incorrect
-	 * TID state transitions (INPROGRESS -> INACTIVE instead of
-	 * INPROGRESS -> ACTIVE).
-	 */
-	if (rx_tid->delba_tx_status) {
-		dp_info("%pK: Reject ADDBA req for tid %d, DELBA TX completion pending",
-			cdp_soc, tid);
-		rx_tid->statuscode = IEEE80211_STATUS_REFUSED;
-		rx_tid->num_addba_req_rejected++;
-		qdf_spin_unlock_bh(&rx_tid->tid_lock);
-		status = QDF_STATUS_E_FAILURE;
-		goto fail;
-	}
-
 	if ((rx_tid->ba_status == DP_RX_BA_ACTIVE &&
 	     rx_tid->hw_qdesc_vaddr_unaligned)) {
 		dp_rx_tid_update_wifi3(peer, tid, 1, IEEE80211_SEQ_MAX, false);
@@ -1686,6 +1703,29 @@ fail:
 	return status;
 }
 
+QDF_STATUS
+dp_set_addba_response(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
+		      uint16_t vdev_id, uint8_t tid, uint16_t statuscode)
+{
+	struct dp_peer *peer = dp_peer_get_tgt_peer_hash_find(
+					(struct dp_soc *)cdp_soc,
+					peer_mac, 0, vdev_id,
+					DP_MOD_ID_CDP);
+	struct dp_rx_tid *rx_tid;
+
+	if (!peer) {
+		dp_peer_debug("%pK: Peer is NULL!", cdp_soc);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	rx_tid = &peer->rx_tid[tid];
+	qdf_spin_lock_bh(&rx_tid->tid_lock);
+	rx_tid->userstatuscode = statuscode;
+	qdf_spin_unlock_bh(&rx_tid->tid_lock);
+	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
 
 int dp_delba_process_wifi3(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
 			   uint16_t vdev_id, int tid, uint16_t reasoncode)
@@ -1954,7 +1994,7 @@ dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
 	return status;
 }
 
-#if defined(IPA_OFFLOAD) && defined(ATH_SUPPORT_EXT_STAT)
+#ifdef IPA_OFFLOAD
 int dp_peer_get_rxtid_stats_ipa(struct dp_peer *peer,
 				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb)
 {
@@ -2209,199 +2249,4 @@ failed:
 		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_GENERIC_STATS);
 }
 #endif /* DUMP_REO_QUEUE_INFO_IN_DDR */
-#else
-QDF_STATUS
-dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
-			uint8_t tid, uint16_t win_sz)
-{
-	struct dp_soc *soc = (struct dp_soc *)soc_handle;
-	struct dp_peer *peer;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
-	peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_HTT);
-
-	if (!peer) {
-		dp_peer_err("%pK: Couldn't find peer from ID %d",
-			    soc, peer_id);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	qdf_assert_always(tid < DP_MAX_TIDS);
-
-	dp_peer_info("%pK: PEER_ID: %d TID: %d, BA win: %d ",
-		     soc, peer_id, tid, win_sz);
-
-	if (soc->cdp_soc.ol_ops->send_delba)
-		soc->cdp_soc.ol_ops->send_delba(
-				peer->vdev->pdev->soc->ctrl_psoc,
-				peer->vdev->vdev_id,
-				peer->mac_addr.raw,
-				tid,
-				IEEE80211_REASON_QOS_SETUP_REQUIRED,
-				CDP_DELBA_REASON_NONE);
-
-	dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
-
-	return status;
-}
-
-#ifdef WLAN_FEATURE_11BE_MLO
-/**
- * dp_peer_rx_tids_init() - initialize each tids in peer
- * @peer: peer pointer
- *
- * Return: None
- */
-static void dp_peer_rx_tids_init(struct dp_peer *peer)
-{
-	int tid;
-	struct dp_rx_tid_defrag *rx_tid_defrag;
-
-	if (!IS_MLO_DP_LINK_PEER(peer)) {
-		for (tid = 0; tid < DP_MAX_TIDS; tid++) {
-			rx_tid_defrag = &peer->txrx_peer->rx_tid[tid];
-
-			rx_tid_defrag->array = &rx_tid_defrag->base;
-			rx_tid_defrag->defrag_timeout_ms = 0;
-			rx_tid_defrag->defrag_waitlist_elem.tqe_next = NULL;
-			rx_tid_defrag->defrag_waitlist_elem.tqe_prev = NULL;
-			rx_tid_defrag->base.head = NULL;
-			rx_tid_defrag->base.tail = NULL;
-			rx_tid_defrag->tid = tid;
-			rx_tid_defrag->defrag_peer = peer->txrx_peer;
-		}
-	}
-}
-#else
-static void dp_peer_rx_tids_init(struct dp_peer *peer)
-{
-	int tid;
-	struct dp_rx_tid_defrag *rx_tid_defrag;
-
-	for (tid = 0; tid < DP_MAX_TIDS; tid++) {
-		rx_tid_defrag = &peer->txrx_peer->rx_tid[tid];
-		rx_tid_defrag->base.head = NULL;
-		rx_tid_defrag->base.tail = NULL;
-		rx_tid_defrag->tid = tid;
-		rx_tid_defrag->array = &rx_tid_defrag->base;
-		rx_tid_defrag->defrag_timeout_ms = 0;
-		rx_tid_defrag->defrag_waitlist_elem.tqe_next = NULL;
-		rx_tid_defrag->defrag_waitlist_elem.tqe_prev = NULL;
-		rx_tid_defrag->defrag_peer = peer->txrx_peer;
-	}
-}
-#endif
-
-void dp_peer_rx_tid_setup(struct dp_peer *peer)
-{
-	dp_peer_rx_tids_init(peer);
-}
-
-void dp_peer_rx_cleanup(struct dp_vdev *vdev, struct dp_peer *peer)
-{
-	int tid;
-
-	if (!peer->txrx_peer)
-		return;
-
-	dp_info("Remove tids for peer: %pK", peer);
-
-	for (tid = 0; tid < DP_MAX_TIDS; tid++) {
-		struct dp_rx_tid_defrag *defrag_rx_tid =
-				&peer->txrx_peer->rx_tid[tid];
-
-		qdf_spin_lock_bh(&defrag_rx_tid->defrag_tid_lock);
-		if (!peer->bss_peer || peer->vdev->opmode == wlan_op_mode_sta) {
-			/* Cleanup defrag related resource */
-			dp_rx_defrag_waitlist_remove(peer->txrx_peer, tid);
-			dp_rx_reorder_flush_frag(peer->txrx_peer, tid);
-		}
-		qdf_spin_unlock_bh(&defrag_rx_tid->defrag_tid_lock);
-	}
-}
-
-int dp_peer_rxtid_stats_bn(struct dp_peer *peer,
-			   uint32_t stats_cookie_type)
-{
-	struct dp_pdev *pdev = peer->vdev->pdev;
-	uint32_t config_param0 = 0;
-	uint32_t config_param1 = 0;
-	uint32_t config_param2 = 0;
-	uint32_t config_param3 = 0;
-	int stats_cmd_sent_cnt = 0;
-	uint8_t *mac_addr = NULL;
-	QDF_STATUS status;
-
-	if (!pdev)
-		return stats_cmd_sent_cnt;
-
-	mac_addr = peer->mac_addr.raw;
-	HTT_DBG_EXT_STATS_PEER_INFO_IS_MAC_ADDR_SET(config_param0, 1);
-	/* bit-10 for htt_stats_rx_peer_tid_reo_queue_ba_tlv */
-	config_param1 |= BIT(HTT_PEER_RX_REO_STATS_TLV);
-	config_param2 |= (mac_addr[0] & 0x000000ff);
-	config_param2 |= ((mac_addr[1] << 8) & 0x0000ff00);
-	config_param2 |= ((mac_addr[2] << 16) & 0x00ff0000);
-	config_param2 |= ((mac_addr[3] << 24) & 0xff000000);
-
-	config_param3 |= (mac_addr[4] & 0x000000ff);
-	config_param3 |= ((mac_addr[5] << 8) & 0x0000ff00);
-
-	dp_info("Sending HTT Req for peer " QDF_MAC_ADDR_FMT " RX REO stats",
-		QDF_MAC_ADDR_REF(peer->mac_addr.raw));
-	status = dp_h2t_ext_stats_msg_send(
-					pdev, HTT_DBG_EXT_STATS_PEER_INFO,
-					config_param0, config_param1,
-					config_param2, config_param3,
-					0, stats_cookie_type, 0);
-
-	stats_cmd_sent_cnt = QDF_IS_STATUS_SUCCESS(status) ?
-					(CDP_DATA_TID_MAX + 1) : 0;
-
-	return stats_cmd_sent_cnt;
-}
-#endif /* CONFIG_BORON */
-
-#ifdef WLAN_FEATURE_11BE_MLO
-static inline QDF_STATUS
-dp_get_vdev_id(struct cdp_soc_t *soc_hdl, struct dp_peer *peer,
-	       uint8_t *vdev_id)
-{
-	return dp_get_vdevid(soc_hdl, peer->mac_addr.raw,
-			     peer->peer_type, vdev_id);
-}
-#else
-static inline QDF_STATUS
-dp_get_vdev_id(struct cdp_soc_t *soc_hdl, struct dp_peer *peer,
-	       uint8_t *vdev_id)
-{
-	return dp_get_vdevid(soc_hdl, peer->mac_addr.raw,
-			     CDP_WILD_PEER_TYPE, vdev_id);
-}
-#endif
-
-bool dp_get_peer_vdev_roaming_in_progress(struct dp_peer *peer)
-{
-	struct ol_if_ops *ol_ops = NULL;
-	bool is_roaming = false;
-	uint8_t vdev_id = -1;
-	struct cdp_soc_t *soc;
-
-	if (!peer) {
-		dp_peer_info("Peer is NULL. No roaming possible");
-		return false;
-	}
-
-	soc = dp_soc_to_cdp_soc_t(peer->vdev->pdev->soc);
-	ol_ops = peer->vdev->pdev->soc->cdp_soc.ol_ops;
-
-	if (ol_ops && ol_ops->is_roam_inprogress) {
-		dp_get_vdev_id(soc, peer, &vdev_id);
-		is_roaming = ol_ops->is_roam_inprogress(vdev_id);
-	}
-
-	dp_peer_info("peer: " QDF_MAC_ADDR_FMT ", vdev_id: %d, is_roaming: %d",
-		     QDF_MAC_ADDR_REF(peer->mac_addr.raw), vdev_id, is_roaming);
-
-	return is_roaming;
-}

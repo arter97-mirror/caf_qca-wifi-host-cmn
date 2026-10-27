@@ -35,7 +35,6 @@
 #include "pld_common.h"
 #include "hif_debug.h"
 #include "hif_napi.h"
-#include "hif_main.h"
 
 /**
  * struct tasklet_work
@@ -761,7 +760,7 @@ static inline bool hif_tasklet_schedule(struct hif_opaque_softc *hif_ctx,
 }
 
 #ifdef WLAN_FEATURE_WMI_DIAG_OVER_CE7
-#define CE_LOOP_MAX_COUNT	(32 + 1)
+#define CE_LOOP_MAX_COUNT	20
 /**
  * ce_poll_reap_by_id() - reap the available frames from CE by polling per ce_id
  * @scn: hif context
@@ -800,10 +799,8 @@ static int ce_poll_reap_by_id(struct hif_softc *scn, enum ce_id_type ce_id)
 	 * could be an infinite loop, so return -EBUSY.
 	 */
 	if (ce_check_rx_pending(CE_state) &&
-	    i == CE_LOOP_MAX_COUNT) {
-		hif_info("Max drain count reached, abort suspend");
-		return -EAGAIN;
-	}
+	    i == CE_LOOP_MAX_COUNT)
+		return -EBUSY;
 
 	hif_record_ce_desc_event(scn, ce_id, HIF_CE_REAP_EXIT,
 				 NULL, NULL, -1, 0);
@@ -833,9 +830,6 @@ int hif_drain_fw_diag_ce(struct hif_softc *scn)
 		return 0;
 
 	tasklet_entry = &hif_ce_state->tasklets[ce_id];
-
-	hif_info("before drain CE");
-	hif_print_ce(scn, DIAG_PRINT);
 
 	/* If CE7 tasklet is triggered, no need to poll CE explicitly,
 	 * CE7 SIRQ could reschedule until there is no pending entries
@@ -911,12 +905,6 @@ irqreturn_t ce_dispatch_interrupt(int ce_id,
 	struct hif_softc *scn = HIF_GET_SOFTC(hif_ce_state);
 	struct hif_opaque_softc *hif_hdl = GET_HIF_OPAQUE_HDL(scn);
 	struct CE_state *ce_state;
-
-	if (unlikely(!tasklet_entry->inited)) {
-		hif_err_rl("tasklet_entry uninitialized, ce_id:%d, entry_ce_id:%d",
-			   ce_id, tasklet_entry->ce_id);
-		return IRQ_NONE;
-	}
 
 	if (tasklet_entry->ce_id != ce_id) {
 		bool rl;

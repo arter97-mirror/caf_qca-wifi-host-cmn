@@ -37,7 +37,6 @@
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 #include <wlan_mlo_mgr_setup.h>
 #endif
-#include "wlan_crypto_global_api.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0) && \
 LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0) && \
@@ -70,6 +69,7 @@ osif_cm_update_wep_seq_info(struct wlan_cm_connect_req *connect_req,
 }
 #endif
 
+#if !defined(CFG80211_CRYPTO_WEP_KEYS_REMOVED)
 static QDF_STATUS
 osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
 			   const struct cfg80211_connect_params *req)
@@ -90,57 +90,20 @@ osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
 
 	return osif_cm_update_wep_seq_info(connect_req, req);
 }
-
-#ifdef WLAN_FEATURE_11BI_SECURITY
-/**
- * osif_cm_expand_auth_for_eppke() - Expand auth bitmask with EPPKE when
- * supplicant chose SAE-EXT-KEY and eppke_allowed is set on the vdev.
- * @vdev: vdev object
- * @connect_req: connect request with auth_type already set
- *
- * When eppke_allowed is set, the scan filter must also match EPPKE-capable
- * APs (which advertise the EPPKE AKM). Adding WLAN_CRYPTO_AUTH_EPPKE to the
- * auth bitmask alongside SAE lets scm_chk_if_cipher_n_akm_match() accept
- * both SAE-only and EPPKE APs as candidates.
- */
-static void
-osif_cm_expand_auth_for_eppke(struct wlan_objmgr_vdev *vdev,
-			      struct wlan_cm_connect_req *connect_req)
-{
-	uint8_t vdev_id = wlan_vdev_get_id(vdev);
-
-	if (!wlan_vdev_is_eppke_allowed(vdev)) {
-		osif_debug("vdev:%d eppke_allowed not set, skip auth expansion",
-			   vdev_id);
-		return;
-	}
-
-	if (QDF_HAS_PARAM(connect_req->crypto.akm_suites,
-			  WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY)) {
-		QDF_SET_PARAM(connect_req->crypto.auth_type,
-			      WLAN_CRYPTO_AUTH_EPPKE);
-		connect_req->eppke_allowed = 1;
-		osif_debug("vdev:%d SAE-EXT-KEY AKM: auth_type expanded to 0x%x (EPPKE added)",
-			   vdev_id, connect_req->crypto.auth_type);
-	} else {
-		osif_debug("vdev:%d no SAE-EXT-KEY in akm=0x%x, skip EPPKE expansion",
-			   vdev_id, connect_req->crypto.akm_suites);
-	}
-}
 #else
-static inline void
-osif_cm_expand_auth_for_eppke(struct wlan_objmgr_vdev *vdev,
-			      struct wlan_cm_connect_req *connect_req)
+static QDF_STATUS
+osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
+			   const struct cfg80211_connect_params *req)
 {
+	return QDF_STATUS_SUCCESS;
 }
-#endif /* WLAN_FEATURE_11BI_SECURITY */
+#endif
 
-static void osif_cm_set_auth_type(struct wlan_objmgr_vdev *vdev,
-				  struct wlan_cm_connect_req *connect_req,
+static void osif_cm_set_auth_type(struct wlan_cm_connect_req *connect_req,
 				  const struct cfg80211_connect_params *req)
 {
 	wlan_crypto_auth_mode crypto_auth_type =
-			osif_nl_to_crypto_auth_type(vdev, req->auth_type);
+			osif_nl_to_crypto_auth_type(req->auth_type);
 
 	/* For auto check wpa version to decide WPA or RSNA */
 	if (crypto_auth_type == WLAN_CRYPTO_AUTH_AUTO &&
@@ -235,8 +198,7 @@ osif_cm_populate_user_crypto_param(struct wlan_cm_connect_req *connect_req,
 #endif
 
 static
-QDF_STATUS osif_cm_set_crypto_params(struct wlan_objmgr_vdev *vdev,
-				     struct wlan_cm_connect_req *connect_req,
+QDF_STATUS osif_cm_set_crypto_params(struct wlan_cm_connect_req *connect_req,
 				     const struct cfg80211_connect_params *req)
 {
 	uint32_t i;
@@ -245,7 +207,7 @@ QDF_STATUS osif_cm_set_crypto_params(struct wlan_objmgr_vdev *vdev,
 
 	connect_req->crypto.wpa_versions = req->crypto.wpa_versions;
 
-	osif_cm_set_auth_type(vdev, connect_req, req);
+	osif_cm_set_auth_type(connect_req, req);
 
 	if (req->crypto.cipher_group)
 		cipher =
@@ -269,9 +231,6 @@ QDF_STATUS osif_cm_set_crypto_params(struct wlan_objmgr_vdev *vdev,
 
 	/* Fill AKM suites */
 	osif_cm_set_akm_params(connect_req, req);
-
-	/* Expand auth bitmask for EPPKE after AKMs are populated */
-	osif_cm_expand_auth_for_eppke(vdev, connect_req);
 
 	/* Fill WEP Key information */
 	status = osif_cm_set_wep_key_params(connect_req, req);
@@ -814,7 +773,6 @@ int osif_cm_connect(struct net_device *dev, struct wlan_objmgr_vdev *vdev,
 	QDF_STATUS status;
 	struct qdf_mac_addr bssid = QDF_MAC_ADDR_BCAST_INIT;
 	struct wlan_objmgr_vdev *temp_vdev;
-	int n_connect_akm_suites;
 
 	if (req->bssid)
 		qdf_mem_copy(bssid.bytes, req->bssid,
@@ -872,14 +830,9 @@ int osif_cm_connect(struct net_device *dev, struct wlan_objmgr_vdev *vdev,
 	if (req->channel_hint)
 		connect_req->chan_freq_hint = req->channel_hint->center_freq;
 
-	status = osif_cm_set_crypto_params(vdev, connect_req, req);
+	status = osif_cm_set_crypto_params(connect_req, req);
 	if (QDF_IS_STATUS_ERROR(status))
 		goto connect_start_fail;
-
-	n_connect_akm_suites = osif_cm_get_num_akm_suites(req);
-	wlan_crypto_set_vdev_akm_roam(vdev,
-				      n_connect_akm_suites,
-				      connect_req->crypto.akm_suites);
 
 	connect_req->ht_caps = req->ht_capa.cap_info;
 	connect_req->ht_caps_mask = req->ht_capa_mask.cap_info;

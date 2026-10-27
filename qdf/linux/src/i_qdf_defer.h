@@ -146,23 +146,6 @@ static inline uint32_t __qdf_flush_work(__qdf_work_t *work)
 }
 
 /**
- * __qdf_cancel_work_nosync() - Cancel a work without waiting for it to
- *                              finish
- * @work: pointer to work
- *
- * Wraps the Linux cancel_work() API -- the non-blocking counterpart to
- * cancel_work_sync(). Dequeues work if it is merely pending (queued but
- * not yet started) and returns immediately
- *
- * Return: true if work was pending and has been canceled, false
- *         otherwise (including when work was already executing)
- */
-static inline bool __qdf_cancel_work_nosync(__qdf_work_t *work)
-{
-	return cancel_work(&work->work);
-}
-
-/**
  * __qdf_create_workqueue - create a workqueue, This runs in non-interrupt
  * context, so can be preempted by H/W & S/W intr
  * @name: string

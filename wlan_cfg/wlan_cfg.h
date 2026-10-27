@@ -167,7 +167,6 @@ struct wlan_srng_cfg {
  * @num_tx_comp_rings: Number of Tx comp rings supported by device
  * @num_tcl_data_rings: Number of TCL Data rings supported by device
  * @num_nss_tcl_data_rings:
- * @num_embedded_tx_paths: Number of TX rings for embedded path
  * @per_pdev_rx_ring: 0: REO ring is not mapped per radio
  *		       1: Each REO ring is mapped to one radio/pdev
  * @per_pdev_lmac_ring:
@@ -185,9 +184,6 @@ struct wlan_srng_cfg {
  * @htt_packet_type: Default 802.11 encapsulation type for any VAP created
  * @int_tx_ring_mask: Bitmap of Tx interrupts mapped to each NAPI/Intr context
  * @int_rx_ring_mask: Bitmap of Rx interrupts mapped to each NAPI/Intr context
- * @dal_int_tx_ring_mask: Bitmap of DAL Tx intr mapped to each NAPI/Intr context
- * @dal_int_rx_ring_mask: Bitmap of DAL Rx intr mapped to each NAPI/Intr context
- * @dal_dp_enabled: Flag indicating if DAL DP is enabled
  * @int_batch_threshold_ppe2tcl:
  * @int_timer_threshold_ppe2tcl:
  * @int_batch_threshold_tx:
@@ -237,7 +233,6 @@ struct wlan_srng_cfg {
  * @base_hw_macid:
  * @rx_hash: Enable hash based steering of rx packets
  * @tso_enabled: enable/disable tso feature
- * @uso_enabled: enable/disable uso feature
  * @lro_enabled: enable/disable LRO feature
  * @sg_enabled: enable disable scatter gather feature
  * @gro_enabled: enable disable GRO feature
@@ -276,6 +271,7 @@ struct wlan_srng_cfg {
  * @raw_mode_war: enable/disable raw mode war
  * @enable_data_stall_detection: enable/disable specific data stall detection
  * @disable_intra_bss_fwd: flag to disable intra bss forwarding
+ * @rxdma1_enable: flag to indicate if rxdma1 is enabled
  * @delay_mon_replenish: delay monitor buffer replenish
  * @max_ast_idx:
  * @resv_ast_idx: AST entries reserved for directly connected client
@@ -310,8 +306,8 @@ struct wlan_srng_cfg {
  * @is_rx_fisa_enabled: flag to enable/disable FISA Rx
  * @is_rx_fisa_lru_del_enabled:
  * @is_tso_desc_attach_defer:
+ * @delayed_replenish_entries:
  * @reo_rings_mapping:
- * @num_rx_context: number of RX contexts
  * @rx_rings_mapping: DP RX rings mapping mask
  * @pext_stats_enabled: Flag to enable and disabled peer extended stats
  * @dp_stats_max_window_size: Size of Max window size for non-SAWF stats
@@ -358,8 +354,6 @@ struct wlan_srng_cfg {
  * @rx_rel_wbm2sw_ring_id: Rx WBM2SW ring id
  * @tx_rings_grp_bitmap: bitmap of group intr contexts which have
  *                       non-zero tx ring mask
- * @rx_rings_grp_bitmap: bitmap of group intr contexts which have
- *                       non-zero rx ring mask
  * @mlo_chip_rx_ring_map: map of chip_id to rx ring map
  * @vdev_stats_hw_offload_config: HW vdev stats config
  * @vdev_stats_hw_offload_timer: HW vdev stats timer duration
@@ -404,9 +398,6 @@ struct wlan_srng_cfg {
  * @dp_rx_buffer_recycle_enabled: DP RX buffer recycling using page pool API
  *				  enabled/disabled
  * @dp_eapol_stats: flag to enable/disable eapol drop stats
- * @is_ndp_bw_flow_ctrl_enabled: NDP bw flow control enabled/disabled flag
- * @dp_tx_page_pool: DP TX page pool enable/disable
- * @dp_aux_refill_ring: DP aux refill ring config
  */
 struct wlan_cfg_dp_soc_ctxt {
 	int num_int_ctxts;
@@ -416,7 +407,6 @@ struct wlan_cfg_dp_soc_ctxt {
 	int num_tx_comp_rings;
 	int num_tcl_data_rings;
 	int num_nss_tcl_data_rings;
-	int num_embedded_tx_paths;
 	int per_pdev_rx_ring;
 	int per_pdev_lmac_ring;
 	int num_reo_dest_rings;
@@ -460,11 +450,6 @@ struct wlan_cfg_dp_soc_ctxt {
 	int tx_comp_ring_size_nss;
 	uint8_t int_tx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
 	uint8_t int_rx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
-#ifdef FEATURE_DAL_DP_SUPPORT
-	uint8_t dal_int_tx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
-	uint8_t dal_int_rx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
-	bool dal_dp_enabled;
-#endif
 	uint8_t int_rx_mon_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
 	uint8_t int_tx_mon_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
 	uint8_t int_host2rxdma_mon_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
@@ -488,7 +473,6 @@ struct wlan_cfg_dp_soc_ctxt {
 	int base_hw_macid;
 	bool rx_hash;
 	bool tso_enabled;
-	bool uso_enabled;
 	bool lro_enabled;
 	bool sg_enabled;
 	bool gro_enabled;
@@ -526,6 +510,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	bool raw_mode_war;
 	uint32_t enable_data_stall_detection;
 	bool disable_intra_bss_fwd;
+	bool rxdma1_enable;
 	bool delay_mon_replenish;
 	int max_ast_idx;
 	int resv_ast_idx;
@@ -554,8 +539,8 @@ struct wlan_cfg_dp_soc_ctxt {
 	uint8_t *rx_toeplitz_hash_key;
 	uint8_t pktlog_buffer_size;
 	bool is_tso_desc_attach_defer;
+	uint32_t delayed_replenish_entries;
 	uint32_t reo_rings_mapping;
-	uint32_t num_rx_context;
 	uint32_t rx_rings_mapping;
 	bool pext_stats_enabled;
 #if (defined(QCA_PEER_EXT_STATS) && defined(WLAN_CONFIG_TX_DELAY))
@@ -606,7 +591,6 @@ struct wlan_cfg_dp_soc_ctxt {
 	uint32_t tx_mon_ring_fill_level;
 	uint8_t rx_rel_wbm2sw_ring_id;
 	uint32_t tx_rings_grp_bitmap;
-	uint32_t rx_rings_grp_bitmap;
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 	uint8_t mlo_chip_rx_ring_map;
 #endif
@@ -647,7 +631,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	bool local_pkt_capture;
 #endif
 	uint32_t special_frame_msk;
-#ifdef WLAN_SUPPORT_RX_FISA
+#ifdef WLAN_SUPPORT_RX_FLOW_TAG
 	bool rx_rr;
 #endif
 #ifdef DP_UMAC_HW_RESET_SUPPORT
@@ -675,16 +659,6 @@ struct wlan_cfg_dp_soc_ctxt {
 #ifdef DP_TX_SW_DROP_STATS_INC
 	bool dp_eapol_stats;
 #endif
-#ifdef NDP_TX_BW_FLOW_CTRL
-	bool is_ndp_bw_flow_ctrl_enabled;
-#endif
-
-#ifdef DP_FEATURE_TX_PAGE_POOL
-	bool dp_tx_page_pool;
-#endif
-#ifdef DP_FEATURE_DIRECT_REFILL
-	int dp_aux_refill_ring;
-#endif
 };
 
 /**
@@ -699,7 +673,6 @@ struct wlan_cfg_dp_soc_ctxt {
  * @nss_enabled: 1 - NSS enabled, 0 - NSS disabled
  * @dma_tx_mon_buf_ring_size: Tx monitor BUF Ring size
  * @sw2rxdma_link_ring_size: SW2RXDMA link ring size
- * @dp_direct_refill_ring: DP direct refill ring config
  */
 struct wlan_cfg_dp_pdev_ctxt {
 	int rx_dma_buf_ring_size;
@@ -712,9 +685,6 @@ struct wlan_cfg_dp_pdev_ctxt {
 	int nss_enabled;
 	int dma_tx_mon_buf_ring_size;
 	int sw2rxdma_link_ring_size;
-#ifdef DP_FEATURE_DIRECT_REFILL
-	int dp_direct_refill_ring;
-#endif
 };
 
 /**
@@ -821,6 +791,26 @@ int wlan_cfg_set_reo_status_ring_mask(struct wlan_cfg_dp_soc_ctxt *cfg,
 					int context, int mask);
 
 /**
+ * wlan_cfg_set_mon_delayed_replenish_entries() - number of buffers to replenish
+ *				for monitor buffer ring at initialization
+ * @wlan_cfg_ctx: Configuration Handle
+ * @replenish_entries: number of entries to replenish at initialization
+ *
+ */
+void wlan_cfg_set_mon_delayed_replenish_entries(struct wlan_cfg_dp_soc_ctxt
+						*wlan_cfg_ctx,
+						uint32_t replenish_entries);
+
+/**
+ * wlan_cfg_get_mon_delayed_replenish_entries() - get num of buffer to replenish
+ *				for monitor buffer ring at initialization
+ * @wlan_cfg_ctx: Configuration Handle
+ *
+ * Return: delayed_replenish_entries;
+ */
+int wlan_cfg_get_mon_delayed_replenish_entries(struct wlan_cfg_dp_soc_ctxt
+					       *wlan_cfg_ctx);
+/**
  * wlan_cfg_get_num_contexts() - Number of interrupt contexts to be registered
  * @wlan_cfg_ctx: Configuration Handle
  *
@@ -887,7 +877,7 @@ int wlan_cfg_get_wbm_ring_num_for_index(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ct
  * @index: TCL index for which WBM rbm value is needed
  *
  * The function fills in wbm rbm value corresponding to a TX ring index in
- * soc->tcl_data_ring. This is needed since WBM ring numbers do not map
+ * soc->tcl_data_ring. This is needed since WBM ring numbers donot map
  * sequentially to wbm rbm values.
  * The function returns rbm id values as stored in tcl_wbm_map_array global
  * array.
@@ -1939,25 +1929,6 @@ void
 wlan_cfg_set_dp_soc_rxdma_refill_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg,
 					   int ring_size);
 
-int wlan_cfg_get_replenish_ring_size(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
-#ifdef DP_FEATURE_DIRECT_REFILL
-/**
- * wlan_cfg_get_dp_direct_refill_ring_size() - Get direct refill ring size
- * @cfg: pdev configuration context
- *
- * Return: direct refill ring size
- */
-int wlan_cfg_get_dp_direct_refill_ring_size(struct wlan_cfg_dp_pdev_ctxt *cfg);
-
-/**
- * wlan_cfg_get_dp_aux_refill_ring_size() - Get AUX refill ring size
- * @cfg: soc configuration context
- *
- * Return: direct refill ring size
- */
-int wlan_cfg_get_dp_aux_refill_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg);
-#endif
-
 /**
  * wlan_cfg_get_dp_soc_rxdma_refill_lt_disable - Get RxDMA refill LT status
  * @cfg: soc configuration context
@@ -2300,15 +2271,6 @@ bool wlan_cfg_is_tso_desc_attach_defer(struct wlan_cfg_dp_soc_ctxt *cfg);
 uint32_t wlan_cfg_get_reo_rings_mapping(struct wlan_cfg_dp_soc_ctxt *cfg);
 
 /**
- * wlan_cfg_get_num_rx_context() - Get number of RX contexts (RX thread)
- *
- * @cfg: soc configuration context
- *
- * Return: Number of RX contexts
- */
-uint32_t wlan_cfg_get_num_rx_context(struct wlan_cfg_dp_soc_ctxt *cfg);
-
-/**
  * wlan_cfg_get_rx_rings_mapping() - Get RX ring bitmap
  *
  * @cfg: soc configuration context
@@ -2497,38 +2459,6 @@ uint32_t wlan_cfg_ipa_tx_comp_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg)
 }
 #endif /* IPA_OFFLOAD */
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-static inline int
-wlan_cfg_get_dal_tx_ring_mask(struct wlan_cfg_dp_soc_ctxt *cfg_ctx, int idx)
-{
-	return cfg_ctx->dal_int_tx_ring_mask[idx];
-}
-
-static inline int
-wlan_cfg_get_dal_rx_ring_mask(struct wlan_cfg_dp_soc_ctxt *cfg_ctx, int idx)
-{
-	return cfg_ctx->dal_int_rx_ring_mask[idx];
-}
-
-/**
- * wlan_cfg_is_dal_feature_enabled() - Get DAL feature enable status
- * @cfg: Configuration Handle
- *
- * Return: true if DAL feature is enabled, false otherwise
- */
-static inline bool
-wlan_cfg_is_dal_feature_enabled(struct wlan_cfg_dp_soc_ctxt *cfg)
-{
-	return cfg->dal_dp_enabled;
-}
-#else
-static inline bool
-wlan_cfg_is_dal_feature_enabled(struct wlan_cfg_dp_soc_ctxt *cfg)
-{
-	return false;
-}
-#endif
-
 /**
  * wlan_cfg_radio0_default_reo_get -  Get Radio0 default REO
  * @cfg: soc configuration context
@@ -2553,6 +2483,13 @@ uint8_t wlan_cfg_radio1_default_reo_get(struct wlan_cfg_dp_soc_ctxt *cfg);
  */
 uint8_t wlan_cfg_radio2_default_reo_get(struct wlan_cfg_dp_soc_ctxt *cfg);
 
+/**
+ * wlan_cfg_set_rxdma1_enable() - Enable rxdma1
+ * @wlan_cfg_ctx: soc configuration context
+ *
+ * Return: None
+ */
+void wlan_cfg_set_rxdma1_enable(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx);
 
 /**
  * wlan_cfg_is_delay_mon_replenish() - Get if delayed monitor replenish
@@ -2685,76 +2622,6 @@ static inline int
 wlan_cfg_get_dp_soc_ppeds_tx_desc_borrow_limit(struct wlan_cfg_dp_soc_ctxt *cfg)
 {
 	return 0;
-}
-#endif
-
-/**
- * wlan_cfg_psoc_get_num_tx_desc() - Get num tx desc from cfg directly
- * @ctrl_psoc: PSOC object
- *
- * Return: Num Tx descriptors
- */
-int wlan_cfg_psoc_get_num_tx_desc(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
-
-#ifdef DP_FEATURE_TX_PAGE_POOL
-void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
-			    bool *tx_pp_enabled, bool *tx_pp_prealloc_en);
-
-/**
- * wlan_cfg_get_tx_dynamic_pp_enabled() - Get dynamic Tx page pool feature
- * @ctrl_psoc: PSOC object
- *
- * Return: Dynamic page pool feature enabled from ini or not.
- */
-bool wlan_cfg_get_tx_dynamic_pp_enabled(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
-
-/**
- * wlan_cfg_get_tx_dynamic_pp_prealloc_buf() - Get num of prealloc buffer
- * @ctrl_psoc: PSOC object
- *
- * Return: Number of prealloc buffer for tx page pool
- */
-uint32_t
-wlan_cfg_get_tx_dynamic_pp_prealloc_buf(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
-#else
-static inline void
-wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
-		       bool *tx_pp_enabled, bool *tx_pp_prealloc_en)
-{
-}
-
-static inline bool
-wlan_cfg_get_tx_dynamic_pp_enabled(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
-{
-	return false;
-}
-
-static inline uint32_t
-wlan_cfg_get_tx_dynamic_pp_prealloc_buf(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
-{
-	return 0;
-}
-
-#endif
-
-/**
- * wlan_cfg_get_rxdma_buf_ring_size() - Get the RXDMA buf ring size
- * @ctrl_psoc: PSOC object
- *
- * Return: RXDMA buf ring size
- */
-int wlan_cfg_get_rxdma_buf_ring_size(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
-
-#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
-void wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
-			    bool *rx_pp_enabled, size_t *rx_buf_size,
-			    uint32_t *rx_pool_size, bool *rx_pp_prealloc_en);
-#else
-static inline void
-wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
-		       bool *rx_pp_enabled, size_t *rx_buf_size,
-		       uint32_t *rx_pool_size, bool *rx_pp_prealloc_en)
-{
 }
 #endif
 
@@ -3269,26 +3136,4 @@ bool wlan_cfg_get_dp_proto_stats(struct wlan_cfg_dp_soc_ctxt *cfg);
  * Return: bool
  */
 bool wlan_cfg_get_dp_eapol_stats(struct wlan_cfg_dp_soc_ctxt *cfg);
-
-#ifdef NDP_TX_BW_FLOW_CTRL
-static inline
-bool wlan_cfg_get_ndp_bw_flow_ctrl_cfg(struct wlan_cfg_dp_soc_ctxt *cfg)
-{
-	return cfg->is_ndp_bw_flow_ctrl_enabled;
-}
-#else
-static inline
-bool wlan_cfg_get_ndp_bw_flow_ctrl_cfg(struct wlan_cfg_dp_soc_ctxt *cfg)
-{
-	return false;
-}
-#endif
-
-/**
- * wlan_cfg_get_dp_tx_page_pool_enabled() - Get TX page pool config
- * @cfg: soc configuration context
- *
- * Return: bool
- */
-bool wlan_cfg_get_dp_tx_page_pool_enabled(struct wlan_cfg_dp_soc_ctxt *cfg);
 #endif /*__WLAN_CFG_H*/

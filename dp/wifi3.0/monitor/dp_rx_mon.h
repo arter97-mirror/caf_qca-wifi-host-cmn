@@ -112,11 +112,9 @@ dp_rx_mon_status_process(struct dp_soc *soc, struct dp_intr *int_ctx,
  *
  * Return: QDF_STATUS
  */
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS dp_rx_populate_cbf_hdr(struct dp_soc *soc,
 				  uint32_t mac_id, uint32_t event,
 				  qdf_nbuf_t data, uint32_t msdu_timestamp);
-#endif
 
 /**
  * dp_rx_mon_handle_status_buf_done() - Handle DMA not done case for
@@ -144,6 +142,17 @@ dp_rx_mon_handle_status_buf_done(struct dp_pdev *pdev,
  *
  */
 void dp_full_mon_attach(struct dp_pdev *pdev);
+
+/**
+ * dp_full_mon_detach() - Full monitor mode attach
+ * This API deinitilises full monitor mode resources
+ *
+ * @pdev: dp pdev object
+ *
+ * Return: void
+ *
+ */
+void dp_full_mon_detach(struct dp_pdev *pdev);
 
 /**
  * dp_full_mon_partial_detach() - Full monitor mode detach with no locks
@@ -180,6 +189,16 @@ static inline void dp_full_mon_attach(struct dp_pdev *pdev)
 {
 }
 
+/**
+ * dp_full_mon_detach() - detach full monitor mode resources
+ * @pdev: Datapath PDEV handle
+ *
+ * Return: void
+ *
+ */
+static inline void dp_full_mon_detach(struct dp_pdev *pdev)
+{
+}
 #endif
 
 /**
@@ -213,6 +232,18 @@ uint32_t dp_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 
 QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 	qdf_nbuf_t head_msdu, qdf_nbuf_t tail_msdu);
+
+/**
+ * dp_rx_mon_deliver_non_std() - deliver frames for non standard path
+ * @soc: core txrx main context
+ * @mac_id: MAC ID
+ *
+ * This function delivers the radio tap and dummy MSDU
+ * into user layer application for preamble only PPDU.
+ *
+ * Return: Operation status
+ */
+QDF_STATUS dp_rx_mon_deliver_non_std(struct dp_soc *soc, uint32_t mac_id);
 
 #ifndef REMOVE_MON_DBG_STATS
 /**
@@ -477,6 +508,21 @@ dp_rx_process_mcopy_mode(struct dp_soc *soc, struct dp_pdev *pdev,
 #endif /* QCA_MCOPY_SUPPORT */
 
 /**
+ * dp_rx_handle_smart_mesh_mode() - Deliver header for smart mesh
+ * @soc: Datapath SOC handle
+ * @pdev: Datapath PDEV handle
+ * @ppdu_info: Structure for rx ppdu info
+ * @nbuf: Qdf nbuf abstraction for linux skb
+ * @mac_id: MAC ID
+ *
+ * Return: 0 on success, 1 on failure
+ */
+int
+dp_rx_handle_smart_mesh_mode(struct dp_soc *soc, struct dp_pdev *pdev,
+			      struct hal_rx_ppdu_info *ppdu_info,
+			      qdf_nbuf_t nbuf, uint8_t mac_id);
+
+/**
  * dp_rx_nbuf_prepare() - prepare RX nbuf
  * @soc: core txrx main context
  * @pdev: core txrx pdev context
@@ -641,6 +687,19 @@ QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc,
 			     qdf_nbuf_t head_msdu,
 			     qdf_nbuf_t tail_msdu);
 
+/**
+ * dp_rx_mon_deliver_non_std()
+ * @soc: core txrx main context
+ * @mac_id: MAC ID
+ *
+ * This function delivers the radio tap and dummy MSDU
+ * into user layer application for preamble only PPDU.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_rx_mon_deliver_non_std(struct dp_soc *soc,
+				     uint32_t mac_id);
+
 #ifdef DP_RX_MON_MEM_FRAG
 #if defined(WLAN_SUPPORT_RX_PROTOCOL_TYPE_TAG) ||\
 	defined(WLAN_SUPPORT_RX_FLOW_TAG)
@@ -699,19 +758,9 @@ qdf_frag_t dp_rx_mon_get_nbuf_80211_hdr(qdf_nbuf_t nbuf)
  * @mpdu: MPDU buf
  * Return: status: 0 - Success, non-zero: Failure
  */
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS dp_rx_mon_process_dest_pktlog(struct dp_soc *soc,
 					 uint32_t mac_id,
 					 qdf_nbuf_t mpdu);
-#else
-static inline QDF_STATUS
-dp_rx_mon_process_dest_pktlog(struct dp_soc *soc,
-			      uint32_t mac_id,
-			      qdf_nbuf_t mpdu)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 void
@@ -739,8 +788,26 @@ struct rx_desc_pool *dp_rx_get_mon_desc_pool(struct dp_soc *soc,
 					     uint8_t mac_id,
 					     uint8_t pdev_id)
 {
+	if (soc->wlan_cfg_ctx->rxdma1_enable)
+		return &soc->rx_desc_mon[mac_id];
+
 	return &soc->rx_desc_buf[pdev_id];
 }
+
+/**
+ * dp_rx_process_peer_based_pktlog() - Process Rx pktlog if peer based
+ *                                     filtering enabled
+ * @soc: core txrx main context
+ * @ppdu_info: Structure for rx ppdu info
+ * @status_nbuf: Qdf nbuf abstraction for linux skb
+ * @pdev_id: mac_id/pdev_id correspondinggly for MCL and WIN
+ *
+ * Return: none
+ */
+void
+dp_rx_process_peer_based_pktlog(struct dp_soc *soc,
+				struct hal_rx_ppdu_info *ppdu_info,
+				qdf_nbuf_t status_nbuf, uint32_t pdev_id);
 
 uint32_t dp_mon_rx_add_tlv(uint8_t id, uint16_t len, void *value,
 			   qdf_nbuf_t mpdu_nbuf);
@@ -758,6 +825,9 @@ dp_mon_rx_stats_update_rssi_dbm_params(struct dp_mon_pdev *mon_pdev,
 				       struct hal_rx_ppdu_info *ppdu_info);
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
+/* RX header dma length - 256 bytes */
+#define LPC_RX_HDR_DMA_LENGTH 256
+
 /**
  * dp_rx_handle_local_pkt_capture() - Rx handle for local packet capture
  * @pdev: Datapath PDEV handle

@@ -22,7 +22,6 @@
 #include "wlan_cm_main_api.h"
 #include "wlan_cm_sm.h"
 #include "wlan_cm_roam_sm.h"
-#include "wlan_smd_roam.h"
 
 void cm_set_state(struct cnx_mgr *cm_ctx, enum wlan_cm_sm_state state)
 {
@@ -96,7 +95,6 @@ static bool cm_state_init_event(void *ctx, uint16_t event,
 {
 	struct cnx_mgr *cm_ctx = ctx;
 	bool event_handled = true;
-	struct cm_req *roam_cm_req;
 	QDF_STATUS status;
 
 	switch (event) {
@@ -155,28 +153,6 @@ static bool cm_state_init_event(void *ctx, uint16_t event,
 			 */
 			event_handled = false;
 		}
-		break;
-	case WLAN_CM_SM_EV_ROAM_START:
-		/**
-		 * Handle ROAM_START in INIT state for cross-vdev roaming.
-		 * This occurs when roaming is initiated on a vdev that is
-		 * not currently connected (e.g., vdev-0 connected, vdev-1 idle,
-		 * and FW decides to roam using vdev-1).
-		 */
-		status = cm_prepare_roam_cmd(cm_ctx, &roam_cm_req,
-					     CM_ROAMING_FW, data);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlme_err("CM vdev %d: Failed to prepare roam cmd in INIT state",
-				 wlan_vdev_get_id(cm_ctx->vdev));
-			event_handled = false;
-			break;
-		}
-
-		/* Transition from INIT to ROAMING state */
-		cm_sm_transition_to(cm_ctx, WLAN_CM_S_ROAMING);
-		cm_sm_deliver_event_sync(cm_ctx, event,
-					 sizeof(*roam_cm_req),
-					 roam_cm_req);
 		break;
 	case WLAN_CM_SM_EV_ROAM_SYNC:
 		/**
@@ -317,8 +293,7 @@ bool cm_handle_fw_roam_connected_event(struct cnx_mgr *cm_ctx, uint16_t event,
 		break;
 	case WLAN_CM_SM_EV_ROAM_START:
 		status = cm_prepare_roam_cmd(cm_ctx, &roam_cm_req,
-					     CM_ROAMING_FW,
-					     data);
+					     CM_ROAMING_FW);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			event_handled = false;
 			break;
@@ -329,7 +304,7 @@ bool cm_handle_fw_roam_connected_event(struct cnx_mgr *cm_ctx, uint16_t event,
 		break;
 	case WLAN_CM_SM_EV_ROAM_SYNC:
 		status = cm_prepare_roam_cmd(cm_ctx, &roam_cm_req,
-					     CM_ROAMING_FW, NULL);
+					     CM_ROAMING_FW);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			event_handled = false;
 			break;
@@ -959,6 +934,7 @@ static bool cm_subst_join_active_event(void *ctx, uint16_t event,
 	return event_handled;
 }
 
+#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_subst_idle_due_to_link_switch_entry() - Entry API for idle due to
  * link switch substate for connection manager.
@@ -1085,6 +1061,22 @@ static bool cm_subst_idle_due_to_link_switch_event(void *ctx, uint16_t event,
 
 	return event_handled;
 }
+#else
+static inline void cm_subst_idle_due_to_link_switch_entry(void *ctx)
+{
+}
+
+static inline void cm_subst_idle_due_to_link_switch_exit(void *ctx)
+{
+}
+
+static inline bool
+cm_subst_idle_due_to_link_switch_event(void *ctx, uint16_t event,
+				       uint16_t data_len, void *data)
+{
+	return false;
+}
+#endif
 
 struct wlan_sm_state_info cm_sm_info[] = {
 	{
@@ -1238,16 +1230,6 @@ struct wlan_sm_state_info cm_sm_info[] = {
 		cm_subst_idle_due_to_link_switch_event
 	},
 	{
-		(uint8_t)WLAN_CM_SS_SMD_ROAM_SYNC,
-		(uint8_t)WLAN_CM_S_CONNECTED,
-		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
-		false,
-		"SMD_ROAM_SYNC",
-		cm_subst_smd_roam_sync_entry,
-		cm_subst_smd_roam_sync_exit,
-		cm_subst_smd_roam_sync_event
-	},
-	{
 		(uint8_t)WLAN_CM_SS_MAX,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
@@ -1299,7 +1281,6 @@ static const char *cm_sm_event_names[] = {
 	"EV_HO_ROAM_DISCONNECT_DONE",
 	"EV_RSO_STOP_RSP",
 	"EV_BEARER_SWITCH_COMPLETE",
-	"EV_SMD_EXEC_COMPLETE",
 };
 
 enum wlan_cm_sm_state cm_get_state(struct cnx_mgr *cm_ctx)
@@ -1362,7 +1343,8 @@ QDF_STATUS cm_sm_create(struct cnx_mgr *cm_ctx)
 	struct wlan_sm *sm;
 	uint8_t name[WLAN_SM_ENGINE_MAX_NAME];
 
-	qdf_scnprintf(name, sizeof(name), "CM-%d",
+	qdf_scnprintf(name, sizeof(name), "CM-PS_%d-VD_%d",
+		      wlan_psoc_get_id(wlan_vdev_get_psoc(cm_ctx->vdev)),
 		      wlan_vdev_get_id(cm_ctx->vdev));
 	sm = wlan_sm_create(name, cm_ctx,
 			    WLAN_CM_S_INIT,

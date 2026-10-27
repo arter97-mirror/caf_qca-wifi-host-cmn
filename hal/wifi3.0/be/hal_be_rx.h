@@ -25,10 +25,6 @@
 #include "hal_rx.h"
 #include <wbm_release_ring_rx.h>
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-#include "dal_vndr_hal_be.h"
-#endif /* FEATURE_DAL_DP_SUPPORT */
-
 #define HAL_RX_DA_IDX_CHIP_ID_OFFSET    14
 #define HAL_RX_DA_IDX_CHIP_ID_MASK      0x3
 
@@ -59,16 +55,6 @@
 		(manager << BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_LSB) & \
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK)
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-#define HAL_RX_ERROR_STATUS_GET(reo_desc)			\
-	DAL_VNDR_HAL_RX_ERROR_STATUS_GET(reo_desc)
-
-#define HAL_RX_BUF_COOKIE_GET(buff_addr_info)			\
-	DAL_VNDR_HAL_RX_BUF_COOKIE_GET(buff_addr_info)
-
-#define HAL_RX_BUF_RBM_GET(buff_addr_info)			\
-	DAL_VNDR_HAL_RX_BUF_RBM_GET(buff_addr_info)
-#else
 #define HAL_RX_ERROR_STATUS_GET(reo_desc)			\
 	(_HAL_MS((*_OFFSET_TO_WORD_PTR(reo_desc,		\
 		REO_DESTINATION_RING_REO_PUSH_REASON_OFFSET)),\
@@ -86,25 +72,13 @@
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_OFFSET)),\
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK,	\
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_LSB))
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /* TODO: Convert the following structure fields accesseses to offsets */
 
-#ifdef CONFIG_BORON
-#define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
-	(((struct reo_destination_ring *)	\
-		reo_desc)->sw_buffer_cookie)
-#else
-#ifdef FEATURE_DAL_DP_SUPPORT
-#define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
-	DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)
-#else
 #define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
 	(HAL_RX_BUF_COOKIE_GET(&		\
 	(((struct reo_destination_ring *)	\
 		reo_desc)->buf_or_link_desc_addr_info)))
-#endif /* FEATURE_DAL_DP_SUPPORT */
-#endif
 
 #define HAL_RX_MSDU_DESC_IP_CHKSUM_FAIL_GET(msdu_desc_info_ptr)	\
 	(_HAL_MS((*_OFFSET_TO_WORD_PTR((msdu_desc_info_ptr),	\
@@ -483,30 +457,6 @@ void hal_rx_mpdu_desc_info_get_be(void *desc_addr,
 	mpdu_desc_info->tid = HAL_RX_MPDU_TID_GET(mpdu_info);
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-/*
- *hal_rx_msdu_desc_info_get_be: Gets the flags related to MSDU descriptor
- *                              using DAL vendor HAL APIs.
- *@desc_addr: REO ring descriptor addr
- *@msdu_desc_info: Holds MSDU descriptor info from HAL Rx descriptor
- *
- * Specifically flags needed are: first_msdu_in_mpdu,
- * last_msdu_in_mpdu, msdu_continuation, sa_is_valid,
- * sa_idx_timeout, da_is_valid, da_idx_timeout, da_is_MCBC
- *
- *Return: void
- */
-static inline void
-hal_rx_msdu_desc_info_get_be(void *desc_addr,
-			     struct hal_rx_msdu_desc_info *msdu_desc_info)
-{
-	struct dal_vndr_hal_rx_msdu_desc_info dal_msdu_desc_info;
-
-	dal_vndr_hal_rx_msdu_desc_info_get_be(desc_addr, &dal_msdu_desc_info);
-	msdu_desc_info->msdu_flags = dal_msdu_desc_info.msdu_flags;
-	msdu_desc_info->msdu_len = dal_msdu_desc_info.msdu_len;
-}
-#else
 /*
  *hal_rx_msdu_desc_info_get_be: Gets the flags related to MSDU descriptor.
  *@desc_addr: REO ring descriptor addr
@@ -516,6 +466,7 @@ hal_rx_msdu_desc_info_get_be(void *desc_addr,
  * last_msdu_in_mpdu, msdu_continuation, sa_is_valid,
  * sa_idx_timeout, da_is_valid, da_idx_timeout, da_is_MCBC
  *
+
  *Return: void
  */
 static inline void
@@ -532,69 +483,7 @@ hal_rx_msdu_desc_info_get_be(void *desc_addr,
 		hal_rx_msdu_flags_get_be((struct rx_msdu_desc_info *)msdu_info);
 	msdu_desc_info->msdu_len = HAL_RX_MSDU_PKT_LENGTH_GET(msdu_info);
 }
-#endif /* FEATURE_DAL_DP_SUPPORT */
 
-#ifdef CONFIG_BORON
-/*
- * The first two dwords of the BN REO destination ring descriptor carry
- * different content depending on the cookie-conversion status bit:
- *
- *   cc_status == 1 (HW cookie conversion done):
- *     dword[0] = virtual address bits 31:0
- *     dword[1] = virtual address bits 63:32
- *
- *   cc_status == 0 (SW cookie conversion needed):
- *     dword[0] = buffer physical address bits 31:0
- *     dword[1] = SW buffer cookie / RBM / other buffer_addr_info fields
- *
- * In both cases dword[1] is poisoned with the invalidation magic after
- * each reap so that a stale descriptor can be detected on the next poll.
- */
-#define HAL_REO_DEST_VA_63_32_OFFSET   0x00000004
-#define HAL_REO_DEST_VA_63_32_LSB      0
-#define HAL_REO_DEST_VA_63_32_MASK     0xffffffff
-
-/**
- * hal_rx_get_reo_desc_va() - Get Desc virtual address within REO Desc
- * @reo_desc: REO2SW ring descriptor pointer
- *
- * Return: RX descriptor virtual address
- */
-static inline uintptr_t hal_rx_get_reo_desc_va(void *reo_desc)
-{
-	uint64_t va_from_desc;
-
-	/* first 64 bits block for VA */
-	va_from_desc = qdf_le64_to_cpu(*(uint64_t *)reo_desc);
-
-	return (uintptr_t)va_from_desc;
-}
-
-/**
- * hal_rx_get_reo_desc_va_63_32() - Get bits 63~32 of buffer VA
- *  address from BN REO destination ring descriptor
- * @reo_desc: REO2SW ring descriptor pointer
- *
- * Return: 32-63 buffer VA
- */
-static inline uint32_t hal_rx_get_reo_desc_va_63_32(void *reo_desc)
-{
-	return HAL_RX_GET(reo_desc, HAL_REO_DEST, VA_63_32);
-}
-
-/**
- * hal_rx_set_reo_desc_va_63_32() - Set bits 63~32 of buffer VA
- *  in BN REO destination ring descriptor
- * @reo_desc: REO2SW ring descriptor pointer
- * @val: value to be set
- *
- * Return: None
- */
-static inline void hal_rx_set_reo_desc_va_63_32(void *reo_desc, uint32_t val)
-{
-	HAL_SET_FLD(reo_desc, HAL_REO_DEST, VA_63_32) = val;
-}
-#else
 /**
  * hal_rx_get_reo_desc_va() - Get Desc virtual address within REO Desc
  * @reo_desc: REO2SW ring descriptor pointer
@@ -613,34 +502,6 @@ static inline uintptr_t hal_rx_get_reo_desc_va(void *reo_desc)
 				       BUFFER_VIRT_ADDR_63_32)) << 32));
 	return (uintptr_t)va_from_desc;
 }
-
-/**
- * hal_rx_get_reo_desc_va_63_32() - Get bits 63~32 of buffer VA
- *  address from REO destination ring descriptor
- * @reo_desc: REO2SW ring descriptor pointer
- *
- * Return: 32-63 buffer VA
- */
-static inline uint32_t hal_rx_get_reo_desc_va_63_32(void *reo_desc)
-{
-	return HAL_RX_GET(reo_desc, REO_DESTINATION_RING,
-			  BUFFER_VIRT_ADDR_63_32);
-}
-
-/**
- * hal_rx_set_reo_desc_va_63_32() - Set bits 63~32 of buffer VA
- *  in REO destination ring descriptor
- * @reo_desc: REO2SW ring descriptor pointer
- * @val: value to be set
- *
- * Return: None
- */
-static inline void hal_rx_set_reo_desc_va_63_32(void *reo_desc, uint32_t val)
-{
-	HAL_SET_FLD(reo_desc, REO_DESTINATION_RING,
-		    BUFFER_VIRT_ADDR_63_32) = val;
-}
-#endif
 
 /**
  * hal_rx_sw_exception_get_be() - Get sw_exception bit value from REO Desc

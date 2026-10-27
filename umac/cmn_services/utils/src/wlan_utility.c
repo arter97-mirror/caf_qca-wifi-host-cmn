@@ -30,11 +30,6 @@
 #include <wlan_serialization_api.h>
 #include "wlan_cm_api.h"
 #include "host_diag_core_event.h"
-#ifdef WLAN_FEATURE_11BN_SMD
-#include "wlan_mlo_link_recfg.h"
-#include <wlan_cmn_ieee80211.h>
-#include <utils_mlo.h>
-#endif
 
 /* CRC polynomial 0xedb88320 */
 static unsigned long const wlan_shortssid_table[] = {
@@ -2175,7 +2170,7 @@ void
 wlan_util_stats_get_rssi(bool db2dbm_enabled, int32_t bcn_snr, int32_t dat_snr,
 			 int8_t *rssi)
 {
-	int16_t snr;
+	uint32_t snr;
 
 	if (db2dbm_enabled) {
 		if (TGT_IS_VALID_RSSI(bcn_snr))
@@ -2190,7 +2185,7 @@ wlan_util_stats_get_rssi(bool db2dbm_enabled, int32_t bcn_snr, int32_t dat_snr,
 		else if (TGT_IS_VALID_SNR(dat_snr))
 			snr = dat_snr;
 		else
-			snr = -TGT_NOISE_FLOOR_DBM;
+			snr = TGT_INVALID_SNR;
 
 		/* Get the absolute rssi value from the current rssi value */
 		*rssi = snr + TGT_NOISE_FLOOR_DBM;
@@ -2476,7 +2471,32 @@ qdf_export_symbol(wlan_util_is_vdev_in_cac_wait);
 const uint8_t *wlan_get_rsn_data_from_ie_ptr(const uint8_t *ie_ptr,
 					     int ie_len)
 {
-	return wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RSN, ie_ptr, ie_len);
+	const uint8_t *rsn_ie;
+
+	/*
+	 * Order of precedence between RSN and MRSNO IEs:
+	 * Wifi7 MRSNO IE > Wifi6 MRSNO IE > Legacy RSN IE
+	 *
+	 * Note: Wifi-6 RSNO should not be used for ML connections.
+	 */
+
+	rsn_ie = wlan_get_vendor_ie_ptr_from_oui(RSNO_OUI_WIFI7_RSN,
+						 RSNO_OUI_SIZE,
+						 ie_ptr, ie_len);
+	if (rsn_ie && rsn_ie[1] > RSNO_OUI_SIZE)
+		return rsn_ie;
+
+	rsn_ie = wlan_get_vendor_ie_ptr_from_oui(RSNO_OUI_WIFI6_RSN,
+						 RSNO_OUI_SIZE,
+						 ie_ptr, ie_len);
+	if (rsn_ie && rsn_ie[1] > RSNO_OUI_SIZE)
+		return rsn_ie;
+
+	rsn_ie = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RSN, ie_ptr, ie_len);
+	if (rsn_ie)
+		return rsn_ie;
+
+	return NULL;
 }
 
 const uint8_t *wlan_get_rsnxe_data_from_ie_ptr(const uint8_t *ie_ptr,
@@ -2523,264 +2543,3 @@ const uint8_t *wlan_get_rsn_sel_ie_from_ie_ptr(const uint8_t *ie, int len)
 	return wlan_get_vendor_ie_ptr_from_oui(RSNO_OUI_SELECTION,
 					       RSNO_OUI_SIZE, ie, len);
 }
-
-#ifdef WLAN_FEATURE_11BN_SMD
-/* Duration field value */
-#define IEEE80211_DURATION_ZERO         0x00
-
-/* Sequence Control field value */
-#define IEEE80211_SEQ_CTRL_ZERO         0x00
-
-/**
- * smd_construct_link_assoc_rsp() - Generate link-specific association response
- * @link_cap: Per-link capability info extracted from target AP
- * @sta_link_addr: STA link MAC address (DA in frame header)
- * @ap_link_addr: AP link MAC address (SA and BSSID in frame header)
- * @assigned_aid: Association ID assigned by the target AP MLD
- * @out_buf: Output buffer to write the frame into
- * @out_buf_len: Length of the output buffer in bytes
- * @out_len: On success, set to the number of bytes written
- *
- * See header file for full documentation.
- */
-QDF_STATUS
-smd_construct_link_assoc_rsp(struct smd_target_ap_link_caps *link_cap,
-			     struct qdf_mac_addr sta_link_addr,
-			     struct qdf_mac_addr ap_link_addr,
-			     uint16_t assigned_aid,
-			     uint8_t *out_buf,
-			     qdf_size_t out_buf_len,
-			     qdf_size_t *out_len)
-{
-	uint8_t *ptr = out_buf;
-	qdf_size_t remaining_len = out_buf_len;
-
-	if (!link_cap || !out_buf || !out_len)
-		return QDF_STATUS_E_NULL_VALUE;
-
-	if (out_buf_len < 30)  /* Min: 24 byte header + 6 byte fixed fields */
-		return QDF_STATUS_E_NOMEM;
-
-	/*
-	 * MAC Header (24 bytes)
-	 * ============================================
-	 */
-
-	/* Frame Control (2 bytes) */
-	*ptr++ = MLO_LINKSPECIFIC_ASSOC_RESP_FC0;
-	*ptr++ = MLO_LINKSPECIFIC_ASSOC_RESP_FC1;
-
-	/* Duration (2 bytes) */
-	*ptr++ = IEEE80211_DURATION_ZERO;
-	*ptr++ = IEEE80211_DURATION_ZERO;
-
-	/* DA (6 bytes) */
-	qdf_mem_copy(ptr, sta_link_addr.bytes, QDF_MAC_ADDR_SIZE);
-	ptr += QDF_MAC_ADDR_SIZE;
-
-	/* SA (6 bytes) */
-	qdf_mem_copy(ptr, ap_link_addr.bytes, QDF_MAC_ADDR_SIZE);
-	ptr += QDF_MAC_ADDR_SIZE;
-
-	/* BSSID (6 bytes) */
-	qdf_mem_copy(ptr, ap_link_addr.bytes, QDF_MAC_ADDR_SIZE);
-	ptr += QDF_MAC_ADDR_SIZE;
-
-	/* Sequence Control (2 bytes) */
-	*ptr++ = IEEE80211_SEQ_CTRL_ZERO;
-	*ptr++ = IEEE80211_SEQ_CTRL_ZERO;
-
-	remaining_len -= 24;
-
-	/*
-	 * Fixed Fields (6 bytes)
-	 * ============================================
-	 */
-
-	/* Capability Info (2 bytes) */
-	*ptr++ = link_cap->capability_info & 0xFF;
-	*ptr++ = (link_cap->capability_info >> 8) & 0xFF;
-
-	/* Status Code (2 bytes) - SUCCESS */
-	*ptr++ = STATUS_SUCCESS;
-	*ptr++ = STATUS_SUCCESS;
-
-	/* AID (2 bytes) */
-	*ptr++ = assigned_aid & 0xFF;
-	*ptr++ = (assigned_aid >> 8) & 0xFF;
-
-	remaining_len -= 6;
-
-	/*
-	 * Information Elements
-	 * ============================================
-	 */
-
-	/* Add Supported Rates IE */
-	if (link_cap->supported_rates.ptr && link_cap->supported_rates.len > 0) {
-		if (remaining_len < (2 + link_cap->supported_rates.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_RATES;
-		*ptr++ = link_cap->supported_rates.len;
-		qdf_mem_copy(ptr, link_cap->supported_rates.ptr,
-			     link_cap->supported_rates.len);
-		ptr += link_cap->supported_rates.len;
-		remaining_len -= (2 + link_cap->supported_rates.len);
-	}
-
-	/* Add Extended Supported Rates IE */
-	if (link_cap->ext_supported_rates.ptr &&
-	    link_cap->ext_supported_rates.len > 0) {
-		if (remaining_len < (2 + link_cap->ext_supported_rates.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_XRATES;
-		*ptr++ = link_cap->ext_supported_rates.len;
-		qdf_mem_copy(ptr, link_cap->ext_supported_rates.ptr,
-			     link_cap->ext_supported_rates.len);
-		ptr += link_cap->ext_supported_rates.len;
-		remaining_len -= (2 + link_cap->ext_supported_rates.len);
-	}
-
-	/* Add HT Cap IE (if present) */
-	if (link_cap->ht_cap_present && link_cap->ht_cap.ptr &&
-	    link_cap->ht_cap.len > 0) {
-		if (remaining_len < (2 + link_cap->ht_cap.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_HTCAP_ANA;
-		*ptr++ = link_cap->ht_cap.len;
-		qdf_mem_copy(ptr, link_cap->ht_cap.ptr, link_cap->ht_cap.len);
-		ptr += link_cap->ht_cap.len;
-		remaining_len -= (2 + link_cap->ht_cap.len);
-	}
-
-	/* Add HT Information IE (if present) */
-	if (link_cap->ht_info_present && link_cap->ht_info.ptr &&
-	    link_cap->ht_info.len > 0) {
-		if (remaining_len < (2 + link_cap->ht_info.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_HTINFO_ANA;
-		*ptr++ = link_cap->ht_info.len;
-		qdf_mem_copy(ptr, link_cap->ht_info.ptr, link_cap->ht_info.len);
-		ptr += link_cap->ht_info.len;
-		remaining_len -= (2 + link_cap->ht_info.len);
-	}
-
-	/* Add VHT Cap IE (if present) */
-	if (link_cap->vht_cap_present && link_cap->vht_cap.ptr &&
-	    link_cap->vht_cap.len > 0) {
-		if (remaining_len < (2 + link_cap->vht_cap.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_VHTCAP;
-		*ptr++ = link_cap->vht_cap.len;
-		qdf_mem_copy(ptr, link_cap->vht_cap.ptr, link_cap->vht_cap.len);
-		ptr += link_cap->vht_cap.len;
-		remaining_len -= (2 + link_cap->vht_cap.len);
-	}
-
-	/* Add VHT Operation IE (if present) */
-	if (link_cap->vht_op_present && link_cap->vht_op.ptr &&
-	    link_cap->vht_op.len > 0) {
-		if (remaining_len < (2 + link_cap->vht_op.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_VHTOP;
-		*ptr++ = link_cap->vht_op.len;
-		qdf_mem_copy(ptr, link_cap->vht_op.ptr, link_cap->vht_op.len);
-		ptr += link_cap->vht_op.len;
-		remaining_len -= (2 + link_cap->vht_op.len);
-	}
-
-	/* Add HE Cap IE (if present) */
-	if (link_cap->he_cap_present && link_cap->he_cap.ptr &&
-	    link_cap->he_cap.len > 0) {
-		if (remaining_len < (3 + link_cap->he_cap.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
-		*ptr++ = link_cap->he_cap.len + 1;
-		*ptr++ = WLAN_EXTN_ELEMID_HECAP;
-		qdf_mem_copy(ptr, link_cap->he_cap.ptr, link_cap->he_cap.len);
-		ptr += link_cap->he_cap.len;
-		remaining_len -= (3 + link_cap->he_cap.len);
-	}
-
-	/* Add HE Operation IE (if present) */
-	if (link_cap->he_op_present && link_cap->he_op.ptr &&
-	    link_cap->he_op.len > 0) {
-		if (remaining_len < (3 + link_cap->he_op.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
-		*ptr++ = link_cap->he_op.len + 1;
-		*ptr++ = WLAN_EXTN_ELEMID_HEOP;
-		qdf_mem_copy(ptr, link_cap->he_op.ptr, link_cap->he_op.len);
-		ptr += link_cap->he_op.len;
-		remaining_len -= (3 + link_cap->he_op.len);
-	}
-
-	/* Add EHT Cap IE (if present) */
-	if (link_cap->eht_cap_present && link_cap->eht_cap.ptr &&
-	    link_cap->eht_cap.len > 0) {
-		if (remaining_len < (3 + link_cap->eht_cap.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
-		*ptr++ = link_cap->eht_cap.len + 1;
-		*ptr++ = WLAN_EXTN_ELEMID_EHTCAP;
-		qdf_mem_copy(ptr, link_cap->eht_cap.ptr, link_cap->eht_cap.len);
-		ptr += link_cap->eht_cap.len;
-		remaining_len -= (3 + link_cap->eht_cap.len);
-	}
-
-	/* Add EHT Operation IE (if present) */
-	if (link_cap->eht_op_present && link_cap->eht_op.ptr &&
-	    link_cap->eht_op.len > 0) {
-		if (remaining_len < (3 + link_cap->eht_op.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
-		*ptr++ = link_cap->eht_op.len + 1;
-		*ptr++ = WLAN_EXTN_ELEMID_EHTOP;
-		qdf_mem_copy(ptr, link_cap->eht_op.ptr, link_cap->eht_op.len);
-		ptr += link_cap->eht_op.len;
-		remaining_len -= (3 + link_cap->eht_op.len);
-	}
-
-	/* Add UHR Cap IE (if present) */
-	if (link_cap->uhr_cap_present && link_cap->uhr_cap.ptr &&
-	    link_cap->uhr_cap.len > 0) {
-		if (remaining_len < (3 + link_cap->uhr_cap.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
-		*ptr++ = link_cap->uhr_cap.len + 1;
-		*ptr++ = WLAN_EXTN_ELEMID_UHRCAP;
-		qdf_mem_copy(ptr, link_cap->uhr_cap.ptr, link_cap->uhr_cap.len);
-		ptr += link_cap->uhr_cap.len;
-		remaining_len -= (3 + link_cap->uhr_cap.len);
-	}
-
-	/* Add UHR Operation IE (if present) */
-	if (link_cap->uhr_op_present && link_cap->uhr_op.ptr &&
-	    link_cap->uhr_op.len > 0) {
-		if (remaining_len < (3 + link_cap->uhr_op.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_EXTN_ELEM;
-		*ptr++ = link_cap->uhr_op.len + 1;
-		*ptr++ = WLAN_EXTN_ELEMID_UHROP;
-		qdf_mem_copy(ptr, link_cap->uhr_op.ptr, link_cap->uhr_op.len);
-		ptr += link_cap->uhr_op.len;
-		remaining_len -= (3 + link_cap->uhr_op.len);
-	}
-
-	/* Add Extended Capabilities IE (if present) */
-	if (link_cap->ext_cap_present && link_cap->ext_cap.ptr &&
-	    link_cap->ext_cap.len > 0) {
-		if (remaining_len < (2 + link_cap->ext_cap.len))
-			return QDF_STATUS_E_NOMEM;
-		*ptr++ = WLAN_ELEMID_XCAPS;
-		*ptr++ = link_cap->ext_cap.len;
-		qdf_mem_copy(ptr, link_cap->ext_cap.ptr, link_cap->ext_cap.len);
-		ptr += link_cap->ext_cap.len;
-		remaining_len -= (2 + link_cap->ext_cap.len);
-	}
-
-	*out_len = ptr - out_buf;
-
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* WLAN_FEATURE_11BN_SMD */

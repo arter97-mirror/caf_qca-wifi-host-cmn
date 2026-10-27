@@ -405,7 +405,7 @@ static QDF_STATUS fake_vdev_start_cmd_tlv(wmi_unified_t wmi_handle,
 		(int)req->channel.dfs_set, req->beacon_intval, req->dtim_period,
 		req->channel.cfreq1, req->channel.cfreq2,
 		req->channel.maxregpower,
-		req->pref_tx_ss, req->pref_rx_ss,
+		req->preferred_tx_streams, req->preferred_rx_streams,
 		(int)req->ldpc_rx_enabled, req->cac_duration_ms,
 		req->regdomain, req->he_ops);
 	ucfg_ocb_config_channel(wma->pdev);

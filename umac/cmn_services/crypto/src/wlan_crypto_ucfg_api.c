@@ -44,15 +44,6 @@ QDF_STATUS ucfg_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
 	return wlan_crypto_set_key_req(vdev, req, key_type);
 }
 
-QDF_STATUS
-ucfg_crypto_set_peer_ucastcipher(struct wlan_objmgr_psoc *psoc,
-				 uint8_t *mac_addr, int32_t cipher,
-				 int32_t cipher_cap)
-{
-	return wlan_crypto_set_peer_ucastcipher(psoc, mac_addr, cipher,
-						cipher_cap);
-}
-
 void ucfg_crypto_flush_entries(struct wlan_objmgr_psoc *psoc)
 {
 	crypto_flush_entries(psoc);
@@ -63,17 +54,4 @@ void ucfg_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     uint8_t link_id)
 {
 	wlan_crypto_free_key_by_link_id(psoc, link_addr, link_id);
-}
-
-QDF_STATUS ucfg_crypto_del_ndi_key_req(struct wlan_objmgr_vdev *vdev,
-				       uint8_t key_index, bool pairwise,
-				       const uint8_t *mac_addr)
-{
-	/*
-	 * Current requirement is to process del NDI key request
-	 * as run to completion without posting any messages.
-	 * Hence the request handler is directly called from here.
-	 */
-	return wlan_crypto_del_ndi_key_req(vdev, key_index, pairwise,
-					   mac_addr);
 }
