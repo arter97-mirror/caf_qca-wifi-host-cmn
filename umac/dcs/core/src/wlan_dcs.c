@@ -2060,6 +2060,16 @@ wlan_dcs_process(struct wlan_objmgr_psoc *psoc,
 
 	switch (event->dcs_param.interference_type) {
 	case WLAN_HOST_DCS_CWIM:
+		dcs_debug("CW interference detected, chan_freq: %u",
+			  event->cw_int.chan_freq);
+
+		dcs_pdev_priv->cw_int = event->cw_int;
+
+		if (!(dcs_pdev_priv->dcs_host_params.dcs_enable &
+		      WLAN_HOST_DCS_CWIM))
+			break;
+
+		wlan_dcs_frequency_control(psoc, dcs_pdev_priv, event);
 		break;
 	case WLAN_HOST_DCS_WLANIM:
 		if (!dcs_pdev_priv->dcs_host_params.dcs_enable)
@@ -2125,6 +2135,7 @@ void wlan_dcs_clear(struct wlan_objmgr_psoc *psoc, uint32_t pdev_id)
 	dcs_pdev_priv->dcs_freq_ctrl_params.dcs_happened_count = 0;
 	dcs_pdev_priv->dcs_freq_ctrl_params.disable_delay_process = false;
 	wlan_dcs_set_algorithm_process(psoc, pdev_id, false);
+	qdf_mem_set(&dcs_pdev_priv->cw_int, sizeof(dcs_pdev_priv->cw_int), 0);
 }
 
 void wlan_dcs_set_algorithm_process(struct wlan_objmgr_psoc *psoc,
@@ -2147,4 +2158,18 @@ void wlan_dcs_set_algorithm_process(struct wlan_objmgr_psoc *psoc,
 
 	dcs_pdev_priv->dcs_host_params.dcs_algorithm_process =
 							dcs_algorithm_process;
+}
+
+qdf_freq_t wlan_dcs_get_cw_interference_freq(struct wlan_objmgr_psoc *psoc,
+					     uint8_t pdev_id, uint8_t vdev_id)
+{
+	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+
+	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, pdev_id);
+	if (!dcs_pdev_priv) {
+		dcs_err("dcs pdev private object is null");
+		return 0;
+	}
+
+	return dcs_pdev_priv->cw_int.chan_freq;
 }

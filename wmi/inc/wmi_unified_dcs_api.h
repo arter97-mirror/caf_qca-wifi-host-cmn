@@ -71,6 +71,18 @@ wmi_extract_dcs_awgn_info(wmi_unified_t wmi_hdl, void *evt_buf,
 			  struct wlan_host_dcs_awgn_info *awgn_info);
 
 /**
+ * wmi_extract_dcs_cw_int() - extract DCS CW interference info from event
+ * @wmi_hdl: WMI handle
+ * @evt_buf: Pointer to event buffer
+ * @cw_int: Pointer to hold CW interference info
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_dcs_cw_int(wmi_unified_t wmi_hdl, void *evt_buf,
+		       struct wlan_host_dcs_cw_int *cw_int);
+
+/**
  * wmi_send_dcs_pdev_param() - send dcs pdev param
  * @wmi_handle: wmi handle
  * @pdev_idx: pdev id

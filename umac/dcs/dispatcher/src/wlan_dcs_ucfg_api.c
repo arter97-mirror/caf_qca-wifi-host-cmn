@@ -138,6 +138,7 @@ void ucfg_config_dcs_enable(struct wlan_objmgr_psoc *psoc,
 	}
 
 	dcs_pdev_priv->dcs_host_params.dcs_enable |= interference_type;
+	qdf_mem_set(&dcs_pdev_priv->cw_int, sizeof(dcs_pdev_priv->cw_int), 0);
 }
 
 void ucfg_config_dcs_disable(struct wlan_objmgr_psoc *psoc,
@@ -153,6 +154,7 @@ void ucfg_config_dcs_disable(struct wlan_objmgr_psoc *psoc,
 	}
 
 	dcs_pdev_priv->dcs_host_params.dcs_enable &= (~interference_type);
+	qdf_mem_set(&dcs_pdev_priv->cw_int, sizeof(dcs_pdev_priv->cw_int), 0);
 }
 
 uint8_t ucfg_get_dcs_enable(struct wlan_objmgr_psoc *psoc, uint8_t mac_id)
@@ -256,5 +258,12 @@ ucfg_dcs_switch_chan(struct wlan_objmgr_vdev *vdev, qdf_freq_t tgt_freq,
 		     enum phy_ch_width tgt_width)
 {
 	return wlan_dcs_switch_chan(vdev, tgt_freq, tgt_width);
+}
+
+qdf_freq_t
+ucfg_dcs_get_cw_interference_freq(struct wlan_objmgr_psoc *psoc,
+				  uint8_t pdev_id, uint8_t vdev_id)
+{
+	return wlan_dcs_get_cw_interference_freq(psoc, pdev_id, vdev_id);
 }
 #endif

@@ -60,6 +60,16 @@ QDF_STATUS wmi_extract_dcs_awgn_info(wmi_unified_t wmi_hdl, void *evt_buf,
 	return QDF_STATUS_E_FAILURE;
 }
 
+QDF_STATUS wmi_extract_dcs_cw_int(wmi_unified_t wmi_hdl, void *evt_buf,
+				  struct wlan_host_dcs_cw_int *cw_int)
+{
+	if (wmi_hdl && wmi_hdl->ops->extract_dcs_cw_int)
+		return wmi_hdl->ops->extract_dcs_cw_int(wmi_hdl, evt_buf,
+							cw_int);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
 QDF_STATUS wmi_send_dcs_pdev_param(wmi_unified_t wmi_handle,
 				   uint32_t pdev_idx,
 				   bool is_host_pdev_id,
