@@ -906,6 +906,11 @@ irqreturn_t ce_dispatch_interrupt(int ce_id,
 	struct hif_opaque_softc *hif_hdl = GET_HIF_OPAQUE_HDL(scn);
 	struct CE_state *ce_state;
 
+	if (unlikely(tasklet_entry->inited == false)) {
+		hif_err_rl("tasklet_entry uninitialized, ce_id:%d", ce_id);
+		return IRQ_NONE;
+	}
+
 	if (tasklet_entry->ce_id != ce_id) {
 		bool rl;
 
