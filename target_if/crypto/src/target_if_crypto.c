@@ -157,6 +157,20 @@ target_if_crypto_vdev_set_param(struct wlan_objmgr_psoc *psoc, uint32_t vdev_id,
 	return wmi_unified_vdev_set_param_send(wmi_handle, &param);
 }
 
+#ifdef QCA_MULTIPASS_SUPPORT
+static void target_if_set_vlan_key_params(struct wlan_crypto_key *req,
+					  struct set_key_params *params)
+{
+	params->group_key_idx =
+		((req->keyix - WLAN_CRYPTO_VLAN_MIN_KEY_IDX) / 2) + 1;
+	params->key_idx = (req->keyix % 2) ? 2 : 1;
+}
+#else
+static inline void
+target_if_set_vlan_key_params(struct wlan_crypto_key *req,
+			      struct set_key_params *params) {}
+#endif
+
 QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 				    struct wlan_crypto_key *req,
 				    enum wlan_crypto_key_type key_type)
@@ -192,6 +206,8 @@ QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 	}
 	params.vdev_id = wlan_vdev_get_id(vdev);
 	params.key_idx = req->keyix;
+	if (is_vgtk(req->keyix))
+		target_if_set_vlan_key_params(req, &params);
 	qdf_mem_copy(params.peer_mac, req->macaddr, QDF_MAC_ADDR_SIZE);
 	pdev_wmi_handle = GET_WMI_HDL_FROM_PDEV(pdev);
 	if (!pdev_wmi_handle) {
@@ -211,8 +227,9 @@ QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 	qdf_mem_copy(&params.key_rsc_counter,
 		     &req->keyrsc[0], sizeof(uint64_t));
 
-	target_if_debug("key_type %d, mac: " QDF_MAC_ADDR_FMT,
-			key_type, QDF_MAC_ADDR_REF(req->macaddr));
+	target_if_debug("key_type %d, key_idx %d, mac: " QDF_MAC_ADDR_FMT,
+			key_type, params.key_idx,
+			QDF_MAC_ADDR_REF(req->macaddr));
 
 	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_NAN_DISC_MODE) {
 		peer_exist = cdp_find_peer_exist(soc,
@@ -278,8 +295,9 @@ QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 		    (uint32_t *)(req->keyval + WLAN_CRYPTO_IV_SIZE +
 		     WLAN_CRYPTO_MIC_LEN));
 send_install_key:
-	target_if_debug("vdev_id:%d, key: idx:%d,len:%d", params.vdev_id,
-			params.key_idx, params.key_len);
+	target_if_debug("vdev_id:%d, key: idx:%d, group_key_idx %d, len:%d",
+			params.vdev_id, params.key_idx,
+			params.group_key_idx, params.key_len);
 	target_if_debug("peer mac "QDF_MAC_ADDR_FMT,
 			QDF_MAC_ADDR_REF(params.peer_mac));
 	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_CRYPTO, QDF_TRACE_LEVEL_DEBUG,

@@ -51,6 +51,33 @@ bool is_igtk(uint16_t keyix);
 bool is_bigtk(uint16_t keyix);
 
 /**
+ * is_vgtk() - Is given key index for VLAN GTK (multipass SAP)
+ * @keyix: Key index
+ *
+ * Return: true or false
+ */
+#ifdef QCA_MULTIPASS_SUPPORT
+bool is_vgtk(uint16_t keyix);
+void wlan_crypto_free_vlan_keys(struct wlan_crypto_keys *priv_key);
+void wlan_crypto_save_vlan_key(struct wlan_crypto_keys *priv_key,
+			       uint8_t key_index,
+			       struct wlan_crypto_key *crypto_key);
+struct wlan_crypto_key *
+wlan_crypto_get_vlan_key(struct wlan_crypto_keys *priv_key, uint8_t key_index);
+#else
+static inline bool is_vgtk(uint16_t keyix) { return false; }
+static inline void
+wlan_crypto_free_vlan_keys(struct wlan_crypto_keys *priv_key) {}
+static inline void
+wlan_crypto_save_vlan_key(struct wlan_crypto_keys *priv_key,
+			  uint8_t key_index,
+			  struct wlan_crypto_key *crypto_key) {}
+static inline struct wlan_crypto_key *
+wlan_crypto_get_vlan_key(struct wlan_crypto_keys *priv_key,
+			 uint8_t key_index) { return NULL; }
+#endif
+
+/**
  * is_gtk() - Is given key index for GTK
  * @keyix: Key index
  *

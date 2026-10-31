@@ -3638,61 +3638,76 @@ static void qdf_nbuf_track_memory_manager_create(void)
  */
 static void qdf_nbuf_track_memory_manager_destroy(void)
 {
-	QDF_NBUF_TRACK *node, *tmp;
+	QDF_NBUF_TRACK *local_free_list, *tmp;
+	uint32_t free_list_count;
+	uint32_t used_list_count;
+	uint32_t max_used;
+	uint32_t max_free;
+	uint32_t max_allocated;
+	bool print_max_used;
+	bool print_unused_trackers;
+	bool print_freelist_shrink;
 	unsigned long irq_flag;
 
 	spin_lock_irqsave(&qdf_net_buf_track_free_list_lock, irq_flag);
-	node = qdf_net_buf_track_free_list;
+	local_free_list = qdf_net_buf_track_free_list;
+	qdf_net_buf_track_free_list = NULL;
+	free_list_count = qdf_net_buf_track_free_list_count;
+	qdf_net_buf_track_free_list_count = 0;
+	used_list_count = qdf_net_buf_track_used_list_count;
+	max_used = qdf_net_buf_track_max_used;
+	max_free = qdf_net_buf_track_max_free;
+	max_allocated = qdf_net_buf_track_max_allocated;
+	print_max_used = max_used > FREEQ_POOLSIZE * 4;
+	print_unused_trackers = max_used < max_allocated;
+	print_freelist_shrink = free_list_count > FREEQ_POOLSIZE &&
+				free_list_count > 3 * max_used / 4;
+	spin_unlock_irqrestore(&qdf_net_buf_track_free_list_lock, irq_flag);
 
-	if (qdf_net_buf_track_max_used > FREEQ_POOLSIZE * 4)
+	if (print_max_used)
 		qdf_print("%s: unexpectedly large max_used count %d",
-			  __func__, qdf_net_buf_track_max_used);
+			  __func__, max_used);
 
-	if (qdf_net_buf_track_max_used < qdf_net_buf_track_max_allocated)
+	if (print_unused_trackers)
 		qdf_print("%s: %d unused trackers were allocated",
-			  __func__,
-			  qdf_net_buf_track_max_allocated -
-			  qdf_net_buf_track_max_used);
+			  __func__, max_allocated - max_used);
 
-	if (qdf_net_buf_track_free_list_count > FREEQ_POOLSIZE &&
-	    qdf_net_buf_track_free_list_count > 3*qdf_net_buf_track_max_used/4)
+	if (print_freelist_shrink)
 		qdf_print("%s: check freelist shrinking functionality",
 			  __func__);
 
 	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
 		  "%s: %d residual freelist size",
-		  __func__, qdf_net_buf_track_free_list_count);
+		  __func__, free_list_count);
 
 	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
 		  "%s: %d max freelist size observed",
-		  __func__, qdf_net_buf_track_max_free);
+		  __func__, max_free);
 
 	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
 		  "%s: %d max buffers used observed",
-		  __func__, qdf_net_buf_track_max_used);
+		  __func__, max_used);
 
 	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
 		  "%s: %d max buffers allocated observed",
-		  __func__, qdf_net_buf_track_max_allocated);
+		  __func__, max_allocated);
 
-	while (node) {
-		tmp = node;
-		node = node->p_next;
+	while (local_free_list) {
+		tmp = local_free_list;
+		local_free_list = local_free_list->p_next;
 		kmem_cache_free(nbuf_tracking_cache, tmp);
-		qdf_net_buf_track_free_list_count--;
+		free_list_count--;
 	}
 
-	if (qdf_net_buf_track_free_list_count != 0)
-		qdf_info("%d unfreed tracking memory lost in freelist",
-			 qdf_net_buf_track_free_list_count);
-
-	if (qdf_net_buf_track_used_list_count != 0)
-		qdf_info("%d unfreed tracking memory still in use",
-			 qdf_net_buf_track_used_list_count);
-
-	spin_unlock_irqrestore(&qdf_net_buf_track_free_list_lock, irq_flag);
 	kmem_cache_destroy(nbuf_tracking_cache);
-	qdf_net_buf_track_free_list = NULL;
+
+	if (free_list_count != 0)
+		qdf_info("%d unfreed tracking memory lost in freelist",
+			 free_list_count);
+
+	if (used_list_count != 0)
+		qdf_info("%d unfreed tracking memory still in use",
+			 used_list_count);
 }
 
 void qdf_net_buf_debug_init(void)

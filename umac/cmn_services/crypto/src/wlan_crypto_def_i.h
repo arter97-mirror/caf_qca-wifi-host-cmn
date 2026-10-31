@@ -598,7 +598,6 @@ wlan_crypto_key_entry * crypto_hash_find_by_linkid_and_macaddr(
 				uint8_t link_id,
 				uint8_t *mac_addr);
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * wlan_crypto_free_key_by_link_id - free key by link id
  * @psoc: psoc handler
@@ -608,11 +607,4 @@ wlan_crypto_key_entry * crypto_hash_find_by_linkid_and_macaddr(
 void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     struct qdf_mac_addr *link_addr,
 				     uint8_t link_id);
-#else
-static inline
-void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
-				     struct qdf_mac_addr *link_addr,
-				     uint8_t link_id)
-{}
-#endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #endif /* end of _WLAN_CRYPTO_DEF_I_H_ */
