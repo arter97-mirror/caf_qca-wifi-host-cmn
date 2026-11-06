@@ -86,6 +86,17 @@ QDF_STATUS wlan_reg_get_max_5g_bw_from_regdomain(uint16_t regdmn,
 }
 
 #ifdef CONFIG_REG_CLIENT
+#ifdef CONFIG_BAND_6GHZ
+QDF_STATUS wlan_reg_check_if_6g_pwr_type_supp_for_chan(
+						struct wlan_objmgr_pdev *pdev,
+						enum reg_6g_ap_type pwr_type,
+						enum channel_enum chan_idx)
+{
+	return reg_check_if_6g_pwr_type_supp_for_chan(pdev, pwr_type,
+						      chan_idx);
+}
+#endif
+
 QDF_STATUS
 wlan_reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 				struct wlan_objmgr_pdev *pdev,

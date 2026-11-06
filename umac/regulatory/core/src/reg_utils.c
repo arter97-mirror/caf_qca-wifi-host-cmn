@@ -391,7 +391,6 @@ static inline bool reg_is_state_allowed(enum channel_state chan_state)
  * Return: Return QDF_STATUS_SUCCESS if 6 GHz power type supported for
  *         the given channel, else return QDF_STATUS_E_FAILURE.
  */
-static
 QDF_STATUS reg_check_if_6g_pwr_type_supp_for_chan(
 						struct wlan_objmgr_pdev *pdev,
 						enum reg_6g_ap_type pwr_type,
@@ -1146,6 +1145,13 @@ QDF_STATUS reg_set_curr_country(struct wlan_regulatory_psoc_priv_obj *soc_reg,
 	uint8_t phy_num;
 	struct set_country country_code;
 	QDF_STATUS status;
+
+	/* Validate firmware num_phy to prevent out-of-bounds writes. */
+	if (regulat_info->num_phy > PSOC_MAX_PHY_REG_CAP) {
+		reg_err("psoc %u: num_phy %u exceeds PSOC_MAX_PHY_REG_CAP",
+			wlan_psoc_get_id(psoc), regulat_info->num_phy);
+		return QDF_STATUS_E_INVAL;
+	}
 
 	/*
 	 * During SSR/WLAN restart ignore master channel list
