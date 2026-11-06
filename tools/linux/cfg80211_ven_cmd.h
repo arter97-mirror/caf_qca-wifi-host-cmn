@@ -918,6 +918,7 @@ enum {
 	IEEE80211_PARAM_RSNO1CAPS = 839,
 	IEEE80211_PARAM_RSNO2CAPS = 840,
 	IEEE80211_PARAM_RSNXOCAPS = 841,
+	IEEE80211_PARAM_PROCESS_BCAST_ML_PRB_REQ = 844,
 };
 
 enum {
@@ -2732,6 +2733,8 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"hwcts2self_enable", IEEE80211_PARAM_HWCTS2SELF_OFDMA, SET_PARAM, 1},
 	{"set_4addr_eapol", IEEE80211_PARAM_4ADDR_EAPOL, SET_PARAM, 1},
 	{"get_4addr_eapol", IEEE80211_PARAM_4ADDR_EAPOL, GET_PARAM, 0},
+	{"process_bcast_ml_probe_req", IEEE80211_PARAM_PROCESS_BCAST_ML_PRB_REQ, SET_PARAM, 1},
+	{"g_process_bcast_ml_probe_req", IEEE80211_PARAM_PROCESS_BCAST_ML_PRB_REQ, GET_PARAM, 0},
 };
 
 struct vendor_commands radio_vendor_cmds[] = {
