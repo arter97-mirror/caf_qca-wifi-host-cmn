@@ -830,7 +830,8 @@ dp_rx_null_q_handle_invalid_peer_id_exception(struct dp_soc *soc,
 					      qdf_nbuf_t nbuf)
 {
 	struct dp_peer *peer = NULL;
-	uint8_t *rx_pkt_hdr = hal_rx_pkt_hdr_get(soc->hal_soc, rx_tlv_hdr);
+	uint8_t *rx_pkt_tlv = qdf_nbuf_data(nbuf);
+	uint8_t *rx_pkt_hdr = hal_rx_pkt_hdr_get(soc->hal_soc, rx_pkt_tlv);
 	struct dp_pdev *pdev = dp_get_pdev_for_lmac_id(soc, pool_id);
 	struct ieee80211_frame *wh = (struct ieee80211_frame *)rx_pkt_hdr;
 
@@ -849,7 +850,7 @@ dp_rx_null_q_handle_invalid_peer_id_exception(struct dp_soc *soc,
 					      DP_VDEV_ALL, DP_MOD_ID_RX_ERR);
 	if (peer) {
 		dp_verbose_debug("MPDU sw_peer_id & ast_idx is corrupted");
-		hal_rx_dump_pkt_tlvs(soc->hal_soc, rx_tlv_hdr,
+		hal_rx_dump_pkt_tlvs(soc->hal_soc, rx_pkt_tlv,
 				     QDF_TRACE_LEVEL_DEBUG);
 		DP_STATS_INC_PKT(soc, rx.err.rx_invalid_peer_id,
 				 1, qdf_nbuf_len(nbuf));

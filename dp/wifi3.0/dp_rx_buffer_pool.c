@@ -1061,11 +1061,50 @@ dp_rx_page_pool_reattach(struct dp_rx_page_pool *rx_pp,
 	return attach;
 }
 
+/**
+ * dp_rx_pp_retire_locked() - Retire a page pool slot
+ * @rx_pp: RX page pool context
+ * @pp_params: main_pool slot to retire
+ * @destroy_list: list for pools that can be destroyed immediately
+ *
+ * Move @pp_params to @destroy_list if there are no in-flight buffers. If
+ * buffers are still in flight, move a copy to inactive_list and clear the
+ * main_pool slot for deferred cleanup.
+ *
+ * Must be called with rx_pp->pp_lock held.
+ */
+static void
+dp_rx_pp_retire_locked(struct dp_rx_page_pool *rx_pp,
+		       struct dp_rx_pp_params *pp_params,
+		       qdf_list_t *destroy_list)
+{
+	struct dp_rx_pp_params *inactive_pp;
+
+	if (!qdf_page_pool_check_inflight_buffers(pp_params->pp,
+						  pp_params->pp_track_id)) {
+		qdf_list_insert_back(destroy_list, &pp_params->node);
+		return;
+	}
+
+	inactive_pp = qdf_mem_malloc(sizeof(*inactive_pp));
+	if (!inactive_pp) {
+		dp_info("Failed to alloc inactive pp node for %pK", pp_params);
+		qdf_list_insert_back(destroy_list, &pp_params->node);
+		return;
+	}
+
+	qdf_mem_copy(inactive_pp, pp_params, sizeof(*pp_params));
+	qdf_mem_set(pp_params, sizeof(*pp_params), 0);
+	qdf_list_insert_back(&rx_pp->inactive_list, &inactive_pp->node);
+}
+
 static QDF_STATUS
 dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		       size_t new_size)
 {
 	struct dp_rx_pp_params *pp_params;
+	struct dp_rx_pp_params *curr, *next;
+	qdf_list_t destroy_list;
 	qdf_page_pool_t pp;
 	size_t rem_size;
 	size_t pp_count;
@@ -1075,6 +1114,7 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 	uint32_t pool_size;
 	uint8_t prealloc = 0;
 	size_t page_size;
+	int first_touched_idx = -1;
 	int i;
 
 	pp_count = new_size / rx_pp->base_pool_size;
@@ -1108,10 +1148,12 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		if (i == pp_count - 1 && rem_size)
 			pool_size = rem_size;
 
-		/* Try to rettach pools which are inactive first
+		/* Try to reattach pools which are inactive first
 		 * before allocating new pools.
 		 */
 		if (dp_rx_page_pool_reattach(rx_pp, pp_params, pool_size)) {
+			if (first_touched_idx < 0)
+				first_touched_idx = i;
 			upscale_cnt++;
 			continue;
 		}
@@ -1127,6 +1169,8 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		pp_params->pool_size = pool_size;
 		pp_params->pp_size = pp_size;
 		pp_params->prealloc = prealloc;
+		if (first_touched_idx < 0)
+			first_touched_idx = i;
 		upscale_cnt++;
 
 		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
@@ -1141,13 +1185,29 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 	return QDF_STATUS_SUCCESS;
 
 out_pp_fail:
-	while (i > 1) {
-		pp_params = &rx_pp->main_pool[--i];
+	if (first_touched_idx < 0)
+		return QDF_STATUS_E_FAILURE;
+
+	qdf_list_create(&destroy_list, 0);
+
+	qdf_spin_lock_bh(&rx_pp->pp_lock);
+	for (i = first_touched_idx; i < DP_PAGE_POOL_MAX; i++) {
+		pp_params = &rx_pp->main_pool[i];
 		if (!pp_params->pp)
 			continue;
-		dp_rx_pp_destroy(soc, pp_params);
-		pp_params->pp = NULL;
+		dp_rx_pp_retire_locked(rx_pp, pp_params, &destroy_list);
 	}
+	if (!qdf_list_empty(&rx_pp->inactive_list))
+		qdf_delayed_work_start(&rx_pp->pool_inactivity_work,
+				       DP_RX_PP_INACTIVE_WORK_DELAY_MS);
+	qdf_spin_unlock_bh(&rx_pp->pp_lock);
+
+	qdf_list_for_each_del(&destroy_list, curr, next, node) {
+		dp_rx_pp_destroy(soc, curr);
+		qdf_list_remove_node(&destroy_list, &curr->node);
+		qdf_mem_set(curr, sizeof(*curr), 0);
+	}
+
 	return QDF_STATUS_E_FAILURE;
 }
 
@@ -1156,7 +1216,6 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 {
 	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[pool_id];
 	struct dp_rx_pp_params *pp_params;
-	struct dp_rx_pp_params *inactive_pp;
 	struct dp_rx_pp_params *curr, *next;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	qdf_list_t destroy_list;
@@ -1192,25 +1251,7 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 		if (!pp_params->pp)
 			continue;
 
-		/* Immediately destroy the page pool if there
-		 * are no inflight buffers.
-		 */
-		if (!qdf_page_pool_check_inflight_buffers(pp_params->pp, pp_params->pp_track_id)) {
-			qdf_list_insert_back(&destroy_list, &pp_params->node);
-			continue;
-		}
-
-		inactive_pp = qdf_mem_malloc(sizeof(*inactive_pp));
-		if (!inactive_pp) {
-			dp_info("Failed to alloc inactive pp node for %pK",
-				pp_params);
-			qdf_list_insert_back(&destroy_list, &pp_params->node);
-			continue;
-		}
-
-		qdf_mem_copy(inactive_pp, pp_params, sizeof(*pp_params));
-		qdf_mem_set(pp_params, sizeof(*pp_params), 0);
-		qdf_list_insert_back(&rx_pp->inactive_list, &inactive_pp->node);
+		dp_rx_pp_retire_locked(rx_pp, pp_params, &destroy_list);
 	}
 
 	if (!qdf_list_empty(&rx_pp->inactive_list))
@@ -1223,7 +1264,7 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 	qdf_list_for_each_del(&destroy_list, curr, next, node) {
 		dp_rx_pp_destroy(soc, curr);
 		qdf_list_remove_node(&destroy_list, &curr->node);
-		qdf_mem_set(pp_params, sizeof(*pp_params), 0);
+		qdf_mem_set(curr, sizeof(*curr), 0);
 	}
 
 resize_done:

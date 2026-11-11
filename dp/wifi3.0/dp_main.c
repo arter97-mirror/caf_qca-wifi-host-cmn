@@ -5011,6 +5011,8 @@ static void dp_vdev_id_map_tbl_add(struct dp_soc *soc,
 
 	qdf_spin_lock_bh(&soc->vdev_map_lock);
 
+	vdev->guid = ++soc->vdev_guid;
+
 	if (dp_vdev_get_ref(soc, vdev, DP_MOD_ID_CONFIG) !=
 			QDF_STATUS_SUCCESS) {
 		dp_vdev_info("%pK: unable to get vdev reference at MAP vdev %pK vdev_id %u",

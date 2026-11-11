@@ -3462,6 +3462,9 @@ struct dp_soc {
 	/* PDEVs on this SOC */
 	struct dp_pdev *pdev_list[MAX_PDEV_CNT];
 
+	/* Monotonically increasing vdev instance identifier */
+	uint32_t vdev_guid;
+
 	/* Ring used to replenish rx buffers (maybe to the firmware of MAC) */
 	struct dp_srng rx_refill_buf_ring[MAX_PDEV_CNT];
 
@@ -4818,6 +4821,9 @@ struct dp_qos_latency_report {
 /* VDEV structure for data path state */
 struct dp_vdev {
 	struct cdp_vdev cdp_vdev;
+
+	/* Unique identifier for this vdev instance */
+	uint32_t guid;
 	/* OS device abstraction */
 	qdf_device_t osdev;
 

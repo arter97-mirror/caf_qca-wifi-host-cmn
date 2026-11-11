@@ -6801,6 +6801,7 @@ mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
 	uint16_t i;
 	uint8_t vdev_id, assoc_link_id;
 	bool key_present = false;
+	bool new_key_allocated;
 	bool pairwise;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	uint16_t max_key_index = WLAN_CRYPTO_MAXKEYIDX +
@@ -6851,6 +6852,8 @@ mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
 		wlan_crypto_release_lock();
 		pairwise = crypto_key->key_type ? WLAN_CRYPTO_KEY_TYPE_UNICAST : WLAN_CRYPTO_KEY_TYPE_GROUP;
 		if (pairwise) {
+			key_present = true;
+			new_key_allocated = false;
 			mlo_debug("MLO: found unicast key for vdev_id %d link_id %d , key_idx %d",
 				  vdev_id, assoc_link_id, i);
 
@@ -6866,7 +6869,7 @@ mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
 					status = QDF_STATUS_E_NOMEM;
 					goto end;
 				}
-				key_present = true;
+				new_key_allocated = true;
 				wlan_crypto_aquire_lock();
 			}
 
@@ -6883,7 +6886,8 @@ mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
 			wlan_crypto_release_lock();
 			if (QDF_IS_STATUS_ERROR(status)) {
 				mlo_err("Failed to save key");
-				qdf_mem_free(new_crypto_key);
+				if (new_key_allocated)
+					qdf_mem_free(new_crypto_key);
 				goto end;
 			}
 		}
