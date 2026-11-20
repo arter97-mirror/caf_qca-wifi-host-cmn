@@ -2607,6 +2607,12 @@ dp_rx_mlo_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 		soc, peer_id, ml_peer_id,
 		QDF_MAC_ADDR_REF(peer_mac_addr));
 
+	if (peer_id > soc->max_peer_id) {
+		dp_err("mlo_peer_map_event (soc:%pK): invalid peer_id %d > max_peer_id %d",
+		       soc, peer_id, soc->max_peer_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
 	peer = dp_peer_find_add_id(soc, peer_mac_addr, ml_peer_id,
 				   hw_peer_id, vdev_id);
 
@@ -2701,6 +2707,12 @@ dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 	dp_info("peer_map_event (soc:%pK): peer_id %d, hw_peer_id %d, peer_mac "QDF_MAC_ADDR_FMT", vdev_id %d",
 		soc, peer_id, hw_peer_id,
 		QDF_MAC_ADDR_REF(peer_mac_addr), vdev_id);
+
+	if (peer_id > soc->max_peer_id) {
+		dp_err("peer_map_event (soc:%pK): invalid peer_id %d > max_peer_id %d",
+		       soc, peer_id, soc->max_peer_id);
+		return QDF_STATUS_E_INVAL;
+	}
 
 	/* Peer map event for WDS ast entry get the peer from
 	 * obj map
